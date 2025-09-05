@@ -17,40 +17,48 @@ const iconMap = {
 export function AccountCard({ account }: AccountCardProps) {
     return (
         <Card className="shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-start justify-between">
-                <div className="flex items-center gap-4">
+            <CardHeader className="p-4 md:p-6 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                <div className="flex w-full items-start gap-3">
                     {iconMap[account.type]}
-                    <div>
-                        <CardTitle>{account.name}</CardTitle>
-                        <CardDescription>{account.type} •••• {account.lastFour}</CardDescription>
+                    <div className="min-w-0">
+                        <CardTitle className="truncate text-base md:text-lg">{account.name}</CardTitle>
+                        <CardDescription className="truncate text-xs md:text-sm">
+                            {account.type} •••• {account.lastFour}
+                        </CardDescription>
                     </div>
+                    {/* Amount on the right on mobile */}
+                    <div className="ml-auto text-right md:hidden">
+                        <div className="text-base font-semibold text-green-600">
+                            {new Intl.NumberFormat("en-PH", {
+                                style: "currency",
+                                currency: "PHP",
+                            }).format(account.balance)}
+                        </div>
+                    </div>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="ml-1 h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem>Refresh</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive">
+                                Disconnect
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Refresh</DropdownMenuItem>
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
-                            Disconnect
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
             </CardHeader>
-            <CardContent>
-                <div className="text-3xl font-bold">
-                    {new Intl.NumberFormat("en-US", {
+            <CardContent className="hidden md:block">
+                <div className="hidden text-3xl font-bold text-green-600 md:block">
+                    {new Intl.NumberFormat("en-PH", {
                         style: "currency",
-                        currency: "USD",
+                        currency: "PHP",
                     }).format(account.balance)}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                    Current balance
-                </p>
+                <p className="hidden text-xs text-muted-foreground md:block">Current balance</p>
             </CardContent>
         </Card>
-    )
+    );
 }

@@ -55,7 +55,7 @@ export function OverviewChart() {
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value) => `$${value / 1000}k`}
+                tickFormatter={(value) => `₱${value / 1000}k`}
                 />
                 <ChartTooltip
                 cursor={{ fill: 'hsl(var(--accent) / 0.2)' }}

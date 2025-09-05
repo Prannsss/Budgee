@@ -5,6 +5,7 @@ export type Transaction = {
   amount: number;
   category: 'Income' | 'Housing' | 'Food' | 'Transportation' | 'Entertainment' | 'Utilities' | 'Other';
   status: 'pending' | 'completed' | 'failed';
+  accountId: string; // references Account.id
 };
 
 export type Account = {

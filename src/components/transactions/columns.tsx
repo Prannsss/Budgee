@@ -10,12 +10,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Badge } from "../ui/badge"
 import { cn } from "@/lib/utils"
 import { Checkbox } from "../ui/checkbox"
+import { mockAccounts } from "@/lib/data"
 
 export const columns: ColumnDef<Transaction>[] = [
   {
@@ -49,6 +48,20 @@ export const columns: ColumnDef<Transaction>[] = [
     header: "Category",
   },
   {
+    id: "bank",
+    header: "Bank/E-wallet",
+    cell: ({ row }) => {
+      const acct = mockAccounts.find(a => a.id === row.original.accountId)
+      if (!acct) return <span className="text-muted-foreground">—</span>
+      return (
+        <div className="flex flex-col">
+          <span className="font-medium">{acct.name}</span>
+          <span className="text-xs text-muted-foreground">{acct.type}</span>
+        </div>
+      )
+    },
+  },
+  {
     accessorKey: "date",
     header: ({ column }) => {
       return (
@@ -61,20 +74,14 @@ export const columns: ColumnDef<Transaction>[] = [
         </Button>
       )
     },
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
     cell: ({ row }) => {
-        const status = row.getValue("status") as string;
-        return <Badge variant={status === 'completed' ? 'default' : 'secondary'} className={cn(
-            status === 'completed' && 'bg-green-500/20 text-green-700 border-green-500/20 hover:bg-green-500/30',
-            status === 'pending' && 'bg-yellow-500/20 text-yellow-700 border-yellow-500/20 hover:bg-yellow-500/30',
-            status === 'failed' && 'bg-red-500/20 text-red-700 border-red-500/20 hover:bg-red-500/30',
-        )}>
-            {status}
-        </Badge>
-    }
+      const iso = row.getValue("date") as string
+      const d = new Date(iso)
+      const formatted = isNaN(d.getTime())
+        ? String(iso)
+        : new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(d)
+      return <div className="whitespace-nowrap">{formatted}</div>
+    },
   },
   {
     accessorKey: "amount",
@@ -93,12 +100,12 @@ export const columns: ColumnDef<Transaction>[] = [
     },
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("amount"))
-      const formatted = new Intl.NumberFormat("en-US", {
+      const formatted = new Intl.NumberFormat("en-PH", {
         style: "currency",
-        currency: "USD",
+        currency: "PHP",
       }).format(amount)
  
-      return <div className={cn("text-right font-medium", amount > 0 ? "text-green-600" : "text-foreground")}>{formatted}</div>
+  return <div className={cn("text-right font-medium", amount > 0 ? "text-green-600" : "text-red-600")}>{formatted}</div>
     },
   },
   {
@@ -121,9 +128,6 @@ export const columns: ColumnDef<Transaction>[] = [
             >
               Copy transaction ID
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>View details</DropdownMenuItem>
-            <DropdownMenuItem>Edit transaction</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )

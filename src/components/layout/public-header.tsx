@@ -14,23 +14,15 @@ export default function PublicHeader() {
     <>
       <Link
         href="/pricing"
-        className="text-sm font-medium hover:text-primary transition-colors"
+        className="text-sm font-medium text-gray-300 hover:text-white transition-colors"
         prefetch={false}
         onClick={() => setIsOpen(false)}
       >
         Pricing
       </Link>
       <Link
-        href="/onboarding"
-        className="text-sm font-medium hover:text-primary transition-colors"
-        prefetch={false}
-        onClick={() => setIsOpen(false)}
-      >
-        Features
-      </Link>
-      <Link
         href="/login"
-        className="text-sm font-medium hover:text-primary transition-colors"
+        className="text-sm font-medium text-gray-300 hover:text-white transition-colors"
         prefetch={false}
         onClick={() => setIsOpen(false)}
       >
@@ -43,10 +35,10 @@ export default function PublicHeader() {
   );
 
   return (
-    <header className="px-4 lg:px-6 h-16 flex items-center bg-background/80 backdrop-blur-sm sticky top-0 z-50 border-b">
+    <header className="px-4 lg:px-6 h-16 flex items-center bg-black/95 backdrop-blur-sm sticky top-0 z-50 border-b border-gray-800">
       <Link href="/" className="flex items-center justify-center gap-2" prefetch={false}>
         <Logo className="h-6 w-6 text-primary" />
-        <span className="text-lg font-semibold font-headline">Budgee</span>
+        <span className="text-lg font-semibold font-headline text-white">Budgee</span>
       </Link>
       <nav className="ml-auto hidden md:flex gap-4 sm:gap-6 items-center">
         {navLinks}
@@ -54,12 +46,12 @@ export default function PublicHeader() {
       <div className="ml-auto md:hidden">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="text-gray-300 hover:text-white">
               <Menu className="h-6 w-6" />
               <span className="sr-only">Toggle navigation menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="right">
+          <SheetContent side="right" className="bg-black border-gray-800">
             <div className="grid gap-4 py-6">
                 {navLinks}
             </div>

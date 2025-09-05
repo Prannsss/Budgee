@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import PublicHeader from "@/components/layout/public-header";
 import Footer from "@/components/layout/footer";
+import ScrollStack, { ScrollStackItem } from "@/components/ui/scroll-stack";
+import FadeIn from "@/components/ui/fade-in";
 
 export default function Home() {
   const features = [
@@ -31,90 +33,111 @@ export default function Home() {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-black text-white">
       <PublicHeader />
       <main className="flex-1">
-        <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-background">
+        <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-black">
           <div className="container px-4 md:px-6">
-            <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
-              <div className="flex flex-col justify-center space-y-4">
-                <div className="space-y-4">
-                  <h1 className="text-4xl font-extrabold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline">
+            <div className="flex flex-col items-center justify-center text-center">
+              <div className="flex flex-col justify-center space-y-4 max-w-4xl">
+                <FadeIn className="space-y-4" distance={28}>
+                  <h1 className="text-4xl font-extrabold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline text-white">
                     Master Your Money with Budgee
                   </h1>
-                  <p className="max-w-[600px] text-muted-foreground md:text-xl">
-                    The smart, simple way to manage your finances. Connect your accounts, track your spending, and get personalized insights from our AI assistant.
-                  </p>
-                </div>
-                <div className="lg:hidden mt-6">
-                  <Card>
-                    <CardContent className="p-0">
-                      <Image
-                        src="/images/budgee.png"
-                        width="1080"
-                        height="1080"
-                        alt="Budgee Dashboard Preview"
-                        data-ai-hint="finance dashboard"
-                        className="mx-auto aspect-square overflow-hidden rounded-xl object-cover"
-                      />
-                    </CardContent>
-                  </Card>
-                </div>
-                <div className="flex flex-col gap-2 min-[400px]:flex-row">
+                  <FadeIn delay={0.08}>
+                    <p className="max-w-[600px] mx-auto text-gray-300 md:text-xl">
+                      The smart, simple way to manage your finances. Connect your accounts, track your spending, and get personalized insights from your AI assistant.
+                    </p>
+                  </FadeIn>
+                </FadeIn>
+                <FadeIn delay={0.15} className="flex flex-col gap-2 min-[400px]:flex-row justify-center">
                   <Button asChild size="lg" className="shadow-lg hover:shadow-xl transition-shadow">
                     <Link href="/signup">Sign Up for Free</Link>
                   </Button>
-                  <Button asChild variant="outline" size="lg">
-                    <Link href="/onboarding">See How It Works</Link>
-                  </Button>
-                </div>
-              </div>
-              <div className="hidden lg:flex items-center justify-center">
-                <Image
-                  src="/images/budgee.png"
-                  width="1080"
-                  height="1080"
-                  alt="Budgee Dashboard Preview"
-                  data-ai-hint="finance dashboard"
-                  className="mx-auto aspect-square object-cover sm:w-full"
-                />
+                </FadeIn>
               </div>
             </div>
           </div>
         </section>
 
-        <section id="features" className="w-full py-12 md:py-24 lg:py-32">
+        <section id="features" className="w-full py-8 md:py-16 lg:py-20 bg-black">
           <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
+            <FadeIn className="flex flex-col items-center justify-center space-y-4 text-center mb-8" distance={32}>
               <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm">Key Features</div>
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">We Got Everything You Need!</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  Budgee provides powerful, easy-to-use tools to help you take control of your financial life.
-                </p>
+                <div className="inline-block rounded-lg bg-gray-800 px-3 py-1 text-sm text-white">Key Features</div>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline text-white">We Got Everything You Need!</h2>
+                <FadeIn delay={0.1}>
+                  <p className="max-w-[900px] text-gray-300 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                    Budgee provides powerful, easy-to-use tools to help you take control of your financial life.
+                  </p>
+                </FadeIn>
               </div>
-            </div>
-            <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:max-w-none lg:grid-cols-4 mt-12">
-              {features.map((feature, index) => (
-                <div key={index} className="grid gap-1 text-center">
-                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent/20">
-                    {feature.icon}
+            </FadeIn>
+            <FadeIn className="py-8" delay={0.15} distance={40}>
+              <ScrollStack
+                className="bg-black max-w-4xl mx-auto"
+                itemStackDistance={0}
+                baseScale={1}
+                itemScale={0}
+                itemDistance={0}
+              >
+                <ScrollStackItem itemClassName="bg-gray-900 border border-gray-700">
+                  <div className="flex flex-col items-center text-center h-full justify-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-800 mb-6">
+                      <Landmark className="h-8 w-8 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-4">Account Connections</h3>
+                    <p className="text-gray-300 text-lg max-w-md">
+                      Securely link your bank accounts and e-wallets to get a complete financial picture.
+                    </p>
                   </div>
-                  <h3 className="text-lg font-bold">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground">{feature.description}</p>
-                </div>
-              ))}
-            </div>
+                </ScrollStackItem>
+                <ScrollStackItem itemClassName="bg-gray-900 border border-gray-700">
+                  <div className="flex flex-col items-center text-center h-full justify-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-800 mb-6">
+                      <Bot className="h-8 w-8 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-4">AI Assistant</h3>
+                    <p className="text-gray-300 text-lg max-w-md">
+                      Ask Budgee anything about your finances and get smart, personalized insights in seconds.
+                    </p>
+                  </div>
+                </ScrollStackItem>
+                <ScrollStackItem itemClassName="bg-gray-900 border border-gray-700">
+                  <div className="flex flex-col items-center text-center h-full justify-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-800 mb-6">
+                      <Wallet className="h-8 w-8 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-4">Transaction Management</h3>
+                    <p className="text-gray-300 text-lg max-w-md">
+                      Easily categorize, search, and filter your transactions to understand your spending habits.
+                    </p>
+                  </div>
+                </ScrollStackItem>
+                <ScrollStackItem itemClassName="bg-gray-900 border border-gray-700">
+                  <div className="flex flex-col items-center text-center h-full justify-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-800 mb-6">
+                      <Banknote className="h-8 w-8 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-4">Net Worth Tracking</h3>
+                    <p className="text-gray-300 text-lg max-w-md">
+                      Watch your net worth grow with a clear overview of your assets and liabilities.
+                    </p>
+                  </div>
+                </ScrollStackItem>
+              </ScrollStack>
+            </FadeIn>
+            {/* Reduced extra space to keep layout compact */}
           </div>
         </section>
 
-        <section id="cta" className="w-full py-12 md:py-24 lg:py-32 bg-secondary/50">
+        <section id="cta" className="w-full py-12 md:py-24 lg:py-32 bg-gray-900">
           <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
             <div className="space-y-3">
-              <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight font-headline">
+              <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight font-headline text-white">
                 Ready to Take Control of Your Finances?
               </h2>
-              <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+              <p className="mx-auto max-w-[600px] text-gray-300 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                 Join Budgee today and start your journey towards financial clarity and freedom. It's free to get started.
               </p>
             </div>

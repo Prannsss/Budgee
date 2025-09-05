@@ -21,17 +21,18 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "../ui/button"
-import { DataTableToolbar } from "./data-table-toolbar"
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[]
-  data: TData[]
+export type DataTableHandle = { exportSelected: () => void }
+
+interface DataTableProps {
+  columns: ColumnDef<any, any>[]
+  data: any[]
 }
 
-export function DataTable<TData, TValue>({
+export const DataTable = React.forwardRef<DataTableHandle, DataTableProps>(function DataTable({
   columns,
   data,
-}: DataTableProps<TData, TValue>) {
+}, ref) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [rowSelection, setRowSelection] = React.useState({})
 
@@ -55,9 +56,30 @@ export function DataTable<TData, TValue>({
     }
   })
 
+  React.useImperativeHandle(ref, () => ({
+    exportSelected: () => {
+      const selectedRows = table.getFilteredSelectedRowModel().rows
+      if (!selectedRows.length) return
+      const dataToExport: any[] = selectedRows.map((r) => r.original as any)
+      const headers = Object.keys(dataToExport[0] ?? {})
+      const csv = [
+        headers.join(','),
+        ...dataToExport.map((row) => headers.map((h) => row[h]).join(',')),
+      ].join('\n')
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      if (link.href) URL.revokeObjectURL(link.href)
+      link.href = URL.createObjectURL(blob)
+      link.download = `transactions-${new Date().toISOString()}.csv`
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    },
+  }), [table])
+
   return (
-    <div className="space-y-4">
-        <DataTableToolbar table={table} />
+    <div className="space-y-2">
         <div className="rounded-md border shadow-sm">
         <Table>
             <TableHeader>
@@ -126,4 +148,4 @@ export function DataTable<TData, TValue>({
       </div>
     </div>
   )
-}
+})
