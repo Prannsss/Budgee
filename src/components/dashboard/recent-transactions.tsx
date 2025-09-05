@@ -17,8 +17,7 @@ import {
 import { Button } from "../ui/button"
 import Link from "next/link"
 import { ArrowUpRight } from "lucide-react"
-import { mockTransactions } from "@/lib/data"
-import { Badge } from "../ui/badge"
+import { mockTransactions, mockAccounts } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
 export function RecentTransactions() {
@@ -37,8 +36,8 @@ export function RecentTransactions() {
           <TableHeader>
             <TableRow>
               <TableHead>Description</TableHead>
+              <TableHead className="hidden sm:table-cell">Bank/E-wallet</TableHead>
               <TableHead className="hidden sm:table-cell">Category</TableHead>
-              <TableHead className="hidden sm:table-cell">Status</TableHead>
               <TableHead className="text-right">Amount</TableHead>
             </TableRow>
           </TableHeader>
@@ -49,18 +48,24 @@ export function RecentTransactions() {
                   <div className="font-medium">{transaction.description}</div>
                   <div className="text-sm text-muted-foreground md:hidden">{transaction.date}</div>
                 </TableCell>
-                <TableCell className="hidden sm:table-cell">{transaction.category}</TableCell>
                 <TableCell className="hidden sm:table-cell">
-                    <Badge variant={transaction.status === 'completed' ? 'default' : 'secondary'} className={cn(
-                        transaction.status === 'completed' && 'bg-green-500/20 text-green-700 border-green-500/20',
-                        transaction.status === 'pending' && 'bg-yellow-500/20 text-yellow-700 border-yellow-500/20',
-                        transaction.status === 'failed' && 'bg-red-500/20 text-red-700 border-red-500/20',
-                    )}>
-                        {transaction.status}
-                    </Badge>
+                  {(() => {
+                    const acct = mockAccounts.find(a => a.id === transaction.accountId)
+                    if (!acct) return <span className="text-muted-foreground">—</span>
+                    return (
+                      <div className="flex flex-col">
+                        <span className="font-medium">{acct.name}</span>
+                        <span className="text-xs text-muted-foreground">{acct.type}</span>
+                      </div>
+                    )
+                  })()}
                 </TableCell>
+                <TableCell className="hidden sm:table-cell">{transaction.category}</TableCell>
                 <TableCell className={cn("text-right", transaction.amount > 0 ? "text-green-600" : "text-destructive")}>
-                  {transaction.amount > 0 ? `+${transaction.amount.toFixed(2)}` : transaction.amount.toFixed(2)}
+                  {transaction.amount > 0 ? 
+                    `+${new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(transaction.amount)}` :
+                    new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(transaction.amount)
+                  }
                 </TableCell>
               </TableRow>
             ))}

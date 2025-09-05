@@ -8,7 +8,7 @@ import Footer from "@/components/layout/footer";
 const plans = [
   {
     name: "Free",
-    price: "$0",
+  price: "₱0",
     period: "/ month",
     description: "For individuals getting started with budgeting.",
     features: [
@@ -21,7 +21,7 @@ const plans = [
   },
   {
     name: "Basic",
-    price: "$9",
+  price: "₱9",
     period: "/ month",
     description: "For users who want more control and insights.",
     features: [
@@ -36,7 +36,7 @@ const plans = [
   },
   {
     name: "Premium",
-    price: "$19",
+  price: "₱19",
     period: "/ month",
     description: "For power users who need advanced features.",
     features: [

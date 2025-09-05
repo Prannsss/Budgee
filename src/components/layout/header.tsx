@@ -2,20 +2,17 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Bell } from "lucide-react";
+// Notifications icon removed per requirement
 import { ChatAssistant } from "../ai/chat-assistant";
 
 export default function Header() {
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:h-[60px] lg:px-6 sticky top-0 z-30">
-      <SidebarTrigger />
+  <header className="flex h-14 items-center gap-4 bg-background px-4 lg:px-6 sticky top-0 z-30">
+  <SidebarTrigger className="hidden md:inline-flex" />
       <div className="w-full flex-1" />
       <div className="flex items-center gap-2">
         <ChatAssistant />
-        <Button variant="outline" size="icon" className="rounded-full">
-            <Bell className="h-5 w-5"/>
-            <span className="sr-only">Notifications</span>
-        </Button>
+  {/* Notifications removed per requirement */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="secondary" size="icon" className="overflow-hidden rounded-full">

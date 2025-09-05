@@ -11,6 +11,7 @@ import {
   LogOut,
   CreditCard
 } from "lucide-react";
+import { Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "../icons/logo";
 import { Button } from "../ui/button";
@@ -20,12 +21,12 @@ const navItems = [
     { href: "/dashboard", icon: <LayoutDashboard />, label: "Dashboard" },
     { href: "/dashboard/accounts", icon: <Landmark />, label: "Accounts" },
     { href: "/dashboard/transactions", icon: <CreditCard />, label: "Transactions" },
+  { href: "/dashboard/chat", icon: <Bot />, label: "Budgee AI" },
 ];
 
 const settingsItems = [
-    { href: "/dashboard/settings", icon: <Settings />, label: "Settings" },
-    { href: "/dashboard/help", icon: <HelpCircle />, label: "Help" },
-]
+  { href: "/dashboard/settings", icon: <Settings />, label: "Settings" },
+];
 
 export function SidebarNav() {
   const pathname = usePathname();
@@ -56,10 +57,13 @@ export function SidebarNav() {
             {settingsItems.map(renderLink)}
              <SidebarMenuItem>
                 <Link href="/login">
-                    <SidebarMenuButton tooltip={{children: 'Logout'}}>
-                        <LogOut />
-                        <span className="group-data-[collapsible=icon]:hidden">Logout</span>
-                    </SidebarMenuButton>
+                  <SidebarMenuButton 
+                    tooltip={{children: 'Logout'}}
+                    className="bg-red-600/90 hover:bg-red-600 text-white focus-visible:ring-red-600 transition-colors"
+                  >
+                      <LogOut className="h-4 w-4" />
+                      <span className="group-data-[collapsible=icon]:hidden">Logout</span>
+                  </SidebarMenuButton>
                 </Link>
              </SidebarMenuItem>
         </SidebarMenu>
