@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 // Notifications icon removed per requirement
 import { ChatAssistant } from "../ai/chat-assistant";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Header() {
   return (
@@ -11,6 +12,7 @@ export default function Header() {
   <SidebarTrigger className="hidden md:inline-flex" />
       <div className="w-full flex-1" />
       <div className="flex items-center gap-2">
+        <ThemeToggle />
         <ChatAssistant />
   {/* Notifications removed per requirement */}
         <DropdownMenu>

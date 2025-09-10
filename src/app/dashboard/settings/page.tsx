@@ -10,7 +10,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                     <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Settings</h1>
-                    <p className="text-sm md:text-base text-gray-500 font-medium">Under Development</p>
+                    <p className="text-sm md:text-base text-muted-foreground font-medium">Under Development</p>
                 </div>
             </div>
         </main>
