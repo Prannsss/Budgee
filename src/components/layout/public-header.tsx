@@ -36,6 +36,30 @@ export default function PublicHeader() {
     </>
   );
 
+  const mobileNavLinks = (
+    <>
+      <Link
+        href="/pricing"
+        className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors text-center"
+        prefetch={false}
+        onClick={() => setIsOpen(false)}
+      >
+        Pricing
+      </Link>
+      <Link
+        href="/login"
+        className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors text-center"
+        prefetch={false}
+        onClick={() => setIsOpen(false)}
+      >
+        Login
+      </Link>
+      <Button asChild size="lg" className="mx-auto">
+        <Link href="/signup">Get Started</Link>
+      </Button>
+    </>
+  );
+
   return (
     <header className="px-4 lg:px-6 h-16 flex items-center bg-background/95 backdrop-blur-sm sticky top-0 z-50 border-b border-border">
       <Link href="/" className="flex items-center justify-center gap-2" prefetch={false}>
@@ -56,10 +80,10 @@ export default function PublicHeader() {
           </SheetTrigger>
           <SheetContent side="right" className="bg-background border-border">
             <SheetHeader>
-              <SheetTitle>Navigation Menu</SheetTitle>
+              <SheetTitle>Menu</SheetTitle>
             </SheetHeader>
-            <div className="grid gap-4 py-6">
-                {navLinks}
+            <div className="grid gap-6 py-6 place-items-center">
+                {mobileNavLinks}
             </div>
           </SheetContent>
         </Sheet>
