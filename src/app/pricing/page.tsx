@@ -1,34 +1,41 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import PublicHeader from "@/components/layout/public-header";
 import Footer from "@/components/layout/footer";
 
 const plans = [
   {
     name: "Free",
-  price: "₱0",
+    price: "₱0",
     period: "/ month",
-    description: "For individuals getting started with budgeting.",
+    description: "For individuals just starting with budgeting.",
     features: [
       "Connect 1 bank account",
+      "Connect 1 e-wallet",
       "Basic transaction categorization",
       "Net worth tracking",
+      "Monthly spending summary",
     ],
     cta: "Get Started for Free",
     href: "/signup",
   },
   {
     name: "Basic",
-  price: "₱9",
+    price: "₱299",
     period: "/ month",
-    description: "For users who want more control and insights.",
+    description: "For users who want more control and smarter insights.",
     features: [
+      "Everything in Free",
       "Connect up to 5 accounts",
       "Advanced categorization rules",
-      "AI financial summary",
-      "Export transactions",
+      "AI-powered financial insights",
+      "Export transactions to CSV/Excel",
+      "Budget goals and alerts",
     ],
     cta: "Choose Basic",
     href: "/signup?plan=basic",
@@ -36,14 +43,16 @@ const plans = [
   },
   {
     name: "Premium",
-  price: "₱19",
+    price: "₱499",
     period: "/ month",
-    description: "For power users who need advanced features.",
+    description: "For power users and small businesses needing advanced features.",
     features: [
+      "Everything in Basic",
       "Unlimited account connections",
-      "Full AI assistant access",
-      "Investment tracking",
-      "Priority support",
+      "Full AI financial assistant access",
+      "Investment and savings tracking",
+      "Custom financial reports",
+      "Priority customer support",
     ],
     cta: "Choose Premium",
     href: "/signup?plan=premium",
@@ -51,6 +60,11 @@ const plans = [
 ];
 
 export default function PricingPage() {
+  const router = useRouter();
+
+  const handlePlanClick = (href: string) => {
+    router.push(href);
+  };
   return (
     <div className="flex flex-col min-h-screen">
       <PublicHeader />
@@ -67,7 +81,18 @@ export default function PricingPage() {
 
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-12 mt-10 w-full max-w-5xl">
             {plans.map((plan) => (
-              <Card key={plan.name} className={`flex flex-col ${plan.popular ? 'border-primary shadow-2xl' : 'shadow-lg'}`}>
+              <Card 
+                key={plan.name} 
+                className={`flex flex-col cursor-pointer transition-all duration-200 hover:scale-105 ${
+                  plan.popular ? 'border-primary shadow-2xl' : 'shadow-lg hover:shadow-xl'
+                }`}
+                onClick={() => handlePlanClick(plan.href)}
+              >
+                {plan.popular && (
+                  <div className="bg-primary text-primary-foreground text-center py-2 text-sm font-medium rounded-t-lg">
+                    Most Popular
+                  </div>
+                )}
                 <CardHeader>
                   <CardTitle>{plan.name}</CardTitle>
                   <CardDescription>{plan.description}</CardDescription>

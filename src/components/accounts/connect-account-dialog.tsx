@@ -18,7 +18,6 @@ import { useRouter } from "next/navigation";
 const accountTypes = [
     { name: "Bank", icon: <Landmark className="h-8 w-8" /> },
     { name: "E-Wallet", icon: <Wallet className="h-8 w-8" /> },
-    { name: "Crypto", icon: <Banknote className="h-8 w-8" /> },
 ]
 
 const providersByType: Record<string, string[]> = {
@@ -39,15 +38,9 @@ const providersByType: Record<string, string[]> = {
     "PayPal",
     "Wise",
   ],
-  "Crypto": [
-    "Binance",
-    "Coinbase",
-    "Kraken",
-    "PDAX",
-  ],
 }
 
-export function ConnectAccountDialog() {
+export function ConnectAccountDialog({ trigger }: { trigger?: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [selectedType, setSelectedType] = useState<string | null>(null);
@@ -84,9 +77,11 @@ export function ConnectAccountDialog() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" /> Connect Account
-        </Button>
+        {trigger || (
+          <Button>
+            <Plus className="mr-2 h-4 w-4" /> Connect Account
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
@@ -114,7 +109,7 @@ export function ConnectAccountDialog() {
               </p>
             </div>
           ) : step === "type" ? (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               {accountTypes.map((type) => (
                 <Button
                   key={type.name}
@@ -161,7 +156,6 @@ export function ConnectAccountDialog() {
                     {/* Reuse icons per type for now */}
                     {selectedType === "Bank" && <Landmark className="h-6 w-6" />}
                     {selectedType === "E-Wallet" && <Wallet className="h-6 w-6" />}
-                    {selectedType === "Crypto" && <Banknote className="h-6 w-6" />}
                     <span className="text-sm">{provider}</span>
                   </Button>
                 ))}
