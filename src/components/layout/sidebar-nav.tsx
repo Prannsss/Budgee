@@ -9,7 +9,8 @@ import {
   Settings,
   HelpCircle,
   LogOut,
-  CreditCard
+  CreditCard,
+  User
 } from "lucide-react";
 import { Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,7 @@ const navItems = [
 ];
 
 const settingsItems = [
-  { href: "/dashboard/settings", icon: <Settings />, label: "Settings" },
+  { href: "/dashboard/profile", icon: <User />, label: "Profile" },
 ];
 
 export function SidebarNav() {

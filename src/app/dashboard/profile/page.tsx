@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ChevronRight, User, ShieldCheck, Settings, HelpCircle, FileText, LogOut } from "lucide-react";
+import { ArrowLeft, ChevronRight, User, ShieldCheck, Settings, HelpCircle, FileText, LogOut, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { ThemeSelector } from "@/components/theme-selector";
 
 const profileSections = [
   {
@@ -73,6 +74,21 @@ export default function ProfilePage() {
               {index < profileSections.length - 1 && <Separator />}
             </div>
           ))}
+        </Card>
+
+        {/* Theme Section */}
+        <Card className="p-0 overflow-hidden">
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-8 h-8">
+                <Palette className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <span className="font-medium">Theme</span>
+            </div>
+            <div className="flex-1 max-w-[200px]">
+              <ThemeSelector />
+            </div>
+          </div>
         </Card>
 
         {/* Logout Section */}
