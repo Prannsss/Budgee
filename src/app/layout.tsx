@@ -6,6 +6,11 @@ import { Toaster } from "@/components/ui/toaster";
 export const metadata: Metadata = {
   title: 'Budgee',
   description: 'The smart, simple way to manage your finances.',
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({
