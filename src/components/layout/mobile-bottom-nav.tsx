@@ -5,16 +5,23 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, Landmark, CreditCard, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { useSubscription } from "@/contexts/subscription-context";
 
-const items = [
+const baseItems = [
   { href: "/dashboard", label: "Home", Icon: LayoutDashboard },
   { href: "/dashboard/accounts", label: "Accounts", Icon: Landmark },
   { href: "/dashboard/transactions", label: "Transactions", Icon: CreditCard },
-  { href: "/dashboard/chat", label: "Chat", Icon: Bot },
 ];
+
+const aiItem = { href: "/dashboard/chat", label: "Chat", Icon: Bot };
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const { isAIEnabled } = useSubscription();
+  
+  // Build navigation items based on plan
+  const items = isAIEnabled ? [...baseItems, aiItem] : baseItems;
+  const gridCols = isAIEnabled ? "grid-cols-5" : "grid-cols-4";
 
   return (
     <nav
@@ -27,7 +34,7 @@ export function MobileBottomNav() {
           "backdrop-blur supports-[backdrop-filter]:bg-background/60"
         )}
       >
-        <ul className="grid grid-cols-5">
+        <ul className={cn("grid", gridCols)}>
           {items.map(({ href, label, Icon }) => {
             const isActive = pathname === href;
             return (

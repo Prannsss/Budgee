@@ -16,13 +16,15 @@ import { Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { useSidebar, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
+import { useSubscription } from "@/contexts/subscription-context";
 
-const navItems = [
+const baseNavItems = [
     { href: "/dashboard", icon: <LayoutDashboard />, label: "Dashboard" },
     { href: "/dashboard/accounts", icon: <Landmark />, label: "Accounts" },
     { href: "/dashboard/transactions", icon: <CreditCard />, label: "Transactions" },
-  { href: "/dashboard/chat", icon: <Bot />, label: "Budgee AI" },
 ];
+
+const aiNavItem = { href: "/dashboard/chat", icon: <Bot />, label: "Budgee AI" };
 
 const settingsItems = [
   { href: "/dashboard/profile", icon: <User />, label: "Profile" },
@@ -30,6 +32,10 @@ const settingsItems = [
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const { isAIEnabled } = useSubscription();
+  
+  // Build navigation items based on plan
+  const navItems = isAIEnabled ? [...baseNavItems, aiNavItem] : baseNavItems;
 
   const renderLink = (item: any) => (
     <SidebarMenuItem key={item.label}>
