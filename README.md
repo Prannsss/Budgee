@@ -14,3 +14,10 @@ Bank and E-Wallet Integration – Connect and manage multiple accounts.
 AI Finance Buddy – Personalized summaries of expenses, income, and savings (Premium only).
 Transaction History – Filter and view transactions by account, category, or date.
 Budgeting Tools – Set saving goals and track spending patterns.
+
+# TODO
+- [ ] Add localstorage
+- [ ] Add proper authentication
+- [ ] Add proper database
+- [ ] Add API integration
+- [ ] Add AI
