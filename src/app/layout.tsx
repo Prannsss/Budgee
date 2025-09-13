@@ -27,6 +27,12 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'default',
     title: 'Budgee',
+    startupImage: [
+      {
+        url: '/icons/icon-128x128.png',
+        media: '(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)',
+      },
+    ],
   },
   formatDetection: {
     telephone: false,
@@ -64,15 +70,11 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="msapplication-config" content="/icons/browserconfig.xml" />
-        <meta name="msapplication-TileColor" content="#000000" />
+        <meta name="msapplication-TileColor" content="#ffffff" />
         <meta name="msapplication-tap-highlight" content="no" />
-        <meta name="theme-color" content="#000000" />
+        <meta name="theme-color" content="#ffffff" />
         
-        <link rel="apple-touch-icon" href="/icons/icon-152x152.png" />
-        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
-        
-        <link rel="mask-icon" href="/icons/safari-pinned-tab.svg" color="#000000" />
+        <link rel="mask-icon" href="/icons/safari-pinned-tab.svg" color="#ffffff" />
         <link rel="shortcut icon" href="/favicon.ico" />
       </head>
       <body className={cn("font-body antialiased", "min-h-screen bg-background font-sans")}>
