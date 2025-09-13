@@ -12,9 +12,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Category } from "@/lib/types";
 
 // Sample categories data
-const initialExpenseCategories = [
+const initialExpenseCategories: Category[] = [
   { id: 1, name: "Food & Dining", color: "#FF6B6B" },
   { id: 2, name: "Transportation", color: "#4ECDC4" },
   { id: 3, name: "Shopping", color: "#45B7D1" },
@@ -23,7 +24,7 @@ const initialExpenseCategories = [
   { id: 6, name: "Healthcare", color: "#DDA0DD" },
 ];
 
-const initialIncomeCategories = [
+const initialIncomeCategories: Category[] = [
   { id: 1, name: "Salary", color: "#00B894" },
   { id: 2, name: "Freelance", color: "#6C5CE7" },
   { id: 3, name: "Investments", color: "#A29BFE" },
@@ -32,17 +33,25 @@ const initialIncomeCategories = [
 
 export default function CategoriesPage() {
   const isMobile = useIsMobile();
-  const [expenseCategories, setExpenseCategories] = useState(initialExpenseCategories);
-  const [incomeCategories, setIncomeCategories] = useState(initialIncomeCategories);
+  const [expenseCategories, setExpenseCategories] = useState<Category[]>(initialExpenseCategories);
+  const [incomeCategories, setIncomeCategories] = useState<Category[]>(initialIncomeCategories);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [selectedType, setSelectedType] = useState<"expense" | "income">("expense");
   const [activeTab, setActiveTab] = useState("expenses");
 
+  const getRandomColor = (): string => {
+    const colors = [
+      "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", 
+      "#DDA0DD", "#00B894", "#6C5CE7", "#A29BFE", "#FD79A8"
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+  };
+
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) return;
 
-    const newCategory = {
+    const newCategory: Category = {
       id: Date.now(),
       name: newCategoryName.trim(),
       color: getRandomColor(),
@@ -57,14 +66,6 @@ export default function CategoriesPage() {
     // Reset form
     setNewCategoryName("");
     setIsAddModalOpen(false);
-  };
-
-  const getRandomColor = () => {
-    const colors = [
-      "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", 
-      "#DDA0DD", "#00B894", "#6C5CE7", "#A29BFE", "#FD79A8"
-    ];
-    return colors[Math.floor(Math.random() * colors.length)];
   };
 
   const openAddModal = (type: "expense" | "income") => {

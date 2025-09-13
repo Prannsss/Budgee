@@ -2,18 +2,21 @@
 
 import { OverviewChart } from "@/components/dashboard/overview-chart";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
+import { AddTransactionDialog } from "@/components/dashboard/add-transaction-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, LineChart } from "lucide-react";
+import { Eye, EyeOff, LineChart, Plus } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { mockAccounts } from "@/lib/data";
 import { mockTransactions } from "@/lib/data";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { TrendingDown, TrendingUp } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function DashboardPage() {
   const [showOverview, setShowOverview] = useState(false);
   const [showAmounts, setShowAmounts] = useState(true);
+  const isMobile = useIsMobile();
 
   const [assets, setAssets] = useState<number>(() => mockAccounts.reduce((sum, a) => sum + (a.type !== 'Crypto' ? a.balance : 0), 0));
   const [savings, setSavings] = useState<number>(() => {
@@ -27,11 +30,24 @@ export default function DashboardPage() {
     const handle = () => {
       const newAssets = mockAccounts.reduce((sum, a) => sum + (a.type !== 'Crypto' ? a.balance : 0), 0);
       setAssets(newAssets);
-  const acct = mockAccounts.find(a => a.name === "BDO");
+      const acct = mockAccounts.find(a => a.name === "BDO");
       setSavings(acct?.balance ?? 0);
     };
+    
+    const handleTransactionUpdate = () => {
+      // Force re-render when transactions are updated
+      const newAssets = mockAccounts.reduce((sum, a) => sum + (a.type !== 'Crypto' ? a.balance : 0), 0);
+      setAssets(newAssets);
+      const acct = mockAccounts.find(a => a.name === "BDO");
+      setSavings(acct?.balance ?? 0);
+    };
+    
     window.addEventListener('accounts:updated', handle);
-    return () => window.removeEventListener('accounts:updated', handle);
+    window.addEventListener('transactions:updated', handleTransactionUpdate);
+    return () => {
+      window.removeEventListener('accounts:updated', handle);
+      window.removeEventListener('transactions:updated', handleTransactionUpdate);
+    };
   }, []);
 
   const fmt = (n: number) =>
@@ -86,7 +102,12 @@ export default function DashboardPage() {
       </Card>
 
       {/* Monthly income/expenses cards */}
-  <div className="grid grid-cols-2 gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold tracking-tight">Quick Stats</h2>
+        {!isMobile && <AddTransactionDialog />}
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
         {(() => {
           const now = new Date();
           const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -118,6 +139,20 @@ export default function DashboardPage() {
           <RecentTransactions />
         </div>
       </div>
+
+      {/* Mobile Floating Action Button */}
+      {isMobile && (
+        <AddTransactionDialog 
+          trigger={
+            <Button
+              size="icon"
+              className="fixed bottom-24 right-4 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow z-50"
+            >
+              <Plus className="h-6 w-6" />
+            </Button>
+          }
+        />
+      )}
     </div>
   );
 }

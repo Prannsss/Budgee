@@ -69,7 +69,10 @@ export const ScrollFadeCover: React.FC<ScrollFadeCoverProps> = ({
   return (
     <div
       className={`pointer-events-none fixed inset-x-0 bottom-0 z-30 scroll-fade-cover ${className}`.trim()}
-      style={{ ['--sfc-height' as any]: `${height}px`, ['--sfc-opacity' as any]: opacity }}
+      style={{ 
+        ['--sfc-height' as any]: `${height}px`, 
+        ['--sfc-opacity' as any]: opacity 
+      }}
       aria-hidden="true"
     >
       <div className="scroll-fade-cover-gradient" />

@@ -100,7 +100,10 @@ const ScrollStack: React.FC<ScrollStackProps> = ({
       if (blurAmount) {
         let topCardIndex = 0;
         for (let j = 0; j < cardsRef.current.length; j++) {
-          const jCardRect = cardsRef.current[j].getBoundingClientRect();
+          const cardElement = cardsRef.current[j];
+          if (!cardElement) continue;
+          
+          const jCardRect = cardElement.getBoundingClientRect();
           const jCardTop = jCardRect.top + scrollTop;
           const jTriggerStart = jCardTop - stackPositionPx - itemStackDistance * j;
           if (scrollTop >= jTriggerStart) {
