@@ -20,6 +20,7 @@ export const metadata: Metadata = {
     shortcut: '/favicon.ico',
     apple: [
       { url: '/icons/icon-152x152.png', sizes: '152x152', type: 'image/png' },
+      { url: '/icons/icon-180x180.png', sizes: '180x180', type: 'image/png' },
       { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
     ],
   },
@@ -29,8 +30,20 @@ export const metadata: Metadata = {
     title: 'Budgee',
     startupImage: [
       {
-        url: '/icons/icon-128x128.png',
+        url: '/icons/icon-512x512.png',
         media: '(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)',
+      },
+      {
+        url: '/icons/icon-512x512.png',
+        media: '(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)',
+      },
+      {
+        url: '/icons/icon-512x512.png',
+        media: '(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)',
+      },
+      {
+        url: '/icons/icon-512x512.png',
+        media: '(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)',
       },
     ],
   },
@@ -73,6 +86,13 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#ffffff" />
         <meta name="msapplication-tap-highlight" content="no" />
         <meta name="theme-color" content="#ffffff" />
+        
+        {/* Chrome-specific PWA enhancements */}
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-title" content="Budgee" />
+        
+        {/* Additional PWA Meta Tags */}
+        <meta name="apple-touch-fullscreen" content="yes" />
         
         <link rel="mask-icon" href="/icons/safari-pinned-tab.svg" color="#ffffff" />
         <link rel="shortcut icon" href="/favicon.ico" />

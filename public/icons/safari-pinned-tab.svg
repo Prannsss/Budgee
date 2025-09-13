@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="white"/>
+  <rect x="64" y="128" width="384" height="256" rx="32" fill="black"/>
+  <circle cx="160" cy="200" r="8" fill="white"/>
+  <circle cx="192" cy="200" r="8" fill="white"/>
+  <path d="M128 256 L64 256 Q64 320 128 320 L384 320 Q448 320 448 256" stroke="black" stroke-width="8" fill="none"/>
+  <text x="256" y="280" text-anchor="middle" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="black">B</text>
+</svg>
