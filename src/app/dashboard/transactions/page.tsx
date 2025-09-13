@@ -24,50 +24,223 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
-import { Filter } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import type { DateRange } from "react-day-picker";
+import jsPDF from 'jspdf';
 
 export default function TransactionsPage() {
   const [tab, setTab] = useState("all");
-  const [range, setRange] = useState<DateRange | undefined>();
-  const [open, setOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportDateRange, setExportDateRange] = useState<DateRange | undefined>();
+  const [exportDateRangeOption, setExportDateRangeOption] = useState<string>("all");
   const tableRef = useRef<DataTableHandle>(null);
+
+  const handleExportSubmit = () => {
+    // Get date range for export
+    let exportData = mockTransactions;
+    
+    // Filter by date range if custom range is selected
+    if (exportDateRangeOption === "custom" && exportDateRange?.from) {
+      const from = exportDateRange.from;
+      const to = exportDateRange.to || exportDateRange.from;
+      
+      exportData = exportData.filter((t) => {
+        const d = new Date(t.date);
+        return d >= new Date(from.getFullYear(), from.getMonth(), from.getDate()) &&
+               d <= new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59, 999);
+      });
+    } else if (exportDateRangeOption !== "all") {
+      // Handle predefined date ranges
+      const now = new Date();
+      let startDate: Date;
+      
+      switch (exportDateRangeOption) {
+        case "last7days":
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case "last30days":
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case "last90days":
+          startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          startDate = new Date(0);
+      }
+      
+      exportData = exportData.filter((t) => new Date(t.date) >= startDate);
+    }
+    
+    // Generate branded PDF
+    const generateBrandedPDF = () => {
+      const pdf = new jsPDF();
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 20;
+      let yPosition = 30;
+
+      // Set normal character spacing for the entire document
+      pdf.setCharSpace(0);
+
+      // Brand colors (from CSS variables)
+      const primaryColor = '#6366f1'; // Primary color from theme
+      const mutedColor = '#64748b'; // Muted color
+      const positiveColor = '#059669'; // Green for positive amounts
+      const negativeColor = '#dc2626'; // Red for negative amounts
+
+      // Header Section with Logo and Branding
+      pdf.setFillColor(100, 102, 241); // Primary color
+      pdf.rect(0, 0, pageWidth, 50, 'F');
+      
+      // Budgee Logo/Title
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(24);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Budgee', margin, 25);
+      
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'italic');
+      pdf.text('Your Personal Finance Buddy', margin, 35);
+
+      // Transaction History Title
+      yPosition = 70;
+      pdf.setTextColor(51, 51, 51);
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Transaction History', margin, yPosition);
+
+      // Date and summary info
+      yPosition += 15;
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(100, 116, 139);
+      
+      const currentDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      pdf.text(`Generated on: ${currentDate}`, margin, yPosition);
+      
+      yPosition += 8;
+      pdf.text(`Total Transactions: ${exportData.length}`, margin, yPosition);
+      
+      // Calculate totals
+      const totalIncome = exportData.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
+      const totalExpenses = exportData.filter(t => t.amount < 0).reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      
+      yPosition += 8;
+      // Build text without template literals to avoid spacing issues
+      const totalIncomeAmount = totalIncome.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+      pdf.text('Total Income: Php ' + totalIncomeAmount, margin, yPosition);
+      
+      yPosition += 8;
+      const totalExpensesAmount = totalExpenses.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+      pdf.text('Total Expenses: Php ' + totalExpensesAmount, margin, yPosition);
+
+      // Add separator line
+      yPosition += 12;
+      pdf.setDrawColor(229, 231, 235); // Border color
+      pdf.line(margin, yPosition, pageWidth - margin, yPosition);
+      
+      // Table Header
+      yPosition += 12;
+      pdf.setFillColor(248, 250, 252); // Light background
+      pdf.rect(margin, yPosition - 5, pageWidth - (margin * 2), 12, 'F');
+      
+      pdf.setTextColor(51, 51, 51);
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      
+      // Column headers
+      pdf.text('Date', margin + 5, yPosition + 5);
+      pdf.text('Description', margin + 45, yPosition + 5);
+      pdf.text('Amount', margin + 110, yPosition + 5);
+      pdf.text('Category', margin + 140, yPosition + 5);
+
+      // Table content
+      yPosition += 15;
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8);
+
+      exportData.forEach((transaction, index) => {
+        // Check if we need a new page
+        if (yPosition > 275) {
+          pdf.addPage();
+          yPosition = 30;
+        }
+
+        // Alternate row background
+        if (index % 2 === 0) {
+          pdf.setFillColor(250, 250, 250);
+          pdf.rect(margin, yPosition - 2, pageWidth - (margin * 2), 10, 'F');
+        }
+
+        pdf.setTextColor(51, 51, 51);
+        
+        // Date
+        const transactionDate = new Date(transaction.date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+        pdf.text(transactionDate, margin + 5, yPosition + 3);
+
+        // Description (truncate if too long)
+        const description = transaction.description.length > 25 
+          ? transaction.description.substring(0, 22) + '...' 
+          : transaction.description;
+        pdf.text(description, margin + 45, yPosition + 3);
+
+        // Amount with color coding
+        const absAmount = Math.abs(transaction.amount);
+        const amount = 'Php ' + absAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+        
+        if (transaction.amount > 0) {
+          pdf.setTextColor(5, 150, 105);
+        } else {
+          pdf.setTextColor(220, 38, 38);
+        }
+        pdf.text(amount, margin + 110, yPosition + 3);
+
+        // Category
+        pdf.setTextColor(100, 116, 139);
+        const category = transaction.category.length > 15 
+          ? transaction.category.substring(0, 12) + '...' 
+          : transaction.category;
+        pdf.text(category, margin + 140, yPosition + 3);
+
+        yPosition += 10;
+      });
+
+      // Footer
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      pdf.setFontSize(8);
+      pdf.setTextColor(156, 163, 175);
+      pdf.text('Generated by Budgee - Your Personal Finance Buddy', margin, pageHeight - 15);
+      pdf.text('Page 1', pageWidth - 40, pageHeight - 15);
+
+      // Save the PDF
+      const fileName = `budgee-transactions-${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+    };
+    
+    generateBrandedPDF();
+    
+    // Close dialog and reset
+    setExportDialogOpen(false);
+    setExportDateRange(undefined);
+    setExportDateRangeOption("all");
+  };
 
   const filtered = useMemo(() => {
     let base = mockTransactions as typeof mockTransactions;
     if (tab === "income") base = base.filter((t) => t.amount > 0);
     if (tab === "expenses") base = base.filter((t) => t.amount < 0);
-
-    if (!range?.from && !range?.to) return base;
-    const from = range?.from ? new Date(range.from) : undefined;
-    const to = range?.to ? new Date(range.to) : undefined;
-    return base.filter((t) => {
-      const d = new Date(t.date);
-      if (
-        from &&
-        d < new Date(from.getFullYear(), from.getMonth(), from.getDate())
-      )
-        return false;
-      if (
-        to &&
-        d >
-          new Date(
-            to.getFullYear(),
-            to.getMonth(),
-            to.getDate(),
-            23,
-            59,
-            59,
-            999
-          )
-      )
-        return false;
-      return true;
-    });
-  }, [tab, range]);
+    return base;
+  }, [tab]);
 
   return (
     <div className="space-y-6">
@@ -87,43 +260,11 @@ export default function TransactionsPage() {
             <TabsTrigger value="expenses">Expenses</TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
-            {/* Filter button (always visible) */}
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8"
-                  aria-label="Filter by date"
-                >
-                  <Filter className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Select date range</DialogTitle>
-                </DialogHeader>
-                <div className="flex flex-col items-center gap-4">
-                  <Calendar
-                    mode="range"
-                    numberOfMonths={1}
-                    selected={range}
-                    onSelect={setRange}
-                  />
-                  <div className="flex w-full items-center justify-between">
-                    <Button variant="ghost" onClick={() => setRange(undefined)}>
-                      Clear
-                    </Button>
-                    <Button onClick={() => setOpen(false)}>Done</Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-            {/* Export button (filled style) */}
+            {/* Export button */}
             <Button
               className="h-8 bg-primary text-primary-foreground hover:bg-primary/90"
               size="sm"
-              onClick={() => tableRef.current?.exportSelected()}
+              onClick={() => setExportDialogOpen(true)}
             >
               Export
             </Button>
@@ -138,6 +279,72 @@ export default function TransactionsPage() {
           <MobileTransactionList items={filtered} />
         </div>
       </Tabs>
+
+      {/* Export Dialog */}
+      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Download Transactions</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Your transactions will be downloaded onto your device.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Select a date range</Label>
+                <p className="text-xs text-muted-foreground">
+                  Tell us the dates to be included in your transaction history. All transactions are in PH time (GMT+8).
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="dateRange">Date Range</Label>
+                  <Select value={exportDateRangeOption} onValueChange={setExportDateRangeOption}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Option" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Time</SelectItem>
+                      <SelectItem value="last7days">Last 7 Days</SelectItem>
+                      <SelectItem value="last30days">Last 30 Days</SelectItem>
+                      <SelectItem value="last90days">Last 90 Days</SelectItem>
+                      <SelectItem value="custom">Custom Range</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {exportDateRangeOption === "custom" && (
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label>From</Label>
+                      <Calendar
+                        mode="range"
+                        numberOfMonths={1}
+                        selected={exportDateRange}
+                        onSelect={setExportDateRange}
+                        className="rounded-md border"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleExportSubmit}
+              className="w-full"
+              disabled={exportDateRangeOption === "custom" && !exportDateRange?.from}
+            >
+              Download PDF
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
