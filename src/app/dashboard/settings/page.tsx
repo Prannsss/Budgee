@@ -60,7 +60,7 @@ const plans = [
 ];
 
 export default function YourPlanPage() {
-  const { currentPlan } = useSubscription();
+  const { currentPlan, subscription, isLoading } = useSubscription();
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<typeof plans[0] | null>(null);
 
@@ -70,6 +70,17 @@ export default function YourPlanPage() {
       setIsPaymentModalOpen(true);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading your subscription...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -89,10 +100,22 @@ export default function YourPlanPage() {
       {/* Current Plan Status */}
       <div className="container max-w-6xl mx-auto px-4 py-6">
         <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="h-2 w-2 rounded-full bg-green-500"></div>
-            <span className="font-medium">You are currently on the <strong>{currentPlan} Plan</strong></span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-2 w-2 rounded-full bg-green-500"></div>
+              <span className="font-medium">You are currently on the <strong>{currentPlan} Plan</strong></span>
+            </div>
+            {subscription && subscription.nextBillingDate && (
+              <div className="text-sm text-muted-foreground">
+                Next billing: {new Date(subscription.nextBillingDate).toLocaleDateString()}
+              </div>
+            )}
           </div>
+          {subscription && subscription.startDate && (
+            <div className="mt-2 text-sm text-muted-foreground">
+              Member since: {new Date(subscription.startDate).toLocaleDateString()}
+            </div>
+          )}
         </div>
 
         {/* Plans Layout - Simple Grid for both Desktop and Mobile */}

@@ -2,6 +2,10 @@
 "use client"
 
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
+import { useState, useEffect } from "react"
+import { useAuth } from "@/contexts/auth-context"
+import { TransactionService } from "@/lib/storage-service"
+import type { Transaction } from "@/lib/types"
 
 import {
   Card,
@@ -12,59 +16,102 @@ import {
 } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 
-const data = [
-  { name: "Jan", assets: 4000, liabilities: 2400 },
-  { name: "Feb", assets: 3000, liabilities: 1398 },
-  { name: "Mar", assets: 2000, liabilities: 9800 },
-  { name: "Apr", assets: 2780, liabilities: 3908 },
-  { name: "May", assets: 1890, liabilities: 4800 },
-  { name: "Jun", assets: 2390, liabilities: 3800 },
-  { name: "Jul", assets: 3490, liabilities: 4300 },
-];
-
 const chartConfig = {
-    assets: {
-        label: "Assets",
+    income: {
+        label: "Income",
         color: "hsl(var(--primary))",
     },
-    liabilities: {
-        label: "Liabilities",
-        color: "hsl(var(--secondary))",
+    expenses: {
+        label: "Expenses",
+        color: "hsl(var(--destructive))",
     },
 }
 
 export function OverviewChart() {
+  const { user } = useAuth();
+  const [chartData, setChartData] = useState<Array<{name: string, income: number, expenses: number}>>([]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const generateChartData = () => {
+      const transactions = TransactionService.getTransactions(user.id);
+      const currentDate = new Date();
+      const data = [];
+
+      // Generate data for the last 6 months
+      for (let i = 5; i >= 0; i--) {
+        const monthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+        const monthStr = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+        const monthName = monthDate.toLocaleDateString('en-US', { month: 'short' });
+
+        const monthTransactions = transactions.filter((t: Transaction) => t.date.startsWith(monthStr));
+        const income = monthTransactions
+          .filter((t: Transaction) => t.amount > 0)
+          .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
+        const expenses = Math.abs(monthTransactions
+          .filter((t: Transaction) => t.amount < 0)
+          .reduce((sum: number, t: Transaction) => sum + t.amount, 0));
+
+        data.push({
+          name: monthName,
+          income: Math.round(income),
+          expenses: Math.round(expenses)
+        });
+      }
+
+      setChartData(data);
+    };
+
+    generateChartData();
+
+    // Listen for data updates
+    const handleDataUpdate = () => generateChartData();
+    window.addEventListener('budgee:dataUpdate', handleDataUpdate);
+    
+    return () => {
+      window.removeEventListener('budgee:dataUpdate', handleDataUpdate);
+    };
+  }, [user?.id]);
+
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow">
       <CardHeader>
         <CardTitle>Overview</CardTitle>
-        <CardDescription>Your assets and liabilities over the last 7 months.</CardDescription>
+        <CardDescription>Your income and expenses over the last 6 months.</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="min-h-[350px] w-full">
-            <BarChart accessibilityLayer data={data}>
-                <XAxis
-                dataKey="name"
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-                />
-                <YAxis
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `₱${value / 1000}k`}
-                />
-                <ChartTooltip
-                cursor={{ fill: 'hsl(var(--accent) / 0.2)' }}
-                content={<ChartTooltipContent />}
-                />
-                <Bar dataKey="assets" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="liabilities" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
-            </BarChart>
-        </ChartContainer>
+        {chartData.length === 0 || chartData.every(d => d.income === 0 && d.expenses === 0) ? (
+          <div className="text-center py-16">
+            <p className="text-muted-foreground">No transaction data available.</p>
+            <p className="text-sm text-muted-foreground mt-1">Add transactions to see your income and expense trends.</p>
+          </div>
+        ) : (
+          <ChartContainer config={chartConfig} className="min-h-[350px] w-full">
+              <BarChart accessibilityLayer data={chartData}>
+                  <XAxis
+                  dataKey="name"
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  />
+                  <YAxis
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `₱${value / 1000}k`}
+                  />
+                  <ChartTooltip
+                  cursor={{ fill: 'hsl(var(--accent) / 0.2)' }}
+                  content={<ChartTooltipContent />}
+                  />
+                  <Bar dataKey="income" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expenses" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+          </ChartContainer>
+        )}
       </CardContent>
     </Card>
   )
