@@ -48,7 +48,7 @@ export function PaymentModal({ isOpen, onClose, selectedPlan }: PaymentModalProp
     // Simulate payment processing
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Update the plan
+    // Update the plan - this will automatically save to localStorage
     if (selectedPlan) {
       setCurrentPlan(selectedPlan.name as 'Free' | 'Basic' | 'Premium');
     }

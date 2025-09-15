@@ -15,8 +15,10 @@ import { Label } from "../ui/label";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { ArrowLeft, Banknote, Landmark, Loader2, Plus, Wallet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getMockProviderData, mockAccounts, mockTransactions } from "@/lib/data";
+import { getMockProviderData } from "@/lib/data";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
+import { TransactionService } from "@/lib/storage-service";
 
 const accountTypes = [
     { name: "Bank", icon: <Landmark className="h-8 w-8" /> },
@@ -60,6 +62,7 @@ export function ConnectAccountDialog({ trigger }: { trigger?: React.ReactNode })
   
   const { toast } = useToast();
   const router = useRouter();
+  const { user } = useAuth();
 
   const handleSendOtp = async () => {
     // Simulate OTP sending
@@ -71,24 +74,56 @@ export function ConnectAccountDialog({ trigger }: { trigger?: React.ReactNode })
   };
 
   const handleConnect = async (type: string, provider: string) => {
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to connect an account.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsConnecting(true);
     // Simulate API call for connecting account
     await new Promise(resolve => setTimeout(resolve, 2500));
-    // Generate mock account + transactions and append to in-memory lists
+    
+    // Generate mock account + transactions and save to user's storage
     const { account, transactions } = getMockProviderData(type as any, provider);
-    mockAccounts.push(account);
-    mockTransactions.push(...transactions);
+    
+    // Add account to user's data via storage service
+    const newAccount = TransactionService.addAccount(user.id, {
+      name: account.name,
+      type: account.type,
+      balance: account.balance,
+      lastFour: account.lastFour,
+    });
+
+    // Add transactions to user's data via storage service
+    transactions.forEach(txn => {
+      TransactionService.addTransaction(user.id, {
+        description: txn.description,
+        amount: txn.amount,
+        category: txn.category,
+        accountId: newAccount.id, // Use the real account ID from storage
+        date: txn.date,
+      });
+    });
+
     setIsConnecting(false);
     setIsOpen(false);
-    // Notify app and refresh the current route to re-render server components
+    
+    // Notify app components to refresh data
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('accounts:updated'))
+      window.dispatchEvent(new CustomEvent('budgee:dataUpdate'));
+      window.dispatchEvent(new CustomEvent('accounts:updated'));
     }
+    
     router.refresh();
     toast({
         title: "Connection Successful",
         description: `Your ${provider} (${type}) account has been connected.`,
-    })
+    });
+    
     // Reset state
     resetForm();
   }

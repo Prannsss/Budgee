@@ -1,8 +1,7 @@
 "use client";
-import { useMemo, useState, useRef } from "react";
-import { mockTransactions } from "@/lib/data";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { DataTable, type DataTableHandle } from "@/components/transactions/data-table";
-import { columns } from "@/components/transactions/columns";
+import { createColumns } from "@/components/transactions/columns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,17 +29,49 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import type { DateRange } from "react-day-picker";
 import jsPDF from 'jspdf';
+import { TransactionService } from "@/lib/storage-service";
+import { useAuth } from "@/contexts/auth-context";
+import type { Transaction, Account } from "@/lib/types";
 
 export default function TransactionsPage() {
   const [tab, setTab] = useState("all");
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportDateRange, setExportDateRange] = useState<DateRange | undefined>();
   const [exportDateRangeOption, setExportDateRangeOption] = useState<string>("all");
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const tableRef = useRef<DataTableHandle>(null);
+  const { user } = useAuth();
+
+  // Create columns with accounts data
+  const columns = useMemo(() => createColumns(accounts), [accounts]);
+
+  // Load user transactions and accounts
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const loadData = () => {
+      const userTransactions = TransactionService.getTransactions(user.id);
+      setTransactions(userTransactions);
+      
+      const userAccounts = TransactionService.getAccounts(user.id);
+      setAccounts(userAccounts);
+    };
+
+    loadData();
+
+    // Listen for data updates
+    const handleDataUpdate = () => loadData();
+    window.addEventListener('budgee:dataUpdate', handleDataUpdate);
+    
+    return () => {
+      window.removeEventListener('budgee:dataUpdate', handleDataUpdate);
+    };
+  }, [user?.id]);
 
   const handleExportSubmit = () => {
     // Get date range for export
-    let exportData = mockTransactions;
+    let exportData = transactions;
     
     // Filter by date range if custom range is selected
     if (exportDateRangeOption === "custom" && exportDateRange?.from) {
@@ -236,14 +267,14 @@ export default function TransactionsPage() {
   };
 
   const filtered = useMemo(() => {
-    let base = mockTransactions as typeof mockTransactions;
+    let base = transactions;
     if (tab === "income") base = base.filter((t) => t.amount > 0);
     if (tab === "expenses") base = base.filter((t) => t.amount < 0);
     return base;
-  }, [tab]);
+  }, [tab, transactions]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-4 md:px-0">
       <div>
         <h1 className="text-2xl font-bold tracking-tight font-headline">
           Transactions
@@ -253,8 +284,8 @@ export default function TransactionsPage() {
         </p>
       </div>
       <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <div className="flex items-center justify-between">
-          <TabsList>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <TabsList className="grid w-full grid-cols-3 sm:w-auto">
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="income">Income</TabsTrigger>
             <TabsTrigger value="expenses">Expenses</TabsTrigger>
@@ -262,7 +293,7 @@ export default function TransactionsPage() {
           <div className="flex items-center gap-2">
             {/* Export button */}
             <Button
-              className="h-8 bg-primary text-primary-foreground hover:bg-primary/90"
+              className="h-8 bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto"
               size="sm"
               onClick={() => setExportDialogOpen(true)}
             >
@@ -349,7 +380,7 @@ export default function TransactionsPage() {
   );
 }
 
-type Txn = (typeof mockTransactions)[number];
+type Txn = Transaction;
 
 function formatAmount(n: number) {
   return new Intl.NumberFormat("en-PH", {
@@ -389,10 +420,20 @@ function MobileTransactionList({ items }: { items: Txn[] }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState<Txn | null>(null);
 
+  if (items.length === 0) {
+    return (
+      <div className="rounded-lg border bg-card">
+        <div className="px-4 py-8 text-center">
+          <p className="text-muted-foreground">No transactions found.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="divide-y rounded-lg border bg-card">
-      {/* Header summary like reference */}
-      <div className="px-4 py-3">
+    <div className="space-y-4">
+      {/* Header summary */}
+      <div className="rounded-lg border bg-card px-4 py-3">
         <div className="text-xs text-muted-foreground">
           As of{" "}
           {new Intl.DateTimeFormat("en-US", {
@@ -402,14 +443,18 @@ function MobileTransactionList({ items }: { items: Txn[] }) {
           }).format(new Date())}
         </div>
       </div>
+      
+      {/* Transaction groups */}
       {groups.map(([day, txns]) => (
-        <section key={day} className="bg-muted/30">
-          <h3 className="px-4 py-2 text-sm font-semibold text-foreground">
-            {formatDayHeading(day)}
-          </h3>
-          <ul className="divide-y bg-background">
+        <div key={day} className="rounded-lg border bg-card overflow-hidden">
+          <div className="px-4 py-3 border-b bg-muted/30">
+            <h3 className="text-sm font-semibold text-foreground">
+              {formatDayHeading(day)}
+            </h3>
+          </div>
+          <div className="divide-y">
             {txns.map((t) => (
-              <li key={t.id} className="flex items-center gap-3 px-4 py-3">
+              <div key={t.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span className="text-[10px] text-muted-foreground">
                     {new Date(t.date).toLocaleTimeString([], {
@@ -459,10 +504,10 @@ function MobileTransactionList({ items }: { items: Txn[] }) {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </li>
+              </div>
             ))}
-          </ul>
-        </section>
+          </div>
+        </div>
       ))}
 
       {/* Bottom sheet for details */}

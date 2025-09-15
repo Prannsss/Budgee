@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { SubscriptionProvider } from '@/contexts/subscription-context';
+import { ProtectedRoute } from '@/components/auth/protected-route';
 
 export default function DashboardLayout({
   children,
@@ -11,8 +12,9 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SubscriptionProvider>
-      <SidebarProvider>
+    <ProtectedRoute>
+      <SubscriptionProvider>
+        <SidebarProvider>
         <div className="grid min-h-screen w-full">
           <Sidebar>
             <div className="flex h-14 items-center bg-background px-4 lg:px-6">
@@ -33,5 +35,6 @@ export default function DashboardLayout({
         </div>
       </SidebarProvider>
     </SubscriptionProvider>
+    </ProtectedRoute>
   );
 }

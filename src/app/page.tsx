@@ -9,6 +9,7 @@ import PublicHeader from "@/components/layout/public-header";
 import Footer from "@/components/layout/footer";
 import ScrollStack, { ScrollStackItem } from "@/components/ui/scroll-stack";
 import FadeIn from "@/components/ui/fade-in";
+import { PublicRoute } from "@/components/auth/protected-route";
 
 export default function Home() {
   const features = [
@@ -35,9 +36,10 @@ export default function Home() {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground">
-      <PublicHeader />
-      <main className="flex-1">
+    <PublicRoute>
+      <div className="flex flex-col min-h-screen bg-background text-foreground">
+        <PublicHeader />
+        <main className="flex-1">
         <section className="w-full min-h-screen md:min-h-0 py-0 md:py-24 lg:py-32 xl:py-48 bg-background">
           <div className="container px-4 md:px-6 h-full">
             <div className="flex flex-col items-center justify-center text-center h-full min-h-screen md:min-h-0">
@@ -150,8 +152,9 @@ export default function Home() {
             </div>
           </div>
         </section>
-      </main>
-      <Footer />
-    </div>
+        </main>
+        <Footer />
+      </div>
+    </PublicRoute>
   );
 }

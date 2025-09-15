@@ -14,58 +14,228 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { GoogleIcon } from "../icons/google";
 import { FacebookIcon } from "../icons/facebook";
+import { useAuth } from "@/contexts/auth-context";
+import { TransactionService } from "@/lib/storage-service";
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
   formType: "login" | "signup";
 }
 
-const formSchema = z.object({
+const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
-  password: z.string().min(8, { message: "Password must be at least 8 characters." }),
+  password: z.string()
+    .min(8, { message: "Password must be at least 8 characters." })
+    .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter." })
+    .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter." })
+    .regex(/[0-9]/, { message: "Password must contain at least one number." }),
 });
 
-type FormData = z.infer<typeof formSchema>;
+const signupSchema = z.object({
+  firstName: z.string().min(1, { message: "First name is required." }),
+  lastName: z.string().min(1, { message: "Last name is required." }),
+  email: z.string().email({ message: "Please enter a valid email address." }),
+  phone: z.string()
+    .regex(/^[\+]?[1-9][\d]{0,15}$/, { message: "Please enter a valid phone number." })
+    .min(10, { message: "Phone number must be at least 10 digits." }),
+  password: z.string()
+    .min(8, { message: "Password must be at least 8 characters." })
+    .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter." })
+    .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter." })
+    .regex(/[0-9]/, { message: "Password must contain at least one number." }),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+type SignupFormData = z.infer<typeof signupSchema>;
 
 export function UserAuthForm({ className, formType, ...props }: UserAuthFormProps) {
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-  });
+  const schema = formType === 'signup' ? signupSchema : loginSchema;
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    resolver: zodResolver(schema),
+  }) as any;
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isSocialLoading, setIsSocialLoading] = React.useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
+  const { login } = useAuth();
 
-  async function onSubmit(data: FormData) {
+  async function onSubmit(data: any) {
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsLoading(false);
+    try {
+      let success = false;
+      
+      if (formType === "login") {
+        success = await login(data.email, data.password);
+        
+        if (success) {
+          toast({
+            title: "Success!",
+            description: "You are now logged in.",
+          });
+          router.push("/dashboard");
+        } else {
+          toast({
+            title: "Error",
+            description: "Invalid credentials. Please try again.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        // For signup, we'll create the user account but not log them in
+        // First check if email is already registered
+        if (TransactionService.isEmailRegistered(data.email)) {
+          toast({
+            title: "Error",
+            description: "An account with this email already exists.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
 
-    toast({
-      title: "Success!",
-      description: formType === "login" ? "You are now logged in." : "Your account has been created.",
-    });
+        // Create user account
+        const newUser = TransactionService.addUser({
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+          password: data.password, // In a real app, this would be hashed
+        });
 
-    router.push("/dashboard");
+        if (newUser) {
+          toast({
+            title: "Account Created Successfully!",
+            description: "Please log in with your credentials to access your account.",
+          });
+          
+          // Redirect to login page
+          router.push("/login");
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to create account. Please try again.",
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
   
   async function onSocialLogin(provider: 'google' | 'facebook') {
     setIsSocialLoading(provider);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsSocialLoading(null);
-    router.push("/dashboard");
+    
+    try {
+      // Simulate social login with a test account
+      const testEmail = `test@${provider}.com`;
+      const success = await login(testEmail, "testpassword123");
+      
+      if (success) {
+        toast({
+          title: "Success!",
+          description: `Logged in with ${provider}.`,
+        });
+        router.push("/dashboard");
+      } else {
+        toast({
+          title: "Error",
+          description: "Social login failed. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSocialLoading(null);
+    }
   }
 
-  const handleTestLogin = () => {
-    router.push("/dashboard");
+  const handleTestLogin = async () => {
+    setIsLoading(true);
+    
+    try {
+      const success = await login("test@example.com", "testpassword123");
+      
+      if (success) {
+        toast({
+          title: "Success!",
+          description: "Test login successful.",
+        });
+        router.push("/dashboard");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Test login failed. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
     <div className={cn("grid gap-6", className)} {...props}>
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="grid gap-4">
+          {/* Always show signup fields for debugging */}
+          {formType === 'signup' ? (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="firstName">
+                    First Name
+                  </Label>
+                  <Input
+                    id="firstName"
+                    placeholder="Juan"
+                    type="text"
+                    autoCapitalize="words"
+                    autoComplete="given-name"
+                    autoCorrect="off"
+                    disabled={isLoading}
+                    {...register("firstName")}
+                  />
+                  {errors?.firstName && (
+                    <p className="px-1 text-xs text-destructive">
+                      {errors.firstName?.message || "First name is required"}
+                    </p>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="lastName">
+                    Last Name
+                  </Label>
+                  <Input
+                    id="lastName"
+                    placeholder="Dela Cruz"
+                    type="text"
+                    autoCapitalize="words"
+                    autoComplete="family-name"
+                    autoCorrect="off"
+                    disabled={isLoading}
+                    {...register("lastName")}
+                  />
+                  {errors?.lastName && (
+                    <p className="px-1 text-xs text-destructive">
+                      {errors.lastName?.message || "Last name is required"}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : null}
           <div className="grid gap-2">
             <Label htmlFor="email">
               Email
@@ -86,6 +256,26 @@ export function UserAuthForm({ className, formType, ...props }: UserAuthFormProp
               </p>
             )}
           </div>
+          {formType === 'signup' ? (
+            <div className="grid gap-2">
+              <Label htmlFor="phone">
+                Phone Number
+              </Label>
+              <Input
+                id="phone"
+                placeholder="+639123456789"
+                type="tel"
+                autoComplete="tel"
+                disabled={isLoading}
+                {...register("phone")}
+              />
+              {errors?.phone && (
+                <p className="px-1 text-xs text-destructive">
+                  {errors.phone?.message || "Valid phone number is required"}
+                </p>
+              )}
+            </div>
+          ) : null}
           <div className="grid gap-2">
             <Label htmlFor="password">
               Password

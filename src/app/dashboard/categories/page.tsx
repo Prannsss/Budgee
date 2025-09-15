@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Plus, Tag } from "lucide-react";
+import { ArrowLeft, Plus, Tag, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,53 +10,58 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Category } from "@/lib/types";
+import { useAuth } from "@/contexts/auth-context";
+import { TransactionService } from "@/lib/storage-service";
 
-// Sample categories data
-const initialExpenseCategories: Category[] = [
-  { id: 1, name: "Food & Dining", color: "#FF6B6B" },
-  { id: 2, name: "Transportation", color: "#4ECDC4" },
-  { id: 3, name: "Shopping", color: "#45B7D1" },
-  { id: 4, name: "Entertainment", color: "#96CEB4" },
-  { id: 5, name: "Bills & Utilities", color: "#FFEAA7" },
-  { id: 6, name: "Healthcare", color: "#DDA0DD" },
-];
+// Sample categories data - now empty, users will create their own
+const initialExpenseCategories: Category[] = [];
 
-const initialIncomeCategories: Category[] = [
-  { id: 1, name: "Salary", color: "#00B894" },
-  { id: 2, name: "Freelance", color: "#6C5CE7" },
-  { id: 3, name: "Investments", color: "#A29BFE" },
-  { id: 4, name: "Business", color: "#FD79A8" },
-];
+const initialIncomeCategories: Category[] = [];
 
 export default function CategoriesPage() {
   const isMobile = useIsMobile();
-  const [expenseCategories, setExpenseCategories] = useState<Category[]>(initialExpenseCategories);
-  const [incomeCategories, setIncomeCategories] = useState<Category[]>(initialIncomeCategories);
+  const { user } = useAuth();
+  const [expenseCategories, setExpenseCategories] = useState<Category[]>([]);
+  const [incomeCategories, setIncomeCategories] = useState<Category[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [selectedType, setSelectedType] = useState<"expense" | "income">("expense");
   const [activeTab, setActiveTab] = useState("expenses");
 
-  const getRandomColor = (): string => {
-    const colors = [
-      "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", 
-      "#DDA0DD", "#00B894", "#6C5CE7", "#A29BFE", "#FD79A8"
-    ];
-    return colors[Math.floor(Math.random() * colors.length)];
-  };
+  // Load user categories
+  useEffect(() => {
+    if (!user?.id) return;
 
-  const handleAddCategory = () => {
-    if (!newCategoryName.trim()) return;
-
-    const newCategory: Category = {
-      id: Date.now(),
-      name: newCategoryName.trim(),
-      color: getRandomColor(),
+    const loadCategories = () => {
+      // Ensure default categories are initialized
+      TransactionService.initializeDefaultCategories(user.id);
+      
+      const userCategories = TransactionService.getCategories(user.id);
+      const expenseCategories = userCategories.filter(cat => cat.type === 'Expense');
+      const incomeCategories = userCategories.filter(cat => cat.type === 'Income');
+      
+      setExpenseCategories(expenseCategories);
+      setIncomeCategories(incomeCategories);
     };
 
+    loadCategories();
+  }, [user?.id]);
+
+  const handleAddCategory = () => {
+    if (!newCategoryName.trim() || !user?.id) return;
+
+    // Add category using storage service
+    const newCategory = TransactionService.addCategory(
+      user.id,
+      newCategoryName.trim(),
+      selectedType === "expense" ? "Expense" : "Income",
+      ""
+    );
+
+    // Update local state
     if (selectedType === "expense") {
       setExpenseCategories(prev => [...prev, newCategory]);
     } else {
@@ -68,16 +73,40 @@ export default function CategoriesPage() {
     setIsAddModalOpen(false);
   };
 
+  const handleDeleteCategory = (categoryId: string, type: "expense" | "income") => {
+    if (!user?.id) return;
+
+    // Delete category using storage service
+    TransactionService.deleteCategory(user.id, categoryId);
+
+    // Update local state
+    if (type === "expense") {
+      setExpenseCategories(prev => prev.filter(cat => cat.id !== categoryId));
+    } else {
+      setIncomeCategories(prev => prev.filter(cat => cat.id !== categoryId));
+    }
+  };
+
   const openAddModal = (type: "expense" | "income") => {
     setSelectedType(type);
     setIsAddModalOpen(true);
   };
 
-  const CategoryCard = ({ category }: { category: any }) => (
+  const CategoryCard = ({ category, onDelete }: { category: Category; onDelete: () => void }) => (
     <Card className="p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-center gap-3">
-        <Tag className="w-4 h-4 text-primary flex-shrink-0" />
-        <span className="font-medium">{category.name}</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Tag className="w-4 h-4 text-primary flex-shrink-0" />
+          <span className="font-medium">{category.name}</span>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onDelete}
+          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </div>
     </Card>
   );
@@ -149,9 +178,37 @@ export default function CategoriesPage() {
               )}
             </div>
             <div className="grid gap-3">
-              {expenseCategories.map((category) => (
-                <CategoryCard key={category.id} category={category} />
-              ))}
+              {expenseCategories.length > 0 ? (
+                expenseCategories.map((category) => (
+                  <CategoryCard 
+                    key={category.id} 
+                    category={category} 
+                    onDelete={() => handleDeleteCategory(category.id, "expense")}
+                  />
+                ))
+              ) : (
+                <Card className="p-8 text-center">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                      <Tag className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">No expense categories</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Create your first expense category to start organizing your spending.
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={() => openAddModal("expense")}
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Category
+                    </Button>
+                  </div>
+                </Card>
+              )}
             </div>
           </TabsContent>
           
@@ -170,9 +227,37 @@ export default function CategoriesPage() {
               )}
             </div>
             <div className="grid gap-3">
-              {incomeCategories.map((category) => (
-                <CategoryCard key={category.id} category={category} />
-              ))}
+              {incomeCategories.length > 0 ? (
+                incomeCategories.map((category) => (
+                  <CategoryCard 
+                    key={category.id} 
+                    category={category} 
+                    onDelete={() => handleDeleteCategory(category.id, "income")}
+                  />
+                ))
+              ) : (
+                <Card className="p-8 text-center">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                      <Tag className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">No income categories</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Create your first income category to start tracking your earnings.
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={() => openAddModal("income")}
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Category
+                    </Button>
+                  </div>
+                </Card>
+              )}
             </div>
           </TabsContent>
         </Tabs>

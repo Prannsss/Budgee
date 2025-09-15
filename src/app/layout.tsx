@@ -6,6 +6,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { PWAInstaller } from "@/components/pwa-installer";
 import { InstallPrompt } from "@/components/install-prompt";
 import { OfflineIndicator } from "@/components/offline-indicator";
+import { AuthProvider } from "@/contexts/auth-context";
+import { SubscriptionProvider } from "@/contexts/subscription-context";
 
 export const metadata: Metadata = {
   title: 'Budgee',
@@ -99,17 +101,21 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased", "min-h-screen bg-background font-sans")}>
         <PWAInstaller />
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-          <Toaster />
-          <InstallPrompt />
-          <OfflineIndicator />
-        </ThemeProvider>
+        <AuthProvider>
+          <SubscriptionProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="light"
+              enableSystem
+              disableTransitionOnChange
+            >
+              {children}
+              <Toaster />
+              <InstallPrompt />
+              <OfflineIndicator />
+            </ThemeProvider>
+          </SubscriptionProvider>
+        </AuthProvider>
       </body>
     </html>
   );

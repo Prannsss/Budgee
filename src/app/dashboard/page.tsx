@@ -7,48 +7,60 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, LineChart, Plus } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
-import { mockAccounts } from "@/lib/data";
-import { mockTransactions } from "@/lib/data";
+import { TransactionService } from "@/lib/storage-service";
+import { useAuth } from "@/contexts/auth-context";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import type { Transaction, Account } from "@/lib/types";
 
 export default function DashboardPage() {
   const [showOverview, setShowOverview] = useState(false);
   const [showAmounts, setShowAmounts] = useState(true);
   const isMobile = useIsMobile();
+  const { user } = useAuth();
 
-  const [assets, setAssets] = useState<number>(() => mockAccounts.reduce((sum, a) => sum + (a.type !== 'Crypto' ? a.balance : 0), 0));
-  const [savings, setSavings] = useState<number>(() => {
-    const acct = mockAccounts.find(a => a.name === "BDO");
-    return acct?.balance ?? 0;
-  });
-  const liabilities = 5271.0;
-  const netWorth = assets - liabilities;
+  // State for dynamic data
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [totals, setTotals] = useState({ totalIncome: 0, totalExpenses: 0, savings: 0 });
 
+  // Load data when user changes or component mounts
   useEffect(() => {
-    const handle = () => {
-      const newAssets = mockAccounts.reduce((sum, a) => sum + (a.type !== 'Crypto' ? a.balance : 0), 0);
-      setAssets(newAssets);
-      const acct = mockAccounts.find(a => a.name === "BDO");
-      setSavings(acct?.balance ?? 0);
+    if (!user?.id) return;
+
+    const loadData = () => {
+      const userTransactions = TransactionService.getTransactions(user.id);
+      const userAccounts = TransactionService.getAccounts(user.id);
+      const userTotals = TransactionService.calculateTotals(user.id);
+
+      setTransactions(userTransactions);
+      setAccounts(userAccounts);
+      setTotals(userTotals);
     };
+
+    loadData();
+
+    // Listen for data updates
+    const handleDataUpdate = () => loadData();
+    window.addEventListener('budgee:dataUpdate', handleDataUpdate);
     
-    const handleTransactionUpdate = () => {
-      // Force re-render when transactions are updated
-      const newAssets = mockAccounts.reduce((sum, a) => sum + (a.type !== 'Crypto' ? a.balance : 0), 0);
-      setAssets(newAssets);
-      const acct = mockAccounts.find(a => a.name === "BDO");
-      setSavings(acct?.balance ?? 0);
-    };
-    
-    window.addEventListener('accounts:updated', handle);
-    window.addEventListener('transactions:updated', handleTransactionUpdate);
     return () => {
-      window.removeEventListener('accounts:updated', handle);
-      window.removeEventListener('transactions:updated', handleTransactionUpdate);
+      window.removeEventListener('budgee:dataUpdate', handleDataUpdate);
     };
-  }, []);
+  }, [user?.id]);
+
+  // Calculate financial metrics
+  const assets = useMemo(() => {
+    return accounts.reduce((sum, a) => sum + (a.type !== 'Crypto' ? a.balance : 0), 0);
+  }, [accounts]);
+
+  const savings = useMemo(() => {
+    return totals.savings;
+  }, [totals]);
+
+  const liabilities = 0; // For now, we don't have liabilities in our simple model
+  const netWorth = assets + savings;
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(n);
@@ -111,9 +123,9 @@ export default function DashboardPage() {
         {(() => {
           const now = new Date();
           const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-          const monthly = mockTransactions.filter(t => t.date.startsWith(ym));
-          const income = monthly.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
-          const expenses = monthly.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+          const monthly = transactions.filter((t: Transaction) => t.date.startsWith(ym));
+          const income = monthly.filter((t: Transaction) => t.amount > 0).reduce((s: number, t: Transaction) => s + t.amount, 0);
+          const expenses = monthly.filter((t: Transaction) => t.amount < 0).reduce((s: number, t: Transaction) => s + Math.abs(t.amount), 0);
           return (
             <>
               <StatCard

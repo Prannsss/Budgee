@@ -10,6 +10,8 @@ import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { useAuth } from "@/contexts/auth-context";
+import { useRouter } from "next/navigation";
 
 const profileSections = [
   {
@@ -55,10 +57,17 @@ export default function ProfilePage() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
+  const { logout, user } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
 
   const handleThemeSelect = (selectedTheme: string) => {
     setTheme(selectedTheme);
@@ -120,7 +129,9 @@ export default function ProfilePage() {
       {/* Welcome Section */}
       <div>
         <p className="text-sm text-muted-foreground">Welcome,</p>
-        <h2 className="text-xl font-bold text-foreground">France Velarde!</h2>
+        <h2 className="text-xl font-bold text-foreground">
+          {user ? `${user.firstName} ${user.lastName}!` : "Loading..."}
+        </h2>
       </div>
 
         {/* Profile Sections */}
@@ -186,7 +197,10 @@ export default function ProfilePage() {
         {/* Logout Section - Only show on mobile */}
         {isMobile && (
           <Card className="p-0 overflow-hidden">
-            <button className="w-full flex items-center justify-center gap-3 p-4 text-red-600 hover:bg-red-50 transition-colors">
+            <button 
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-3 p-4 text-red-600 hover:bg-red-50 transition-colors"
+            >
               <LogOut className="h-5 w-5" />
               <span className="font-medium">Logout</span>
             </button>
@@ -195,7 +209,7 @@ export default function ProfilePage() {
 
         {/* Version Info */}
         <div className="text-center">
-          <p className="text-xs text-muted-foreground">Version 1.55.1 (1521)</p>
+          <p className="text-xs text-muted-foreground">Version 1.20.0</p>
         </div>
 
       {/* Theme Selection Modal/Drawer */}

@@ -1,16 +1,42 @@
 "use client";
 
-import { mockAccounts } from "@/lib/data";
 import { ConnectAccountDialog } from "@/components/accounts/connect-account-dialog";
 import { AccountCard } from "@/components/accounts/account-card";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Plus, Landmark } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/auth-context";
+import { TransactionService } from "@/lib/storage-service";
+import { Account } from "@/lib/types";
 
 export default function AccountsPage() {
     const isMobile = useIsMobile();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [accounts, setAccounts] = useState<Account[]>([]);
+    const { user } = useAuth();
+
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const loadAccounts = () => {
+            const userAccounts = TransactionService.getAccounts(user.id);
+            setAccounts(userAccounts);
+        };
+
+        loadAccounts();
+
+        // Listen for account updates
+        const handleAccountUpdate = () => loadAccounts();
+        window.addEventListener('budgee:dataUpdate', handleAccountUpdate);
+        window.addEventListener('accounts:updated', handleAccountUpdate);
+        
+        return () => {
+            window.removeEventListener('budgee:dataUpdate', handleAccountUpdate);
+            window.removeEventListener('accounts:updated', handleAccountUpdate);
+        };
+    }, [user?.id]);
 
     return (
         <div className="space-y-6">
@@ -24,14 +50,38 @@ export default function AccountsPage() {
                 {!isMobile && <ConnectAccountDialog />}
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
-                {mockAccounts.map(account => (
-                    <AccountCard key={account.id} account={account} />
-                ))}
-            </div>
+            {accounts.length > 0 ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                    {accounts.map(account => (
+                        <AccountCard key={account.id} account={account} />
+                    ))}
+                </div>
+            ) : (
+                <Card>
+                    <CardHeader className="text-center">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                            <Landmark className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                        <CardTitle>No accounts connected</CardTitle>
+                        <CardDescription>
+                            Connect your bank accounts and e-wallets to start tracking your finances.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="text-center">
+                        <ConnectAccountDialog 
+                            trigger={
+                                <Button>
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Connect Your First Account
+                                </Button>
+                            }
+                        />
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Mobile Floating Action Button */}
-            {isMobile && (
+            {isMobile && accounts.length > 0 && (
                 <ConnectAccountDialog 
                     trigger={
                         <Button

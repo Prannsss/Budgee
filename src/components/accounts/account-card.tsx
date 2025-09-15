@@ -12,6 +12,7 @@ const iconMap = {
     Bank: <Landmark className="h-6 w-6 text-muted-foreground" />,
     'E-Wallet': <Wallet className="h-6 w-6 text-muted-foreground" />,
     Crypto: <Banknote className="h-6 w-6 text-muted-foreground" />,
+    Cash: <Banknote className="h-6 w-6 text-muted-foreground" />,
 }
 
 export function AccountCard({ account }: AccountCardProps) {

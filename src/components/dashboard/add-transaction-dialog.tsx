@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -14,38 +14,20 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
-import { Plus, DollarSign } from "lucide-react";
+import { Textarea } from "../ui/textarea";
+import { Plus, DollarSign, Landmark } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { mockTransactions, mockAccounts } from "@/lib/data";
+import { TransactionService } from "@/lib/storage-service";
+import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
-import type { Transaction } from "@/lib/types";
-
-const categoriesByType = {
-  Income: [
-    "Income",        // General income (for existing data compatibility)
-    "Salary",        // Employment income
-    "Freelance",     // Freelance work
-    "Business",      // Business income
-    "Investment",    // Investment returns
-    "Rental",        // Rental income
-    "Gift",          // Gifts received
-    "Refund",        // Refunds
-    "Bonus",         // Work bonuses
-    "Other Income"   // Other income sources
-  ],
-  Expense: [
-    "Housing",
-    "Food", 
-    "Transportation", 
-    "Entertainment", 
-    "Utilities", 
-    "Other"
-  ]
-};
+import type { Transaction, Account, Category } from "@/lib/types";
+import { ConnectAccountDialog } from "@/components/accounts/connect-account-dialog";
 
 export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   
   // Form state
   const [type, setType] = useState<"Income" | "Expense">("Expense");
@@ -53,11 +35,39 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<string>("");
   const [selectedAccount, setSelectedAccount] = useState<string>("");
+  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [notes, setNotes] = useState("");
   
   const { toast } = useToast();
+  const { user } = useAuth();
   const router = useRouter();
 
+  // Load user accounts and categories when dialog opens
+  useEffect(() => {
+    if (!user?.id || !isOpen) return;
+    
+    // Ensure user has a cash account for manual transactions
+    TransactionService.ensureCashAccount(user.id);
+    
+    // Initialize default categories if none exist
+    TransactionService.initializeDefaultCategories(user.id);
+    
+    const userAccounts = TransactionService.getAccounts(user.id);
+    setAccounts(userAccounts);
+    
+    const userCategories = TransactionService.getCategories(user.id);
+    setCategories(userCategories);
+    
+    // Set cash account as default for manual transactions
+    const cashAccount = userAccounts.find(account => account.type === 'Cash');
+    if (cashAccount && !selectedAccount) {
+      setSelectedAccount(cashAccount.id);
+    }
+  }, [user?.id, isOpen, selectedAccount]);
+
   const handleAddTransaction = async () => {
+    if (!user?.id) return;
+    
     setIsAdding(true);
     
     // Validate form
@@ -71,63 +81,71 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
       return;
     }
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Create new transaction
-    const newTransaction: Transaction = {
-      id: `${Date.now()}`,
-      date: new Date().toISOString().slice(0, 10),
-      description,
-      amount: type === "Income" ? parseFloat(amount) : -parseFloat(amount),
-      category: type === "Income" ? "Income" : category as Transaction['category'], // All income types map to "Income" category for type compatibility
-      status: 'completed',
-      accountId: selectedAccount,
-    };
-    
-    // Add to mock data
-    mockTransactions.unshift(newTransaction);
-    
-    // Update account balance
-    const account = mockAccounts.find(a => a.id === selectedAccount);
-    if (account) {
-      account.balance += newTransaction.amount;
+    try {
+      // Create new transaction
+      const transactionData = {
+        description,
+        amount: type === "Income" ? parseFloat(amount) : -parseFloat(amount),
+        category: category,
+        accountId: selectedAccount,
+        date: date,
+        notes: notes || undefined,
+      };
+      
+      // Add to localStorage
+      TransactionService.addTransaction(user.id, transactionData);
+      
+      // Update account balance (only for non-cash accounts or if user wants to track cash balance)
+      const account = accounts.find(a => a.id === selectedAccount);
+      if (account && account.type !== 'Cash') {
+        TransactionService.updateAccount(user.id, selectedAccount, {
+          balance: account.balance + transactionData.amount
+        });
+      }
+      
+      // Reset form
+      setAmount("");
+      setDescription("");
+      setCategory("");
+      setType("Expense");
+      setDate(new Date().toISOString().split('T')[0]);
+      setNotes("");
+      
+      setIsOpen(false);
+      
+      // Notify components to refresh data
+      window.dispatchEvent(new CustomEvent('budgee:dataUpdate'));
+      
+      toast({
+        title: "Transaction Added",
+        description: `Your ${type.toLowerCase()} transaction has been added successfully.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add transaction. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAdding(false);
     }
-    
-    setIsAdding(false);
-    setIsOpen(false);
-    
-    // Notify app and refresh
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('accounts:updated'));
-      window.dispatchEvent(new CustomEvent('transactions:updated'));
-    }
-    router.refresh();
-    
-    toast({
-      title: "Transaction Added",
-      description: `Your ${type.toLowerCase()} transaction has been added successfully.`,
-    });
-    
-    // Reset form
-    resetForm();
   };
 
-  const resetForm = () => {
-    setType("Expense");
-    setAmount("");
-    setDescription("");
-    setCategory("");
-    setSelectedAccount("");
-  };
-
-  const availableCategories = categoriesByType[type];
+  const availableCategories = categories
+    .filter(cat => cat.type === type)
+    .map(cat => cat.name);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       setIsOpen(open);
       if (!open) {
-        resetForm();
+        // Reset form when dialog closes
+        setAmount("");
+        setDescription("");
+        setCategory("");
+        setType("Expense");
+        setDate(new Date().toISOString().split('T')[0]);
+        setNotes("");
       }
     }}>
       <DialogTrigger asChild>
@@ -141,7 +159,7 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
         <DialogHeader>
           <DialogTitle>Add New Transaction</DialogTitle>
           <DialogDescription>
-            Record a new income or expense transaction.
+            Record a new income or expense transaction manually.
           </DialogDescription>
         </DialogHeader>
         
@@ -175,7 +193,7 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount</Label>
+              <Label htmlFor="amount">Amount *</Label>
               <Input
                 id="amount"
                 type="number"
@@ -188,7 +206,7 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">Description *</Label>
               <Input
                 id="description"
                 type="text"
@@ -199,7 +217,7 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">Category *</Label>
               <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a category" />
@@ -215,19 +233,56 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="account">Account</Label>
+              <Label htmlFor="date">Date *</Label>
+              <Input
+                id="date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="account">Account *</Label>
               <Select value={selectedAccount} onValueChange={setSelectedAccount}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select an account" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockAccounts.map((account) => (
+                  {accounts.map((account) => (
                     <SelectItem key={account.id} value={account.id}>
                       {account.name} ({account.type})
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {accounts.length === 0 && (
+                <div className="text-center space-y-2 mt-2">
+                  <p className="text-sm text-muted-foreground">
+                    No accounts found. You can still add transactions.
+                  </p>
+                  <ConnectAccountDialog
+                    trigger={
+                      <Button variant="outline" size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Account
+                      </Button>
+                    }
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Add any additional notes..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+              />
             </div>
 
             <Button
