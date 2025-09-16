@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { api } from '@/lib/api';
 
 interface User {
   id: string;
@@ -25,7 +26,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const AUTH_STORAGE_KEY = 'budgee_auth';
 const USER_STORAGE_KEY = 'budgee_user';
 
-// Auth service functions
+// Auth service functions (now backed by API with cookie-based token)
 export class AuthService {
   static isLoggedIn(): boolean {
     if (typeof window === 'undefined') return false;
@@ -56,27 +57,20 @@ export class AuthService {
   }
 
   static async login(email: string, password: string): Promise<{ success: boolean; user?: User }> {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Import the storage service here to avoid circular dependencies
-    const { TransactionService } = await import('@/lib/storage-service');
-    
-    // Find user by email
-    const storedUser = TransactionService.getUserByEmail(email);
-    
-    if (storedUser && password.length >= 8) {
-      // In a real app, you would hash and compare passwords
-      // For now, we just check that password meets basic requirements
-      this.setAuth(storedUser);
-      
-      // Initialize basic account structure for the user if they don't have any data
-      TransactionService.seedUserData(storedUser.id);
-      
-      return { success: true, user: storedUser };
+    const res = await api('/api/auth/login', { json: { email, password } });
+    const user = res.user as User;
+    if (user) {
+      this.setAuth(user);
+      return { success: true, user };
     }
-    
     return { success: false };
+  }
+
+  static async logout(): Promise<void> {
+    try {
+      await api('/api/auth/logout', { method: 'POST' });
+    } catch {}
+    this.clearAuth();
   }
 }
 
@@ -111,8 +105,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const logout = () => {
-    AuthService.clearAuth();
+  const logout = async () => {
+    await AuthService.logout();
     setUser(null);
   };
 

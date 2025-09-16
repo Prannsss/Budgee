@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { TransactionService } from '@/lib/storage-service';
+import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
 import type { Transaction, Account } from '@/lib/types';
 
@@ -12,7 +12,7 @@ export function useUserData() {
   const [totals, setTotals] = useState({ totalIncome: 0, totalExpenses: 0, savings: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
-  const refreshData = () => {
+  const refreshData = async () => {
     if (!user?.id) {
       setTransactions([]);
       setAccounts([]);
@@ -21,14 +21,19 @@ export function useUserData() {
       return;
     }
 
-    const userTransactions = TransactionService.getTransactions(user.id);
-    const userAccounts = TransactionService.getAccounts(user.id);
-    const userTotals = TransactionService.calculateTotals(user.id);
+    try {
+      const [txns, accts, summary] = await Promise.all([
+        api('/api/transactions', { method: 'GET' }),
+        api('/api/accounts', { method: 'GET' }),
+        api('/api/reports/summary', { method: 'GET' }),
+      ]);
 
-    setTransactions(userTransactions);
-    setAccounts(userAccounts);
-    setTotals(userTotals);
-    setIsLoading(false);
+      setTransactions(txns || []);
+      setAccounts(accts || []);
+      setTotals(summary?.totals || { totalIncome: 0, totalExpenses: 0, savings: 0 });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -43,7 +48,7 @@ export function useUserData() {
     };
   }, [user?.id]);
 
-  const addTransaction = (transactionData: {
+  const addTransaction = async (transactionData: {
     description: string;
     amount: number;
     category: Transaction['category'];
@@ -51,50 +56,28 @@ export function useUserData() {
     date?: string;
   }) => {
     if (!user?.id) return null;
-    
-    const newTransaction = TransactionService.addTransaction(user.id, transactionData);
-    
-    // Update account balance if needed
-    const account = accounts.find(a => a.id === transactionData.accountId);
-    if (account) {
-      TransactionService.updateAccount(user.id, transactionData.accountId, {
-        balance: account.balance + transactionData.amount
-      });
-    }
-    
-    // Trigger refresh
+    const created = await api('/api/transactions', { json: transactionData });
     window.dispatchEvent(new CustomEvent('budgee:dataUpdate'));
-    
-    return newTransaction;
+    return created;
   };
 
-  const removeTransaction = (transactionId: string) => {
+  const removeTransaction = async (transactionId: string) => {
     if (!user?.id) return false;
-    
-    const success = TransactionService.removeTransaction(user.id, transactionId);
-    
-    if (success) {
-      // Trigger refresh
-      window.dispatchEvent(new CustomEvent('budgee:dataUpdate'));
-    }
-    
-    return success;
+    await api(`/api/transactions?id=${encodeURIComponent(transactionId)}`, { method: 'DELETE' });
+    window.dispatchEvent(new CustomEvent('budgee:dataUpdate'));
+    return true;
   };
 
-  const addAccount = (accountData: {
+  const addAccount = async (accountData: {
     name: string;
     type: Account['type'];
     balance: number;
     lastFour: string;
   }) => {
     if (!user?.id) return null;
-    
-    const newAccount = TransactionService.addAccount(user.id, accountData);
-    
-    // Trigger refresh
+    const created = await api('/api/accounts', { json: accountData });
     window.dispatchEvent(new CustomEvent('budgee:dataUpdate'));
-    
-    return newAccount;
+    return created;
   };
 
   return {

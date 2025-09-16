@@ -15,7 +15,7 @@ import { Loader2 } from "lucide-react";
 import { GoogleIcon } from "../icons/google";
 import { FacebookIcon } from "../icons/facebook";
 import { useAuth } from "@/contexts/auth-context";
-import { TransactionService } from "@/lib/storage-service";
+import { api } from "@/lib/api";
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
   formType: "login" | "signup";
@@ -81,42 +81,19 @@ export function UserAuthForm({ className, formType, ...props }: UserAuthFormProp
           });
         }
       } else {
-        // For signup, we'll create the user account but not log them in
-        // First check if email is already registered
-        if (TransactionService.isEmailRegistered(data.email)) {
-          toast({
-            title: "Error",
-            description: "An account with this email already exists.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        // Create user account
-        const newUser = TransactionService.addUser({
+        // Signup via API
+        await api('/api/auth/signup', { json: {
           email: data.email,
           firstName: data.firstName,
           lastName: data.lastName,
           phone: data.phone,
-          password: data.password, // In a real app, this would be hashed
+          password: data.password,
+        }});
+        toast({
+          title: "Account Created Successfully!",
+          description: "Please log in with your credentials to access your account.",
         });
-
-        if (newUser) {
-          toast({
-            title: "Account Created Successfully!",
-            description: "Please log in with your credentials to access your account.",
-          });
-          
-          // Redirect to login page
-          router.push("/login");
-        } else {
-          toast({
-            title: "Error",
-            description: "Failed to create account. Please try again.",
-            variant: "destructive",
-          });
-        }
+        router.push("/login");
       }
     } catch (error) {
       toast({
