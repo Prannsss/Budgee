@@ -1,12 +1,16 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { User } from "lucide-react";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 // Notifications icon removed per requirement
 import { ChatAssistant } from "../ai/chat-assistant";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Header() {
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
   return (
   <header className="flex h-14 items-center gap-4 bg-background px-4 lg:px-6 sticky top-0 z-30">
   <SidebarTrigger className="hidden md:inline-flex" />
@@ -15,13 +19,13 @@ export default function Header() {
         <ThemeToggle />
         <ChatAssistant />
   {/* Notifications removed per requirement */}
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={setIsProfileOpen}>
           <DropdownMenuTrigger asChild>
-            <Button variant="secondary" size="icon" className="overflow-hidden rounded-full">
-              <Avatar>
-                <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026024d" alt="@user" />
-                <AvatarFallback>U</AvatarFallback>
-              </Avatar>
+            <Button variant="secondary" size="icon" className="overflow-hidden rounded-full relative">
+              <User className="h-4 w-4" />
+              {isProfileOpen && (
+                <span className="absolute -bottom-1 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-primary" />
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

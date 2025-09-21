@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Landmark, CreditCard, Bot } from "lucide-react";
+import { LayoutDashboard, Landmark, CreditCard, Bot, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { useSubscription } from "@/contexts/subscription-context";
 
 const baseItems = [
@@ -66,13 +65,19 @@ export function MobileBottomNav() {
           <li>
             <Link
               href="/dashboard/profile"
-              className="flex flex-col items-center justify-center gap-1 py-2 px-2 transition-transform active:scale-95 text-xs font-medium text-muted-foreground hover:text-foreground min-h-[48px]"
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 py-2 px-2 transition-transform active:scale-95",
+                "text-xs font-medium min-h-[48px]",
+                pathname === "/dashboard/profile"
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
             >
               <span className="relative inline-flex" aria-hidden>
-                <Avatar className="h-6 w-6">
-                  <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026024d" alt="@user" />
-                  <AvatarFallback>U</AvatarFallback>
-                </Avatar>
+                <User className="h-6 w-6" />
+                {pathname === "/dashboard/profile" && (
+                  <span className="absolute -bottom-2 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-primary/60" />
+                )}
               </span>
               <span className="sr-only">Profile</span>
             </Link>

@@ -120,6 +120,8 @@ export default function CategoriesPage() {
           placeholder="Enter category name"
           value={newCategoryName}
           onChange={(e) => setNewCategoryName(e.target.value)}
+          autoFocus={isMobile}
+          className="focus:ring-2 focus:ring-primary"
         />
       </div>
       <div className="space-y-2">
@@ -277,11 +279,11 @@ export default function CategoriesPage() {
       {/* Add Category Modal/Drawer */}
       {isMobile ? (
         <Drawer open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-          <DrawerContent>
+          <DrawerContent className="max-h-[85vh] focus-within:max-h-[60vh] transition-all duration-300">
             <DrawerHeader>
               <DrawerTitle>Add New Category</DrawerTitle>
             </DrawerHeader>
-            <div className="p-4">
+            <div className="p-4 pb-8">
               <AddCategoryModal />
             </div>
           </DrawerContent>

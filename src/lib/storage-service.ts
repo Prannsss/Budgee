@@ -1,11 +1,10 @@
-import type { Account, Transaction, Subscription, PlanType, Category } from './types';
+import type { Account, Transaction, Subscription, PlanType, Category, SavingsAllocation, PinData } from './types';
 
 interface User {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
-  phone: string;
 }
 
 // localStorage keys
@@ -14,6 +13,8 @@ const ACCOUNTS_STORAGE_KEY = 'budgee_accounts';
 const USERS_STORAGE_KEY = 'budgee_users';
 const SUBSCRIPTIONS_STORAGE_KEY = 'budgee_subscriptions';
 const CATEGORIES_STORAGE_KEY = 'budgee_categories';
+const SAVINGS_STORAGE_KEY = 'budgee_savings';
+const PIN_STORAGE_KEY = 'budgee_pins';
 
 export interface TransactionInput {
   description: string;
@@ -35,8 +36,15 @@ export interface UserInput {
   email: string;
   firstName: string;
   lastName: string;
-  phone: string;
   password: string;
+}
+
+export interface SavingsAllocationInput {
+  amount: number;
+  description: string;
+  fromAccountId: string;
+  type: 'deposit' | 'withdrawal';
+  date?: string;
 }
 
 export class TransactionService {
@@ -190,6 +198,71 @@ export class TransactionService {
     return transactions.filter(t => t.accountId === accountId);
   }
 
+  // Savings allocation methods
+  static getSavingsAllocations(userId: string): SavingsAllocation[] {
+    if (typeof window === 'undefined') return [];
+    const key = this.getUserKey(SAVINGS_STORAGE_KEY, userId);
+    const savingsStr = localStorage.getItem(key);
+    return savingsStr ? JSON.parse(savingsStr) : [];
+  }
+
+  static addSavingsAllocation(userId: string, allocation: SavingsAllocationInput): SavingsAllocation {
+    const newAllocation: SavingsAllocation = {
+      id: `sav_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId,
+      amount: allocation.amount,
+      description: allocation.description,
+      date: allocation.date || new Date().toISOString().split('T')[0],
+      fromAccountId: allocation.fromAccountId,
+      type: allocation.type,
+    };
+
+    const allocations = this.getSavingsAllocations(userId);
+    allocations.push(newAllocation);
+    this.saveSavingsAllocations(userId, allocations);
+    
+    // Update the account balance
+    if (allocation.type === 'deposit') {
+      // Remove money from account when depositing to savings
+      this.updateAccountBalance(userId, allocation.fromAccountId, -allocation.amount);
+    } else {
+      // Add money to account when withdrawing from savings
+      this.updateAccountBalance(userId, allocation.fromAccountId, allocation.amount);
+    }
+    
+    return newAllocation;
+  }
+
+  static getTotalSavings(userId: string): number {
+    const allocations = this.getSavingsAllocations(userId);
+    return allocations.reduce((total, allocation) => {
+      return allocation.type === 'deposit' 
+        ? total + allocation.amount 
+        : total - allocation.amount;
+    }, 0);
+  }
+
+  private static saveSavingsAllocations(userId: string, allocations: SavingsAllocation[]): void {
+    if (typeof window === 'undefined') return;
+    const key = this.getUserKey(SAVINGS_STORAGE_KEY, userId);
+    localStorage.setItem(key, JSON.stringify(allocations));
+    
+    // Dispatch event for UI updates
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('budgee:dataUpdate'));
+    }
+  }
+
+  private static updateAccountBalance(userId: string, accountId: string, amount: number): void {
+    const accounts = this.getAccounts(userId);
+    const accountIndex = accounts.findIndex(a => a.id === accountId);
+    
+    if (accountIndex !== -1) {
+      accounts[accountIndex].balance += amount;
+      this.saveAccounts(userId, accounts);
+    }
+  }
+
   static calculateTotals(userId: string): { totalIncome: number; totalExpenses: number; savings: number } {
     const transactions = this.getTransactions(userId);
     
@@ -201,7 +274,8 @@ export class TransactionService {
       .filter(t => t.amount < 0)
       .reduce((sum, t) => sum + t.amount, 0));
     
-    const savings = totalIncome - totalExpenses;
+    // Calculate savings from savings allocations, not income-expenses
+    const savings = this.getTotalSavings(userId);
     
     return { totalIncome, totalExpenses, savings };
   }
@@ -251,7 +325,6 @@ export class TransactionService {
       email: userInput.email,
       firstName: userInput.firstName,
       lastName: userInput.lastName,
-      phone: userInput.phone,
     };
 
     const users = this.getAllUsers();
@@ -496,5 +569,83 @@ export class TransactionService {
     categories = categories.filter(cat => cat.userId !== userId);
     
     localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
+  }
+
+  // PIN Management Methods
+  static setPinData(userId: string, hashedPin: string): void {
+    if (typeof window === 'undefined') return;
+    
+    const pinsStr = localStorage.getItem(PIN_STORAGE_KEY);
+    let pins: PinData[] = pinsStr ? JSON.parse(pinsStr) : [];
+    
+    // Remove existing PIN for this user
+    pins = pins.filter(pin => pin.userId !== userId);
+    
+    // Add new PIN data
+    const newPinData: PinData = {
+      userId,
+      hashedPin,
+      isEnabled: true,
+      createdAt: new Date().toISOString(),
+    };
+    
+    pins.push(newPinData);
+    localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(pins));
+  }
+
+  static getPinData(userId: string): PinData | null {
+    if (typeof window === 'undefined') return null;
+    
+    const pinsStr = localStorage.getItem(PIN_STORAGE_KEY);
+    if (!pinsStr) return null;
+    
+    const pins: PinData[] = JSON.parse(pinsStr);
+    return pins.find(pin => pin.userId === userId) || null;
+  }
+
+  static updatePinLastUsed(userId: string): void {
+    if (typeof window === 'undefined') return;
+    
+    const pinsStr = localStorage.getItem(PIN_STORAGE_KEY);
+    if (!pinsStr) return;
+    
+    const pins: PinData[] = JSON.parse(pinsStr);
+    const pinIndex = pins.findIndex(pin => pin.userId === userId);
+    
+    if (pinIndex !== -1) {
+      pins[pinIndex].lastUsed = new Date().toISOString();
+      localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(pins));
+    }
+  }
+
+  static disablePin(userId: string): void {
+    if (typeof window === 'undefined') return;
+    
+    const pinsStr = localStorage.getItem(PIN_STORAGE_KEY);
+    if (!pinsStr) return;
+    
+    const pins: PinData[] = JSON.parse(pinsStr);
+    const pinIndex = pins.findIndex(pin => pin.userId === userId);
+    
+    if (pinIndex !== -1) {
+      pins[pinIndex].isEnabled = false;
+      localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(pins));
+    }
+  }
+
+  static removePinData(userId: string): void {
+    if (typeof window === 'undefined') return;
+    
+    const pinsStr = localStorage.getItem(PIN_STORAGE_KEY);
+    if (!pinsStr) return;
+    
+    let pins: PinData[] = JSON.parse(pinsStr);
+    pins = pins.filter(pin => pin.userId !== userId);
+    localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(pins));
+  }
+
+  static hasPinEnabled(userId: string): boolean {
+    const pinData = this.getPinData(userId);
+    return pinData !== null && pinData.isEnabled;
   }
 }

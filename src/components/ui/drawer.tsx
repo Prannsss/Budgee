@@ -44,8 +44,15 @@ const DrawerContent = React.forwardRef<
       ref={ref}
       className={cn(
         "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background",
+        // Handle mobile keyboard opening
+        "env(safe-area-inset-bottom, 0px)",
+        "focus-within:translate-y-0",
         className
       )}
+      style={{
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        maxHeight: "calc(100vh - env(safe-area-inset-top, 0px) - 2rem)"
+      }}
       {...props}
     >
       <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />

@@ -7,7 +7,6 @@ interface User {
   email: string;
   firstName: string;
   lastName: string;
-  phone: string;
 }
 
 interface AuthContextType {
@@ -48,6 +47,9 @@ export class AuthService {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(AUTH_STORAGE_KEY);
     localStorage.removeItem(USER_STORAGE_KEY);
+    // Also clear PIN-related session data on logout
+    sessionStorage.removeItem('budgee_app_locked');
+    sessionStorage.removeItem('budgee_visibility_timestamp');
   }
 
   static updateCurrentUser(updatedUser: User): void {

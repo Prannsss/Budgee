@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { SkeletonBarChart } from "@/components/ui/skeleton-components"
 
 const chartConfig = {
     income: {
@@ -30,11 +31,16 @@ const chartConfig = {
 export function OverviewChart() {
   const { user } = useAuth();
   const [chartData, setChartData] = useState<Array<{name: string, income: number, expenses: number}>>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!user?.id) return;
 
-    const generateChartData = () => {
+    const generateChartData = async () => {
+      setIsLoading(true);
+      // Simulate loading delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 600));
+      
       const transactions = TransactionService.getTransactions(user.id);
       const currentDate = new Date();
       const data = [];
@@ -61,6 +67,7 @@ export function OverviewChart() {
       }
 
       setChartData(data);
+      setIsLoading(false);
     };
 
     generateChartData();
@@ -81,7 +88,9 @@ export function OverviewChart() {
         <CardDescription>Your income and expenses over the last 6 months.</CardDescription>
       </CardHeader>
       <CardContent>
-        {chartData.length === 0 || chartData.every(d => d.income === 0 && d.expenses === 0) ? (
+        {isLoading ? (
+          <SkeletonBarChart bars={6} height="h-64" />
+        ) : chartData.length === 0 || chartData.every(d => d.income === 0 && d.expenses === 0) ? (
           <div className="text-center py-16">
             <p className="text-muted-foreground">No transaction data available.</p>
             <p className="text-sm text-muted-foreground mt-1">Add transactions to see your income and expense trends.</p>

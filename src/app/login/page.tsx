@@ -18,7 +18,7 @@ export default function LoginPage() {
         <Card className="shadow-2xl">
           <CardHeader>
             <CardTitle>Welcome back</CardTitle>
-            <CardDescription>Enter your email and password to sign in to your account.</CardDescription>
+            <CardDescription>Enter your email and password to login to your account.</CardDescription>
           </CardHeader>
           <CardContent>
             <UserAuthForm formType="login" />

@@ -26,6 +26,16 @@ export type Account = {
   lastFour: string;
 };
 
+export type SavingsAllocation = {
+  id: string;
+  userId: string;
+  amount: number;
+  description: string;
+  date: string;
+  fromAccountId: string; // Account money is moved from
+  type: 'deposit' | 'withdrawal'; // deposit to savings or withdrawal from savings
+};
+
 export type PlanType = 'Free' | 'Basic' | 'Premium';
 
 export type Subscription = {
@@ -43,4 +53,20 @@ export type NavItem = {
   href: string;
   icon: React.ReactNode;
   disabled?: boolean;
+};
+
+export type PinData = {
+  userId: string;
+  hashedPin: string;
+  isEnabled: boolean;
+  createdAt: string;
+  lastUsed?: string;
+};
+
+export type PinStatus = 'not-set' | 'set' | 'required' | 'verified';
+
+export type AppLockState = {
+  isLocked: boolean;
+  lockTriggeredAt?: string;
+  shouldRequirePin: boolean;
 };

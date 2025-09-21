@@ -32,6 +32,7 @@ import jsPDF from 'jspdf';
 import { TransactionService } from "@/lib/storage-service";
 import { useAuth } from "@/contexts/auth-context";
 import type { Transaction, Account } from "@/lib/types";
+import { SkeletonTable } from "@/components/ui/skeleton-components";
 
 export default function TransactionsPage() {
   const [tab, setTab] = useState("all");
@@ -40,6 +41,7 @@ export default function TransactionsPage() {
   const [exportDateRangeOption, setExportDateRangeOption] = useState<string>("all");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const tableRef = useRef<DataTableHandle>(null);
   const { user } = useAuth();
 
@@ -50,12 +52,17 @@ export default function TransactionsPage() {
   useEffect(() => {
     if (!user?.id) return;
 
-    const loadData = () => {
+    const loadData = async () => {
+      setIsLoading(true);
+      // Simulate loading delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 400));
+      
       const userTransactions = TransactionService.getTransactions(user.id);
       setTransactions(userTransactions);
       
       const userAccounts = TransactionService.getAccounts(user.id);
       setAccounts(userAccounts);
+      setIsLoading(false);
     };
 
     loadData();
@@ -303,17 +310,35 @@ export default function TransactionsPage() {
         </div>
         {/* Desktop table */}
         <div className="mt-1 hidden md:block">
-          <DataTable ref={tableRef} columns={columns} data={filtered} />
+          {isLoading ? (
+            <SkeletonTable rows={8} columns={4} />
+          ) : (
+            <DataTable ref={tableRef} columns={columns} data={filtered} />
+          )}
         </div>
         {/* Mobile list */}
         <div className="mt-2 md:hidden">
-          <MobileTransactionList items={filtered} />
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="p-4 border rounded-lg">
+                  <div className="space-y-2">
+                    <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
+                    <div className="h-3 bg-muted animate-pulse rounded w-1/2" />
+                    <div className="h-3 bg-muted animate-pulse rounded w-1/4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <MobileTransactionList items={filtered} />
+          )}
         </div>
       </Tabs>
 
       {/* Export Dialog */}
       <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Download Transactions</DialogTitle>
           </DialogHeader>
@@ -353,13 +378,18 @@ export default function TransactionsPage() {
                   <div className="space-y-3">
                     <div className="space-y-2">
                       <Label>From</Label>
-                      <Calendar
-                        mode="range"
-                        numberOfMonths={1}
-                        selected={exportDateRange}
-                        onSelect={setExportDateRange}
-                        className="rounded-md border"
-                      />
+                      <div className="flex justify-center">
+                        <div className="w-full max-w-sm h-[320px] flex items-center justify-center border rounded-md bg-background">
+                          <Calendar
+                            mode="range"
+                            numberOfMonths={1}
+                            selected={exportDateRange}
+                            onSelect={setExportDateRange}
+                            className="p-3"
+                            fixedWeeks
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

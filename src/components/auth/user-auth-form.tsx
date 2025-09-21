@@ -34,9 +34,6 @@ const signupSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required." }),
   lastName: z.string().min(1, { message: "Last name is required." }),
   email: z.string().email({ message: "Please enter a valid email address." }),
-  phone: z.string()
-    .regex(/^[\+]?[1-9][\d]{0,15}$/, { message: "Please enter a valid phone number." })
-    .min(10, { message: "Phone number must be at least 10 digits." }),
   password: z.string()
     .min(8, { message: "Password must be at least 8 characters." })
     .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter." })
@@ -49,8 +46,17 @@ type SignupFormData = z.infer<typeof signupSchema>;
 
 export function UserAuthForm({ className, formType, ...props }: UserAuthFormProps) {
   const schema = formType === 'signup' ? signupSchema : loginSchema;
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm({
     resolver: zodResolver(schema),
+    defaultValues: formType === 'signup' ? {
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: ''
+    } : {
+      email: '',
+      password: ''
+    }
   }) as any;
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isSocialLoading, setIsSocialLoading] = React.useState<string | null>(null);
@@ -81,8 +87,7 @@ export function UserAuthForm({ className, formType, ...props }: UserAuthFormProp
           });
         }
       } else {
-        // For signup, we'll create the user account but not log them in
-        // First check if email is already registered
+        // Check if email is already registered
         if (TransactionService.isEmailRegistered(data.email)) {
           toast({
             title: "Error",
@@ -93,12 +98,11 @@ export function UserAuthForm({ className, formType, ...props }: UserAuthFormProp
           return;
         }
 
-        // Create user account
+        // Create account directly without phone verification
         const newUser = TransactionService.addUser({
           email: data.email,
           firstName: data.firstName,
           lastName: data.lastName,
-          phone: data.phone,
           password: data.password, // In a real app, this would be hashed
         });
 
@@ -158,30 +162,6 @@ export function UserAuthForm({ className, formType, ...props }: UserAuthFormProp
       });
     } finally {
       setIsSocialLoading(null);
-    }
-  }
-
-  const handleTestLogin = async () => {
-    setIsLoading(true);
-    
-    try {
-      const success = await login("test@example.com", "testpassword123");
-      
-      if (success) {
-        toast({
-          title: "Success!",
-          description: "Test login successful.",
-        });
-        router.push("/dashboard");
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Test login failed. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
     }
   }
 
@@ -256,26 +236,6 @@ export function UserAuthForm({ className, formType, ...props }: UserAuthFormProp
               </p>
             )}
           </div>
-          {formType === 'signup' ? (
-            <div className="grid gap-2">
-              <Label htmlFor="phone">
-                Phone Number
-              </Label>
-              <Input
-                id="phone"
-                placeholder="+639123456789"
-                type="tel"
-                autoComplete="tel"
-                disabled={isLoading}
-                {...register("phone")}
-              />
-              {errors?.phone && (
-                <p className="px-1 text-xs text-destructive">
-                  {errors.phone?.message || "Valid phone number is required"}
-                </p>
-              )}
-            </div>
-          ) : null}
           <div className="grid gap-2">
             <Label htmlFor="password">
               Password
@@ -297,17 +257,14 @@ export function UserAuthForm({ className, formType, ...props }: UserAuthFormProp
             {isLoading && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {formType === 'login' ? 'Sign In with Email' : 'Sign Up with Email'}
+            {formType === 'login' 
+              ? 'Login with Email' 
+              : 'Create Account'
+            }
           </Button>
         </div>
       </form>
-
-      {formType === 'login' && (
-        <Button onClick={handleTestLogin} variant="outline" type="button">
-          Test login
-        </Button>
-      )}
-
+      
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t" />

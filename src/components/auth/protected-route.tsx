@@ -1,34 +1,71 @@
 "use client";
 
-import { useAuth } from '@/contexts/auth-context';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useAuth } from "@/contexts/auth-context";
+import { usePin } from "@/contexts/pin-context";
+import { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  redirectTo?: string;
+  requireAuth?: boolean;
+  allowedWithoutPin?: boolean;
 }
 
-export function ProtectedRoute({ children, redirectTo = '/login' }: ProtectedRouteProps) {
+export function ProtectedRoute({ 
+  children, 
+  requireAuth = true, 
+  allowedWithoutPin = false 
+}: ProtectedRouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
+  const { pinStatus, isAppLocked } = usePin();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push(redirectTo);
-    }
-  }, [isAuthenticated, isLoading, router, redirectTo]);
+    if (isLoading) return;
 
+    // If authentication is required but user is not authenticated
+    if (requireAuth && !isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+
+    // If user is authenticated but app is locked with PIN
+    if (isAuthenticated && isAppLocked && !allowedWithoutPin) {
+      // Don't redirect if already on pin-verify page
+      if (pathname !== '/pin-verify') {
+        router.push('/pin-verify');
+        return;
+      }
+    }
+
+    // If user is on pin-verify page but PIN is not required
+    if (pathname === '/pin-verify' && (!isAuthenticated || pinStatus === 'not-set')) {
+      router.push(isAuthenticated ? '/dashboard' : '/login');
+      return;
+    }
+  }, [isAuthenticated, isLoading, isAppLocked, pinStatus, requireAuth, allowedWithoutPin, router, pathname]);
+
+  // Show loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-sm text-muted-foreground">Loading...</p>
+        </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
+  // If auth is required but user is not authenticated
+  if (requireAuth && !isAuthenticated) {
+    return null; // Will redirect to login
+  }
+
+  // If app is locked and PIN verification is required
+  if (isAuthenticated && isAppLocked && !allowedWithoutPin && pathname !== '/pin-verify') {
+    return null; // Will redirect to pin verification
   }
 
   return <>{children}</>;

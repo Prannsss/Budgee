@@ -8,6 +8,7 @@ import { InstallPrompt } from "@/components/install-prompt";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { AuthProvider } from "@/contexts/auth-context";
 import { SubscriptionProvider } from "@/contexts/subscription-context";
+import { PinProvider } from "@/contexts/pin-context";
 
 export const metadata: Metadata = {
   title: 'Budgee',
@@ -75,7 +76,10 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
+        />
         
         {/* PWA Meta Tags */}
         <meta name="application-name" content="Budgee" />
@@ -102,19 +106,21 @@ export default function RootLayout({
       <body className={cn("font-body antialiased", "min-h-screen bg-background font-sans")}>
         <PWAInstaller />
         <AuthProvider>
-          <SubscriptionProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="light"
-              enableSystem
-              disableTransitionOnChange
-            >
-              {children}
-              <Toaster />
-              <InstallPrompt />
-              <OfflineIndicator />
-            </ThemeProvider>
-          </SubscriptionProvider>
+          <PinProvider>
+            <SubscriptionProvider>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="light"
+                enableSystem
+                disableTransitionOnChange
+              >
+                {children}
+                <Toaster />
+                <InstallPrompt />
+                <OfflineIndicator />
+              </ThemeProvider>
+            </SubscriptionProvider>
+          </PinProvider>
         </AuthProvider>
       </body>
     </html>
