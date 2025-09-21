@@ -5,6 +5,7 @@ import { useAuth } from './auth-context';
 import { TransactionService } from '@/lib/storage-service';
 import { useRouter, usePathname } from 'next/navigation';
 import type { AppLockState, PinStatus } from '@/lib/types';
+import { PIN_REQUIRED_ON_STARTUP_KEY, APP_LOCK_KEY, VISIBILITY_CHANGE_KEY } from '@/lib/constants';
 
 interface PinContextType {
   pinStatus: PinStatus;
@@ -16,10 +17,6 @@ interface PinContextType {
 }
 
 const PinContext = createContext<PinContextType | undefined>(undefined);
-
-// Session storage key for app lock state
-const APP_LOCK_KEY = 'budgee_app_locked';
-const VISIBILITY_CHANGE_KEY = 'budgee_visibility_timestamp';
 
 export function PinProvider({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
@@ -35,8 +32,16 @@ export function PinProvider({ children }: { children: React.ReactNode }) {
     if (user?.id) {
       const hasPinEnabled = TransactionService.hasPinEnabled(user.id);
       setPinStatus(hasPinEnabled ? 'set' : 'not-set');
+      
+      // Set persistent flag that PIN is required on startup
+      if (hasPinEnabled) {
+        localStorage.setItem(PIN_REQUIRED_ON_STARTUP_KEY, 'true');
+      } else {
+        localStorage.removeItem(PIN_REQUIRED_ON_STARTUP_KEY);
+      }
     } else {
       setPinStatus('not-set');
+      localStorage.removeItem(PIN_REQUIRED_ON_STARTUP_KEY);
     }
   }, [user]);
 
@@ -114,6 +119,7 @@ export function PinProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined' || !isAuthenticated || !user?.id) return;
 
+    // Check sessionStorage first for temporary lock state
     const lockStateStr = sessionStorage.getItem(APP_LOCK_KEY);
     if (lockStateStr) {
       const lockState: AppLockState = JSON.parse(lockStateStr);
@@ -123,7 +129,28 @@ export function PinProvider({ children }: { children: React.ReactNode }) {
           setIsAppLocked(true);
           setPinStatus('required');
           setShouldShowPinVerification(true);
+          return;
         }
+      }
+    }
+
+    // Check localStorage for persistent PIN requirement on app startup
+    const pinRequiredOnStartup = localStorage.getItem(PIN_REQUIRED_ON_STARTUP_KEY);
+    if (pinRequiredOnStartup === 'true') {
+      const hasPinEnabled = TransactionService.hasPinEnabled(user.id);
+      if (hasPinEnabled && pathname !== '/pin-verify') {
+        // Set app as locked and require PIN verification
+        setIsAppLocked(true);
+        setPinStatus('required');
+        setShouldShowPinVerification(true);
+        
+        // Also set session storage to maintain lock state during this session
+        const lockState: AppLockState = {
+          isLocked: true,
+          lockTriggeredAt: new Date().toISOString(),
+          shouldRequirePin: true
+        };
+        sessionStorage.setItem(APP_LOCK_KEY, JSON.stringify(lockState));
       }
     }
   }, [isAuthenticated, user, pathname]);
@@ -147,6 +174,8 @@ export function PinProvider({ children }: { children: React.ReactNode }) {
   const unlockApp = () => {
     sessionStorage.removeItem(APP_LOCK_KEY);
     sessionStorage.removeItem(VISIBILITY_CHANGE_KEY);
+    // Don't remove PIN_REQUIRED_ON_STARTUP_KEY here as we want it to persist
+    // until the user disables PIN or logs out
     setIsAppLocked(false);
     setPinStatus(user?.id && TransactionService.hasPinEnabled(user.id) ? 'verified' : 'not-set');
   };

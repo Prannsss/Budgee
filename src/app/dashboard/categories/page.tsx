@@ -279,7 +279,7 @@ export default function CategoriesPage() {
       {/* Add Category Modal/Drawer */}
       {isMobile ? (
         <Drawer open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-          <DrawerContent className="max-h-[85vh] focus-within:max-h-[60vh] transition-all duration-300">
+          <DrawerContent className="max-h-[80vh] min-h-[40vh]">
             <DrawerHeader>
               <DrawerTitle>Add New Category</DrawerTitle>
             </DrawerHeader>

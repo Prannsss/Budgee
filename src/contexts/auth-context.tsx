@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { PIN_REQUIRED_ON_STARTUP_KEY } from '@/lib/constants';
 
 interface User {
   id: string;
@@ -50,6 +51,8 @@ export class AuthService {
     // Also clear PIN-related session data on logout
     sessionStorage.removeItem('budgee_app_locked');
     sessionStorage.removeItem('budgee_visibility_timestamp');
+    // Clear PIN requirement flag from localStorage
+    localStorage.removeItem(PIN_REQUIRED_ON_STARTUP_KEY);
   }
 
   static updateCurrentUser(updatedUser: User): void {
