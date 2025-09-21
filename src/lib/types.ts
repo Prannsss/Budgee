@@ -61,6 +61,7 @@ export type PinData = {
   isEnabled: boolean;
   createdAt: string;
   lastUsed?: string;
+  pinLength?: number; // Store the length of the PIN for better UX
 };
 
 export type PinStatus = 'not-set' | 'set' | 'required' | 'verified';

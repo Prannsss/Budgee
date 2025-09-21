@@ -34,7 +34,7 @@ export function PinSetup({ onSuccess, onCancel }: PinSetupProps) {
     setError('');
     setWarning('');
     
-    if (value.length >= 4) {
+    if (value.length === 6) {
       const validation = PinUtils.validatePinFormat(value);
       if (!validation.isValid) {
         setError(validation.error || '');
@@ -46,15 +46,19 @@ export function PinSetup({ onSuccess, onCancel }: PinSetupProps) {
         setWarning(strength.warning || '');
       }
     }
+    // Don't show error while user is still typing (length < 6)
   };
 
   const handleConfirmPinChange = (value: string) => {
     setConfirmPin(value);
     setError('');
     
-    if (value.length >= 4 && value !== pin) {
-      setError('PINs do not match');
+    if (value.length === 6) {
+      if (value !== pin) {
+        setError('PINs do not match');
+      }
     }
+    // Don't show error while user is still typing (length < 6)
   };
 
   const handleContinue = () => {
@@ -119,7 +123,7 @@ export function PinSetup({ onSuccess, onCancel }: PinSetupProps) {
         </CardTitle>
         <CardDescription>
           {step === 'enter' 
-            ? 'Create a 4-6 digit PIN to secure your account'
+            ? 'Create a 6-digit PIN to secure your account'
             : 'Please confirm your PIN by entering it again'
           }
         </CardDescription>
@@ -171,7 +175,7 @@ export function PinSetup({ onSuccess, onCancel }: PinSetupProps) {
             <div className="space-y-2">
               <Button 
                 onClick={handleContinue}
-                disabled={pin.length < 4 || !!error || isLoading}
+                disabled={pin.length !== 6 || !!error || isLoading}
                 className="w-full"
               >
                 Continue
@@ -226,7 +230,7 @@ export function PinSetup({ onSuccess, onCancel }: PinSetupProps) {
             <div className="space-y-2">
               <Button 
                 onClick={handleSetupPin}
-                disabled={confirmPin.length < 4 || !!error || isLoading}
+                disabled={confirmPin.length !== 6 || !!error || isLoading}
                 className="w-full"
               >
                 {isLoading ? 'Setting up...' : 'Set PIN'}
@@ -245,9 +249,9 @@ export function PinSetup({ onSuccess, onCancel }: PinSetupProps) {
         
         <div className="text-xs text-muted-foreground text-center space-y-1">
           <p>PIN Requirements:</p>
-          <p>• 4-6 digits only</p>
-          <p>• Avoid sequential numbers (1234)</p>
-          <p>• Avoid repeating numbers (1111)</p>
+          <p>• Exactly 6 digits only</p>
+          <p>• Avoid sequential numbers (123456)</p>
+          <p>• Avoid repeating numbers (111111)</p>
         </div>
       </CardContent>
     </Card>

@@ -34,7 +34,7 @@ export class PinUtils {
   }
 
   /**
-   * Validate PIN format (4-6 digits)
+   * Validate PIN format (6 digits only)
    */
   static validatePinFormat(pin: string): { isValid: boolean; error?: string } {
     if (!pin) {
@@ -45,28 +45,29 @@ export class PinUtils {
       return { isValid: false, error: 'PIN must contain only numbers' };
     }
     
-    if (pin.length < 4 || pin.length > 6) {
-      return { isValid: false, error: 'PIN must be between 4 and 6 digits' };
+    if (pin.length !== 6) {
+      return { isValid: false, error: 'PIN must be exactly 6 digits' };
     }
     
     return { isValid: true };
   }
 
   /**
-   * Check if PIN has weak patterns (like 1234, 1111, etc.)
+   * Check if PIN has weak patterns (like 123456, 111111, etc.)
    */
   static checkPinStrength(pin: string): { isStrong: boolean; warning?: string } {
     const weakPatterns = [
-      '1234', '4321', '1111', '2222', '3333', '4444', '5555', '6666', '7777', '8888', '9999', '0000',
-      '0123', '3210', '1122', '2211', '1212', '2121'
+      '123456', '654321', '111111', '222222', '333333', '444444', '555555', '666666', '777777', '888888', '999999', '000000',
+      '012345', '543210', '112233', '223344', '334455', '445566', '556677', '667788', '778899', '889900', '990011',
+      '121212', '212121', '123123', '321321', '456456', '654654'
     ];
     
     if (weakPatterns.includes(pin)) {
       return { isStrong: false, warning: 'This PIN is too common. Please choose a more secure PIN.' };
     }
     
-    // Check for sequential patterns
-    const isSequential = /^(?:0123456|1234567|2345678|3456789|4567890|9876543|8765432|7654321|6543210|5432109|4321098|3210987|2109876|1098765|0987654)/.test(pin);
+    // Check for sequential patterns (6 digits)
+    const isSequential = /^(012345|123456|234567|345678|456789|567890|987654|876543|765432|654321|543210|432109|321098|210987|109876|098765)$/.test(pin);
     if (isSequential) {
       return { isStrong: false, warning: 'Sequential numbers are not secure. Please choose a different PIN.' };
     }

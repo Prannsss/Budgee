@@ -582,12 +582,13 @@ export class TransactionService {
     // Remove existing PIN for this user
     pins = pins.filter(pin => pin.userId !== userId);
     
-    // Add new PIN data
+    // Add new PIN data (always 6 digits now)
     const newPinData: PinData = {
       userId,
       hashedPin,
       isEnabled: true,
       createdAt: new Date().toISOString(),
+      pinLength: 6,
     };
     
     pins.push(newPinData);
