@@ -10,19 +10,26 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { TransactionService } from "@/lib/storage-service";
 import { Account } from "@/lib/types";
+import { SkeletonAccountCard } from "@/components/ui/skeleton-components";
 
 export default function AccountsPage() {
     const isMobile = useIsMobile();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [accounts, setAccounts] = useState<Account[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const { user } = useAuth();
 
     useEffect(() => {
         if (!user?.id) return;
 
-        const loadAccounts = () => {
+        const loadAccounts = async () => {
+            setIsLoading(true);
+            // Simulate loading delay for better UX
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
             const userAccounts = TransactionService.getAccounts(user.id);
             setAccounts(userAccounts);
+            setIsLoading(false);
         };
 
         loadAccounts();
@@ -39,7 +46,7 @@ export default function AccountsPage() {
     }, [user?.id]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 px-4 md:px-0">
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight font-headline">Accounts</h1>
@@ -50,7 +57,13 @@ export default function AccountsPage() {
                 {!isMobile && <ConnectAccountDialog />}
             </div>
 
-            {accounts.length > 0 ? (
+            {isLoading ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <SkeletonAccountCard key={i} />
+                    ))}
+                </div>
+            ) : accounts.length > 0 ? (
                 <div className="grid gap-3 md:grid-cols-2">
                     {accounts.map(account => (
                         <AccountCard key={account.id} account={account} />
@@ -81,7 +94,7 @@ export default function AccountsPage() {
             )}
 
             {/* Mobile Floating Action Button */}
-            {isMobile && accounts.length > 0 && (
+            {isMobile && !isLoading && accounts.length > 0 && (
                 <ConnectAccountDialog 
                     trigger={
                         <Button

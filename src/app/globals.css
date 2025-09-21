@@ -108,4 +108,22 @@
     background: linear-gradient(to top, hsl(var(--background)), transparent);
   }
 
+  /* Mobile keyboard handling */
+  @supports (height: 100dvh) {
+    .mobile-drawer {
+      max-height: 100dvh;
+    }
+  }
+
+  /* Prevent scrolling issues on mobile when keyboard is open */
+  .keyboard-open {
+    position: fixed;
+    width: 100%;
+  }
+
+  /* Improve drawer focus handling on mobile */
+  [data-vaul-drawer][data-vaul-drawer-visible="true"] {
+    transform: translateY(0px) !important;
+  }
+
 }

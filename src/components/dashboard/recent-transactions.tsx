@@ -24,20 +24,27 @@ import { useAuth } from "@/contexts/auth-context"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
 import type { Transaction, Account } from "@/lib/types"
+import { SkeletonTransactionRow } from "@/components/ui/skeleton-components"
 
 export function RecentTransactions() {
   const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!user?.id) return;
 
-    const loadData = () => {
+    const loadData = async () => {
+      setIsLoading(true);
+      // Simulate loading delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       const userTransactions = TransactionService.getTransactions(user.id).slice(0, 5);
       const userAccounts = TransactionService.getAccounts(user.id);
       setTransactions(userTransactions);
       setAccounts(userAccounts);
+      setIsLoading(false);
     };
 
     loadData();
@@ -60,7 +67,23 @@ export function RecentTransactions() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {transactions.length === 0 ? (
+        {isLoading ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Description</TableHead>
+                <TableHead className="hidden sm:table-cell">Bank/E-wallet</TableHead>
+                <TableHead className="hidden sm:table-cell">Category</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <SkeletonTransactionRow key={i} />
+              ))}
+            </TableBody>
+          </Table>
+        ) : transactions.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground">No transactions yet.</p>
             <p className="text-sm text-muted-foreground mt-1">Add your first transaction to get started.</p>

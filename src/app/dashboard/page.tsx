@@ -1,22 +1,57 @@
 "use client";
 
-import { OverviewChart } from "@/components/dashboard/overview-chart";
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
-import { AddTransactionDialog } from "@/components/dashboard/add-transaction-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, LineChart, Plus } from "lucide-react";
-import { useMemo, useState, useEffect } from "react";
+import { Eye, EyeOff, LineChart, Plus, PiggyBank } from "lucide-react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { TransactionService } from "@/lib/storage-service";
 import { useAuth } from "@/contexts/auth-context";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Transaction, Account } from "@/lib/types";
+import { SkeletonStatCard, SkeletonChart } from "@/components/ui/skeleton-components";
+
+// Dynamic imports for heavy components
+const OverviewChart = dynamic(
+  () => import("@/components/dashboard/overview-chart").then(mod => ({ default: mod.OverviewChart })),
+  { 
+    loading: () => <SkeletonChart height="h-64" className="rounded-lg" />,
+    ssr: false 
+  }
+);
+
+const AddTransactionDialog = dynamic(
+  () => import("@/components/dashboard/add-transaction-dialog").then(mod => ({ default: mod.AddTransactionDialog })),
+  { 
+    loading: () => <div className="h-10 w-10 animate-pulse bg-muted rounded" />,
+    ssr: false 
+  }
+);
+
+const SavingsAllocationDialog = dynamic(
+  () => import("@/components/dashboard/savings-allocation-dialog").then(mod => ({ default: mod.SavingsAllocationDialog })),
+  { 
+    loading: () => <div className="h-10 w-10 animate-pulse bg-muted rounded" />,
+    ssr: false 
+  }
+);
+
+const SavingsHistory = dynamic(
+  () => import("@/components/dashboard/savings-history").then(mod => ({ default: mod.SavingsHistory })),
+  { 
+    loading: () => <SkeletonChart height="h-40" className="rounded-lg" />,
+    ssr: false 
+  }
+);
 
 export default function DashboardPage() {
   const [showOverview, setShowOverview] = useState(false);
   const [showAmounts, setShowAmounts] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const isMobile = useIsMobile();
   const { user } = useAuth();
 
@@ -29,7 +64,11 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user?.id) return;
 
-    const loadData = () => {
+    const loadData = async () => {
+      setIsLoading(true);
+      // Simulate loading delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const userTransactions = TransactionService.getTransactions(user.id);
       const userAccounts = TransactionService.getAccounts(user.id);
       const userTotals = TransactionService.calculateTotals(user.id);
@@ -37,6 +76,7 @@ export default function DashboardPage() {
       setTransactions(userTransactions);
       setAccounts(userAccounts);
       setTotals(userTotals);
+      setIsLoading(false);
     };
 
     loadData();
@@ -50,7 +90,7 @@ export default function DashboardPage() {
     };
   }, [user?.id]);
 
-  // Calculate financial metrics
+  // Calculate financial metrics with memoization
   const assets = useMemo(() => {
     return accounts.reduce((sum, a) => sum + (a.type !== 'Crypto' ? a.balance : 0), 0);
   }, [accounts]);
@@ -59,11 +99,18 @@ export default function DashboardPage() {
     return totals.savings;
   }, [totals]);
 
-  const liabilities = 0; // For now, we don't have liabilities in our simple model
-  const netWorth = assets + savings;
+  const netWorth = useMemo(() => assets + savings, [assets, savings]);
+  
+  // For now, we don't have liabilities in our simple model
+  const liabilities = 0;
 
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(n);
+  // Memoized currency formatter
+  const formatter = useMemo(() => 
+    new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }),
+    []
+  );
+  
+  const fmt = useCallback((n: number) => formatter.format(n), [formatter]);
   return (
     <div className="flex flex-col gap-6">
       <Card className="shadow-lg bg-primary text-primary-foreground">
@@ -116,54 +163,86 @@ export default function DashboardPage() {
       {/* Monthly income/expenses cards */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold tracking-tight">Quick Stats</h2>
-        {!isMobile && <AddTransactionDialog />}
+        {!isMobile && (
+          <div className="flex gap-2">
+            <SavingsAllocationDialog />
+            <AddTransactionDialog />
+          </div>
+        )}
       </div>
       
       <div className="grid grid-cols-2 gap-4">
-        {(() => {
-          const now = new Date();
-          const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-          const monthly = transactions.filter((t: Transaction) => t.date.startsWith(ym));
-          const income = monthly.filter((t: Transaction) => t.amount > 0).reduce((s: number, t: Transaction) => s + t.amount, 0);
-          const expenses = monthly.filter((t: Transaction) => t.amount < 0).reduce((s: number, t: Transaction) => s + Math.abs(t.amount), 0);
-          return (
-            <>
-              <StatCard
-                title="This Month"
-                value={fmt(income)}
-                description="Income"
-                icon={<TrendingUp className="h-5 w-5 text-green-500" />}
-              />
-              <StatCard
-                title="This Month"
-                value={fmt(expenses)}
-                description="Expenses"
-                icon={<TrendingDown className="h-5 w-5 text-red-500" />}
-              />
-            </>
-          );
-        })()}
+        {isLoading ? (
+          <>
+            <SkeletonStatCard />
+            <SkeletonStatCard />
+          </>
+        ) : (
+          (() => {
+            const now = new Date();
+            const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const monthly = transactions.filter((t: Transaction) => t.date.startsWith(ym));
+            const income = monthly.filter((t: Transaction) => t.amount > 0).reduce((s: number, t: Transaction) => s + t.amount, 0);
+            const expenses = monthly.filter((t: Transaction) => t.amount < 0).reduce((s: number, t: Transaction) => s + Math.abs(t.amount), 0);
+            return (
+              <>
+                <StatCard
+                  title="This Month"
+                  value={fmt(income)}
+                  description="Income"
+                  icon={<TrendingUp className="h-5 w-5 text-green-500" />}
+                />
+                <StatCard
+                  title="This Month"
+                  value={fmt(expenses)}
+                  description="Expenses"
+                  icon={<TrendingDown className="h-5 w-5 text-red-500" />}
+                />
+              </>
+            );
+          })()
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-3 flex flex-col gap-6">
-          {showOverview && <OverviewChart />}
+        <div className="lg:col-span-2 flex flex-col gap-6">
+          {showOverview && (
+            <Suspense fallback={<SkeletonChart height="h-64" className="rounded-lg" />}>
+              <OverviewChart />
+            </Suspense>
+          )}
           <RecentTransactions />
+        </div>
+        <div className="lg:col-span-1">
+          <SavingsHistory />
         </div>
       </div>
 
-      {/* Mobile Floating Action Button */}
+      {/* Mobile Floating Action Buttons */}
       {isMobile && (
-        <AddTransactionDialog 
-          trigger={
-            <Button
-              size="icon"
-              className="fixed bottom-24 right-4 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow z-50"
-            >
-              <Plus className="h-6 w-6" />
-            </Button>
-          }
-        />
+        <div className="fixed bottom-24 right-4 z-50 flex flex-col gap-3">
+          <SavingsAllocationDialog 
+            trigger={
+              <Button
+                size="icon"
+                variant="secondary"
+                className="h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-shadow"
+              >
+                <PiggyBank className="h-5 w-5" />
+              </Button>
+            }
+          />
+          <AddTransactionDialog 
+            trigger={
+              <Button
+                size="icon"
+                className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow"
+              >
+                <Plus className="h-6 w-6" />
+              </Button>
+            }
+          />
+        </div>
       )}
     </div>
   );

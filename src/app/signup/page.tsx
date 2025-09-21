@@ -29,7 +29,7 @@ export default function SignupPage() {
             href="/login"
             className="underline underline-offset-4 hover:text-primary"
           >
-            Already have an account? Sign In
+            Already have an account? Login
           </Link>
         </p>
          <p className="px-8 text-center text-xs text-muted-foreground mt-4">

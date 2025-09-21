@@ -95,9 +95,9 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
       // Add to localStorage
       TransactionService.addTransaction(user.id, transactionData);
       
-      // Update account balance (only for non-cash accounts or if user wants to track cash balance)
+      // Update account balance for all account types including Cash
       const account = accounts.find(a => a.id === selectedAccount);
-      if (account && account.type !== 'Cash') {
+      if (account) {
         TransactionService.updateAccount(user.id, selectedAccount, {
           balance: account.balance + transactionData.amount
         });

@@ -8,6 +8,12 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  
+  // Performance optimizations
+  experimental: {
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+  },
+  
   images: {
     remotePatterns: [
       {
@@ -68,6 +74,20 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  
+  // Bundle analyzer for performance monitoring
+  ...(process.env.ANALYZE === 'true' && {
+    webpack: (config: any) => {
+      const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+      config.plugins.push(
+        new BundleAnalyzerPlugin({
+          analyzerMode: 'static',
+          openAnalyzer: true,
+        })
+      );
+      return config;
+    },
+  }),
 };
 
 export default nextConfig;
