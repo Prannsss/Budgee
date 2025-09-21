@@ -109,11 +109,11 @@ export function PinProvider({ children }: { children: React.ReactNode }) {
 
   // Handle navigation to PIN verification
   useEffect(() => {
-    if (shouldShowPinVerification && pathname !== '/pin-verify') {
+    if (shouldShowPinVerification && pathname !== '/pin-verify' && isAppLocked) {
       router.push('/pin-verify');
       setShouldShowPinVerification(false);
     }
-  }, [shouldShowPinVerification, pathname, router]);
+  }, [shouldShowPinVerification, pathname, router, isAppLocked]);
 
   // Check if app should be locked on mount
   useEffect(() => {
@@ -177,6 +177,7 @@ export function PinProvider({ children }: { children: React.ReactNode }) {
     // Don't remove PIN_REQUIRED_ON_STARTUP_KEY here as we want it to persist
     // until the user disables PIN or logs out
     setIsAppLocked(false);
+    setShouldShowPinVerification(false); // Add this line to clear the verification flag
     setPinStatus(user?.id && TransactionService.hasPinEnabled(user.id) ? 'verified' : 'not-set');
   };
 

@@ -26,6 +26,7 @@ function PinVerificationContent() {
   const [error, setError] = useState('');
   const [attempts, setAttempts] = useState(0);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false); // Add this state
   
   const { user, logout } = useAuth();
   const { unlockApp } = usePin();
@@ -49,7 +50,7 @@ function PinVerificationContent() {
   }, [user, router]);
 
   const handlePinSubmit = async () => {
-    if (!user?.id || isBlocked || pin.length !== 6) return;
+    if (!user?.id || isBlocked || pin.length !== 6 || isRedirecting) return;
 
     setIsLoading(true);
     setError('');
@@ -72,8 +73,14 @@ function PinVerificationContent() {
         // Unlock the app using PIN context
         unlockApp();
         
-        // Redirect to dashboard
-        router.push('/dashboard');
+        // Set redirecting state to prevent multiple submissions
+        setIsRedirecting(true);
+        
+        // Use replace instead of push to avoid back navigation issues
+        // Add a small delay to ensure state is updated
+        setTimeout(() => {
+          router.replace('/dashboard');
+        }, 100);
       } else {
         const newAttempts = attempts + 1;
         setAttempts(newAttempts);
@@ -102,14 +109,14 @@ function PinVerificationContent() {
   };
 
   const handleNumberPress = (number: string) => {
-    if (pin.length < 6 && !isBlocked) {
+    if (pin.length < 6 && !isBlocked && !isRedirecting) {
       setPin(prev => prev + number);
       setError('');
     }
   };
 
   const handleDelete = () => {
-    if (pin.length > 0 && !isBlocked) {
+    if (pin.length > 0 && !isBlocked && !isRedirecting) {
       setPin(prev => prev.slice(0, -1));
       setError('');
     }
@@ -122,10 +129,10 @@ function PinVerificationContent() {
 
   // Auto-submit when PIN reaches 6 digits
   useEffect(() => {
-    if (pin.length === 6 && !isLoading && !isBlocked) {
+    if (pin.length === 6 && !isLoading && !isBlocked && !isRedirecting) {
       handlePinSubmit();
     }
-  }, [pin, isLoading, isBlocked]);
+  }, [pin.length, isLoading, isBlocked, isRedirecting]); // Only depend on pin.length, not the whole pin
 
   if (!user) {
     return null; // Will redirect to login
@@ -142,7 +149,7 @@ function PinVerificationContent() {
         {/* Header */}
         <div className="flex-shrink-0 pt-12 pb-8 px-6 text-center">
           <div className="flex items-center justify-center mb-6">
-            <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+            <div className="bg-white backdrop-blur-sm rounded-2xl p-4">
               <Logo className="h-8 w-8" />
             </div>
           </div>
@@ -197,7 +204,7 @@ function PinVerificationContent() {
                   variant="ghost"
                   size="lg"
                   onClick={() => handleNumberPress(number)}
-                  disabled={isLoading || isBlocked}
+                  disabled={isLoading || isBlocked || isRedirecting}
                   className="h-16 w-16 text-2xl font-semibold text-white hover:bg-white/10 border border-white/20 rounded-xl transition-all duration-200 active:scale-95"
                 >
                   {number}
@@ -212,7 +219,7 @@ function PinVerificationContent() {
                 variant="ghost"
                 size="lg"
                 onClick={() => handleNumberPress('0')}
-                disabled={isLoading || isBlocked}
+                disabled={isLoading || isBlocked || isRedirecting}
                 className="h-16 w-16 text-2xl font-semibold text-white hover:bg-white/10 border border-white/20 rounded-xl transition-all duration-200 active:scale-95"
               >
                 0
@@ -221,7 +228,7 @@ function PinVerificationContent() {
                 variant="ghost"
                 size="lg"
                 onClick={handleDelete}
-                disabled={isLoading || isBlocked || pin.length === 0}
+                disabled={isLoading || isBlocked || pin.length === 0 || isRedirecting}
                 className="h-16 w-16 text-white hover:bg-white/10 border border-white/20 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-50"
               >
                 <Delete className="h-5 w-5" />
@@ -249,11 +256,11 @@ function PinVerificationContent() {
       </div>
       
       {/* Loading overlay */}
-      {isLoading && (
+      {(isLoading || isRedirecting) && (
         <div className="absolute inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-white/30 border-t-white mx-auto mb-2"></div>
-            <p className="text-white text-sm">Verifying...</p>
+            <p className="text-white text-sm">{isRedirecting ? 'Redirecting...' : 'Verifying...'}</p>
           </div>
         </div>
       )}
