@@ -1,4 +1,5 @@
 import type { Account, Transaction, Subscription, PlanType, Category, SavingsAllocation, PinData } from './types';
+import { PIN_REQUIRED_ON_STARTUP_KEY } from './constants';
 
 interface User {
   id: string;
@@ -630,6 +631,8 @@ export class TransactionService {
     if (pinIndex !== -1) {
       pins[pinIndex].isEnabled = false;
       localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(pins));
+      // Clear the PIN requirement flag when PIN is disabled
+      localStorage.removeItem(PIN_REQUIRED_ON_STARTUP_KEY);
     }
   }
 
@@ -642,6 +645,8 @@ export class TransactionService {
     let pins: PinData[] = JSON.parse(pinsStr);
     pins = pins.filter(pin => pin.userId !== userId);
     localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(pins));
+    // Clear the PIN requirement flag when PIN data is removed
+    localStorage.removeItem(PIN_REQUIRED_ON_STARTUP_KEY);
   }
 
   static hasPinEnabled(userId: string): boolean {

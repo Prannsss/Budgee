@@ -14,6 +14,7 @@ import { TransactionService } from "@/lib/storage-service";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PinSetup } from "@/components/auth/pin-setup";
+import { PIN_REQUIRED_ON_STARTUP_KEY } from "@/lib/constants";
 
 export default function PersonalInformationPage() {
   const isMobile = useIsMobile();
@@ -156,6 +157,8 @@ export default function PersonalInformationPage() {
     if (!user?.id) return;
     
     TransactionService.removePinData(user.id);
+    // Also clear the persistent PIN requirement flag
+    localStorage.removeItem(PIN_REQUIRED_ON_STARTUP_KEY);
     setHasPinSet(false);
     toast({
       title: "PIN Removed",
