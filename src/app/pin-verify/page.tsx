@@ -49,7 +49,7 @@ function PinVerificationContent() {
   }, [user, router]);
 
   const handlePinSubmit = async () => {
-    if (!user?.id || isBlocked || pin.length < 4) return;
+    if (!user?.id || isBlocked || pin.length !== 6) return;
 
     setIsLoading(true);
     setError('');
@@ -120,9 +120,9 @@ function PinVerificationContent() {
     router.push('/login');
   };
 
-  // Auto-submit when PIN reaches 4-6 digits
+  // Auto-submit when PIN reaches 6 digits
   useEffect(() => {
-    if (pin.length >= 4 && pin.length <= 6 && !isLoading && !isBlocked) {
+    if (pin.length === 6 && !isLoading && !isBlocked) {
       handlePinSubmit();
     }
   }, [pin, isLoading, isBlocked]);
@@ -142,8 +142,8 @@ function PinVerificationContent() {
         {/* Header */}
         <div className="flex-shrink-0 pt-12 pb-8 px-6 text-center">
           <div className="flex items-center justify-center mb-6">
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
-              <Logo className="h-8 w-8 text-white" />
+            <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+              <Logo className="h-8 w-8" />
             </div>
           </div>
           <h1 className="text-3xl font-bold font-headline mb-2">Budgee</h1>
