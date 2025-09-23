@@ -5,13 +5,8 @@ const DYNAMIC_CACHE_NAME = 'budgee-dynamic-v1';
 
 // Files to cache immediately
 const STATIC_ASSETS = [
-  '/',
-  '/dashboard',
-  '/login',
-  '/signup',
   '/manifest.json',
-  '/_next/static/css/app/layout.css',
-  '/_next/static/css/app/globals.css',
+  '/offline',
   '/favicon.ico',
   '/icons/icon-72x72.png',
   '/icons/icon-96x96.png',
@@ -26,6 +21,7 @@ const STATIC_ASSETS = [
   '/icons/shortcut-dashboard.png',
   '/icons/shortcut-chat.png'
 ];
+// trimmed to avoid pre-caching routes and Next.js CSS on install
 
 // API routes that should be cached
 const API_CACHE_PATTERNS = [
@@ -99,8 +95,8 @@ self.addEventListener('fetch', (event) => {
     // Network First for API requests
     event.respondWith(networkFirst(request, DYNAMIC_CACHE_NAME));
   } else if (isPageRequest(request)) {
-    // Stale While Revalidate for pages
-    event.respondWith(staleWhileRevalidate(request, DYNAMIC_CACHE_NAME));
+    // Always go to network for HTML to avoid bloating cache and stale pages
+    event.respondWith(fetch(request).catch(async () => (await caches.match('/offline')) || new Response('Offline', { status: 503 })));
   } else {
     // Network First for everything else
     event.respondWith(networkFirst(request, DYNAMIC_CACHE_NAME));

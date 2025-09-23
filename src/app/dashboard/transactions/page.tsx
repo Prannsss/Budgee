@@ -28,7 +28,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import type { DateRange } from "react-day-picker";
-import jsPDF from 'jspdf';
+// Defer PDF lib for mobile performance; load on demand
+let _jsPDF: any;
+async function getJsPDF() {
+  if (_jsPDF) return _jsPDF;
+  const mod = await import('jspdf');
+  _jsPDF = mod.default || mod;
+  return _jsPDF;
+}
 import { TransactionService } from "@/lib/storage-service";
 import { useAuth } from "@/contexts/auth-context";
 import type { Transaction, Account } from "@/lib/types";
@@ -113,7 +120,8 @@ export default function TransactionsPage() {
     }
     
     // Generate branded PDF
-    const generateBrandedPDF = () => {
+    const generateBrandedPDF = async () => {
+      const jsPDF = await getJsPDF();
       const pdf = new jsPDF();
       const pageWidth = pdf.internal.pageSize.getWidth();
       const margin = 20;
@@ -263,7 +271,7 @@ export default function TransactionsPage() {
       // Save the PDF
       const fileName = `budgee-transactions-${new Date().toISOString().split('T')[0]}.pdf`;
       pdf.save(fileName);
-    };
+  };
     
     generateBrandedPDF();
     
