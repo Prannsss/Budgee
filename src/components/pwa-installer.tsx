@@ -4,7 +4,20 @@ import { useEffect, useState } from 'react';
 import SplashScreen from '@/components/SplashScreen';
 
 export function PWAInstaller() {
-  const [showSplash, setShowSplash] = useState(false);
+  // Initialize splash state immediately for standalone mode
+  const [showSplash, setShowSplash] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    
+    const isStandalone = () =>
+      window.matchMedia?.('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+
+    try {
+      const alreadyShown = sessionStorage.getItem('budgee_splash_shown');
+      return isStandalone() && !alreadyShown;
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     // Register service worker
@@ -56,19 +69,7 @@ export function PWAInstaller() {
   }, []);
 
   // Show splash only when running as installed PWA and not yet shown this session
-  useEffect(() => {
-    const isStandalone = () =>
-      window.matchMedia?.('(display-mode: standalone)').matches || (navigator as any).standalone === true;
-
-    try {
-      const alreadyShown = sessionStorage.getItem('budgee_splash_shown');
-      if (isStandalone() && !alreadyShown) {
-        setShowSplash(true);
-      }
-    } catch {
-      // Ignore storage errors
-    }
-  }, []);
+  // Note: Initial state is set in useState initializer for immediate effect
 
   const handleFinish = () => {
     try {

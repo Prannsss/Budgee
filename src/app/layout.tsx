@@ -32,24 +32,7 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'default',
     title: 'Budgee',
-    startupImage: [
-      {
-        url: '/icons/icon-512x512.png',
-        media: '(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)',
-      },
-      {
-        url: '/icons/icon-512x512.png',
-        media: '(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)',
-      },
-      {
-        url: '/icons/icon-512x512.png',
-        media: '(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)',
-      },
-      {
-        url: '/icons/icon-512x512.png',
-        media: '(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)',
-      },
-    ],
+    // Remove startup images to prevent showing static logo before our animated splash
   },
   formatDetection: {
     telephone: false,
