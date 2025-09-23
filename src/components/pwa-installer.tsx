@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import SplashScreen from '@/components/SplashScreen';
 
 export function PWAInstaller() {
+  const [showSplash, setShowSplash] = useState(false);
+
   useEffect(() => {
     // Register service worker
     if ('serviceWorker' in navigator) {
@@ -52,5 +55,29 @@ export function PWAInstaller() {
     };
   }, []);
 
-  return null;
+  // Show splash only when running as installed PWA and not yet shown this session
+  useEffect(() => {
+    const isStandalone = () =>
+      window.matchMedia?.('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+
+    try {
+      const alreadyShown = sessionStorage.getItem('budgee_splash_shown');
+      if (isStandalone() && !alreadyShown) {
+        setShowSplash(true);
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
+  const handleFinish = () => {
+    try {
+      sessionStorage.setItem('budgee_splash_shown', '1');
+    } catch {
+      // ignore
+    }
+    setShowSplash(false);
+  };
+
+  return showSplash ? <SplashScreen onFinish={handleFinish} /> : null;
 }

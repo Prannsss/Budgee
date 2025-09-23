@@ -8,18 +8,22 @@ import { cn } from "@/lib/utils"
 const Drawer = ({
   shouldScaleBackground = true,
   ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
-  <DrawerPrimitive.Root
-    shouldScaleBackground={shouldScaleBackground}
-    {...props}
-  />
-)
+}: React.ComponentProps<typeof DrawerPrimitive.Root>) => {
+  React.useEffect(() => {
+    if (props.open) {
+      const original = document.body.style.overflow
+      document.body.style.overflow = "hidden"
+      return () => {
+        document.body.style.overflow = original
+      }
+    }
+  }, [props.open])
+
+  return <DrawerPrimitive.Root shouldScaleBackground={shouldScaleBackground} {...props} />
+}
 Drawer.displayName = "Drawer"
 
 const DrawerTrigger = DrawerPrimitive.Trigger
-
-const DrawerPortal = DrawerPrimitive.Portal
-
 const DrawerClose = DrawerPrimitive.Close
 
 const DrawerOverlay = React.forwardRef<
@@ -38,27 +42,27 @@ const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
-  <DrawerPortal>
+  <DrawerPrimitive.Portal>
     <DrawerOverlay />
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background overscroll-contain",
+        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background overscroll-contain overflow-y-auto",
         // Prevent layout shifts on mobile when virtual keyboard opens
         "focus-within:translate-y-0",
         className
       )}
       style={{
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        // Use svh (stable viewport height) to prevent keyboard-induced size changes
-        maxHeight: "calc(100svh - env(safe-area-inset-top, 0px) - 2rem)"
+        maxHeight: "calc(100svh - env(safe-area-inset-top, 0px) - 2rem)",
       }}
       {...props}
     >
       <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
-      {children}
+         {children}
+
     </DrawerPrimitive.Content>
-  </DrawerPortal>
+  </DrawerPrimitive.Portal>
 ))
 DrawerContent.displayName = "DrawerContent"
 
@@ -113,7 +117,6 @@ DrawerDescription.displayName = DrawerPrimitive.Description.displayName
 
 export {
   Drawer,
-  DrawerPortal,
   DrawerOverlay,
   DrawerTrigger,
   DrawerClose,

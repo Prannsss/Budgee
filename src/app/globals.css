@@ -97,6 +97,8 @@
     transform: translateY(0) !important;
   }
 
+  /* (removed) Splash screen diagonal wipe reveal - handled by Framer Motion */
+
   /* Scroll Fade Cover Styles */
   .scroll-fade-cover {
     height: var(--sfc-height, 240px);

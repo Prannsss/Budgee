@@ -107,7 +107,7 @@ export default function RootLayout({
         <meta name="msapplication-config" content="/icons/browserconfig.xml" />
         <meta name="msapplication-TileColor" content="#ffffff" />
         <meta name="msapplication-tap-highlight" content="no" />
-  {/* theme-color set in manifest; removed duplicate */}
+        {/* theme-color set in manifest; removed duplicate */}
         
         {/* Chrome-specific PWA enhancements */}
         <meta name="mobile-web-app-capable" content="yes" />

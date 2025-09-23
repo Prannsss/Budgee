@@ -11,12 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -338,34 +332,17 @@ export default function CategoriesPage() {
         </Button>
       )}
 
-      {/* Add Category Modal/Drawer */}
-      {isMobile ? (
-        <Drawer
-          open={isAddModalOpen}
-          onOpenChange={setIsAddModalOpen}
-          shouldScaleBackground={false}
-        >
-          <DrawerContent className="max-h-[80dvh]">
-            <DrawerHeader>
-              <DrawerTitle>Add New Category</DrawerTitle>
-            </DrawerHeader>
-            <div className="p-4 pb-8">
-              <AddCategoryModal />
-            </div>
-          </DrawerContent>
-        </Drawer>
-      ) : (
-        <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add New Category</DialogTitle>
-            </DialogHeader>
-            <div className="pt-4">
-              <AddCategoryModal />
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      {/* Add Category Modal */}
+      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Category</DialogTitle>
+          </DialogHeader>
+          <div className="pt-4">
+            <AddCategoryModal />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
