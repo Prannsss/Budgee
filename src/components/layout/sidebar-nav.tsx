@@ -10,9 +10,9 @@ import {
   HelpCircle,
   LogOut,
   CreditCard,
-  User
+  User,
+  Bot,
 } from "lucide-react";
-import { Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { useSidebar, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";

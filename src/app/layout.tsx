@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { Montserrat, Roboto } from 'next/font/google';
 import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -66,20 +67,35 @@ export const metadata: Metadata = {
   },
 };
 
+// Initialize fonts at module scope
+export const montserrat = Montserrat({
+  subsets: ['latin'],
+  weight: ['400','500','600','700','800'],
+  display: 'swap',
+  variable: '--font-montserrat',
+  preload: true,
+});
+
+export const roboto = Roboto({
+  subsets: ['latin'],
+  weight: ['400','500','700'],
+  display: 'swap',
+  variable: '--font-roboto',
+  preload: false,
+});
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning={true}>
+    <html
+      lang="en"
+      suppressHydrationWarning={true}
+      className={cn(montserrat.className, montserrat.variable, roboto.variable)}
+    >
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
-        />
         
         {/* PWA Meta Tags */}
         <meta name="application-name" content="Budgee" />
@@ -91,7 +107,7 @@ export default function RootLayout({
         <meta name="msapplication-config" content="/icons/browserconfig.xml" />
         <meta name="msapplication-TileColor" content="#ffffff" />
         <meta name="msapplication-tap-highlight" content="no" />
-        <meta name="theme-color" content="#ffffff" />
+  {/* theme-color set in manifest; removed duplicate */}
         
         {/* Chrome-specific PWA enhancements */}
         <meta name="mobile-web-app-capable" content="yes" />
@@ -103,7 +119,7 @@ export default function RootLayout({
         <link rel="mask-icon" href="/icons/safari-pinned-tab.svg" color="#ffffff" />
         <link rel="shortcut icon" href="/favicon.ico" />
       </head>
-      <body className={cn("font-body antialiased", "min-h-screen bg-background font-sans")}>
+  <body className={cn("antialiased", "min-h-screen bg-background font-sans")}>
         <PWAInstaller />
         <AuthProvider>
           <PinProvider>

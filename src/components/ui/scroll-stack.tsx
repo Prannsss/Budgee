@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ReactNode, useLayoutEffect, useRef, useCallback } from 'react';
+import React, { ReactNode, useLayoutEffect, useRef, useCallback, useEffect, useState } from 'react';
 import Lenis from 'lenis';
 import '../ScrollStack.css';
 
@@ -45,6 +45,7 @@ const ScrollStack: React.FC<ScrollStackProps> = ({
   onStackComplete
 }) => {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const stackCompletedRef = useRef(false);
   const cardsRef = useRef<HTMLElement[]>([]);
   const lastTransformsRef = useRef(new Map<number, { translateY: number; scale: number; rotation: number; blur: number }>());
@@ -183,6 +184,7 @@ const ScrollStack: React.FC<ScrollStackProps> = ({
   }, [updateCardTransforms]);
 
   const setupLenis = useCallback(() => {
+    if (isMobile) return null;
     // Document-level smooth scrolling
     const lenis = new Lenis({
       duration: 1.1,
@@ -206,7 +208,7 @@ const ScrollStack: React.FC<ScrollStackProps> = ({
 
     lenisRef.current = lenis;
     return lenis;
-  }, [handleScroll]);
+  }, [handleScroll, isMobile]);
 
   const computeLayout = useCallback(() => {
     const scroller = scrollerRef.current;
@@ -266,7 +268,7 @@ const ScrollStack: React.FC<ScrollStackProps> = ({
   const cleanupResize = setupWindowScroll();
   // compute layout once before starting RAF
   computeLayout();
-  setupLenis();
+  const lenis = setupLenis();
     updateCardTransforms();
 
     return () => {
@@ -300,16 +302,29 @@ const ScrollStack: React.FC<ScrollStackProps> = ({
     updateCardTransforms
   ]);
 
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const set = () => setIsMobile(mq.matches);
+    set();
+    mq.addEventListener('change', set);
+    return () => mq.removeEventListener('change', set);
+  }, []);
+
   return (
     <div
       className={`relative w-full ${className}`.trim()}
       ref={scrollerRef}
     >
-      <div className="scroll-stack-inner">
-        {children}
-        {/* spacer for clean release of last pin */}
-        <div className="scroll-stack-end w-full h-px" />
-      </div>
+      {isMobile ? (
+        <div className="space-y-4">
+          {children}
+        </div>
+      ) : (
+        <div className="scroll-stack-inner">
+          {children}
+          <div className="scroll-stack-end w-full h-px" />
+        </div>
+      )}
     </div>
   );
 };

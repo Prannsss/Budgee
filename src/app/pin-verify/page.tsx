@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Shield, Lock, Delete } from "lucide-react";
 import { Logo } from "@/components/icons/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { PinUtils } from "@/lib/utils";
 import { TransactionService } from "@/lib/storage-service";
 import { useAuth } from "@/contexts/auth-context";
@@ -175,11 +176,12 @@ function PinVerificationContent() {
     <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
       <div className="relative z-10 flex flex-col h-screen">
         {/* Header */}
-        <div className="flex-shrink-0 pt-12 pb-8 px-6 text-center">
+        <div className="flex-shrink-0 pt-12 pb-8 px-6 text-center relative">
+          <div className="absolute right-6 top-6">
+            <ThemeToggle />
+          </div>
           <div className="flex items-center justify-center mb-6">
-            <div className="bg-muted rounded-2xl p-4">
-              <Logo className="h-8 w-8 text-primary" />
-            </div>
+            <Logo className="h-10 w-10 text-primary" />
           </div>
           <h1 className="text-3xl font-bold font-headline mb-2">Budgee</h1>
         </div>
@@ -188,10 +190,12 @@ function PinVerificationContent() {
         <div className="flex-1 flex flex-col justify-center px-6 pb-8">
           {/* Greeting */}
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-semibold mb-2">Good Day!</h2>
-            <p className="text-muted-foreground">
-              {user.firstName} {user.lastName}
-            </p>
+            <h1 className="text-2xl font-semibold mb-3">Good Day!</h1>
+            <div className="flex justify-center">
+              <span className="inline-flex items-center px-4 py-1.5 rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+                {user.firstName} {user.lastName}
+              </span>
+            </div>
           </div>
 
           {/* PIN Input */}
@@ -272,7 +276,7 @@ function PinVerificationContent() {
           <div className="flex justify-between items-center text-sm">
             <button
               onClick={handleLogout}
-              className="text-muted-foreground hover:text-foreground transition-colors"
+              className="text-destructive hover:text-destructive/100 transition-colors"
               disabled={isLoading}
             >
               Sign out instead

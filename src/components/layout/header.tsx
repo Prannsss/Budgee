@@ -5,7 +5,11 @@ import { User } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 // Notifications icon removed per requirement
-import { ChatAssistant } from "../ai/chat-assistant";
+import dynamic from "next/dynamic";
+const ChatAssistant = dynamic(() => import("../ai/chat-assistant").then(m => m.ChatAssistant), {
+  ssr: false,
+  loading: () => null,
+});
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Header() {
