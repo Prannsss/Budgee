@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/contexts/auth-context";
 import { usePin } from "@/contexts/pin-context";
+import { TransactionService } from "@/lib/storage-service";
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
@@ -16,7 +17,7 @@ export function ProtectedRoute({
   requireAuth = true, 
   allowedWithoutPin = false 
 }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const { pinStatus, isAppLocked } = usePin();
   const router = useRouter();
   const pathname = usePathname();
@@ -40,9 +41,13 @@ export function ProtectedRoute({
     }
 
     // If user is on pin-verify page but PIN is not required
-    if (pathname === '/pin-verify' && (!isAuthenticated || pinStatus === 'not-set')) {
-      router.push(isAuthenticated ? '/dashboard' : '/login');
-      return;
+    if (pathname === '/pin-verify' && isAuthenticated) {
+      // Only redirect if we're certain PIN is not set (avoid race conditions)
+      const hasPinEnabled = user?.id ? TransactionService.hasPinEnabled(user.id) : false;
+      if (!hasPinEnabled) {
+        router.push('/dashboard');
+        return;
+      }
     }
   }, [isAuthenticated, isLoading, isAppLocked, pinStatus, requireAuth, allowedWithoutPin, router, pathname]);
 

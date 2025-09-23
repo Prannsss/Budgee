@@ -1,15 +1,39 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ChevronRight, User, ShieldCheck, Settings, HelpCircle, FileText, LogOut, Palette, Tags, Monitor, Moon, Sun } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronRight,
+  User,
+  ShieldCheck,
+  Settings,
+  HelpCircle,
+  FileText,
+  LogOut,
+  Palette,
+  Tags,
+  Monitor,
+  Moon,
+  Sun,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 
@@ -66,7 +90,7 @@ export default function ProfilePage() {
 
   const handleLogout = () => {
     logout();
-    router.push('/login');
+    router.push("/login");
   };
 
   const handleThemeSelect = (selectedTheme: string) => {
@@ -79,20 +103,20 @@ export default function ProfilePage() {
       value: "light",
       label: "Light",
       icon: <Sun className="h-4 w-4" />,
-      description: "Light mode"
+      description: "Light mode",
     },
     {
-      value: "dark", 
+      value: "dark",
       label: "Dark",
       icon: <Moon className="h-4 w-4" />,
-      description: "Dark mode"
+      description: "Dark mode",
     },
     {
       value: "system",
       label: "System",
       icon: <Monitor className="h-4 w-4" />,
-      description: "Follow system preference"
-    }
+      description: "Follow system preference",
+    },
   ];
 
   const ThemeSelector = () => (
@@ -102,15 +126,17 @@ export default function ProfilePage() {
           key={option.value}
           onClick={() => handleThemeSelect(option.value)}
           className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-            theme === option.value 
-              ? 'border-primary bg-primary/5' 
-              : 'border-border hover:bg-muted/50'
+            theme === option.value
+              ? "border-primary bg-primary/5"
+              : "border-border hover:bg-muted/50"
           }`}
         >
           {option.icon}
           <div className="flex-1 text-left">
             <div className="font-medium">{option.label}</div>
-            <div className="text-sm text-muted-foreground">{option.description}</div>
+            <div className="text-sm text-muted-foreground">
+              {option.description}
+            </div>
           </div>
           {theme === option.value && (
             <div className="h-2 w-2 rounded-full bg-primary" />
@@ -123,7 +149,9 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight font-headline">Profile</h1>
+        <h1 className="text-2xl font-bold tracking-tight font-headline">
+          Profile
+        </h1>
       </div>
 
       {/* Welcome Section */}
@@ -134,15 +162,26 @@ export default function ProfilePage() {
         </h2>
       </div>
 
-        {/* Profile Sections */}
-        <Card className="p-0 overflow-hidden">
-          {profileSections.map((section, index) => (
-            <div key={section.title}>
-              {section.isTheme ? (
-                <button 
-                  onClick={() => setThemeDialogOpen(true)}
-                  className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
-                >
+      {/* Profile Sections */}
+      <Card className="p-0 overflow-hidden">
+        {profileSections.map((section, index) => (
+          <div key={section.title}>
+            {section.isTheme ? (
+              <button
+                onClick={() => setThemeDialogOpen(true)}
+                className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-8 h-8">
+                    <section.icon className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <span className="font-medium">{section.title}</span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </button>
+            ) : (
+              <Link href={section.href!}>
+                <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center justify-center w-8 h-8">
                       <section.icon className="h-5 w-5 text-muted-foreground" />
@@ -150,71 +189,68 @@ export default function ProfilePage() {
                     <span className="font-medium">{section.title}</span>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </button>
-              ) : (
-                <Link href={section.href!}>
-                  <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-8 h-8">
-                        <section.icon className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <span className="font-medium">{section.title}</span>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </Link>
-              )}
-              {index < profileSections.length - 1 && <Separator />}
-            </div>
-          ))}
-        </Card>
-
-        {/* Theme Selection Modal/Drawer */}
-        {isMobile ? (
-          <Drawer open={themeDialogOpen} onOpenChange={setThemeDialogOpen}>
-            <DrawerContent>
-              <DrawerHeader>
-                <DrawerTitle>Choose Theme</DrawerTitle>
-              </DrawerHeader>
-              <div className="p-4">
-                <ThemeSelector />
-              </div>
-            </DrawerContent>
-          </Drawer>
-        ) : (
-          <Dialog open={themeDialogOpen} onOpenChange={setThemeDialogOpen}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Choose Theme</DialogTitle>
-              </DialogHeader>
-              <div className="pt-4">
-                <ThemeSelector />
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
-
-        {/* Logout Section - Only show on mobile */}
-        {isMobile && (
-          <Card className="p-0 overflow-hidden">
-            <button 
-              onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-3 p-4 text-red-600 hover:bg-red-50 transition-colors"
-            >
-              <LogOut className="h-5 w-5" />
-              <span className="font-medium">Logout</span>
-            </button>
-          </Card>
-        )}
-
-        {/* Version Info */}
-        <div className="text-center">
-          <p className="text-xs text-muted-foreground">Version 1.20.0</p>
-        </div>
+                </div>
+              </Link>
+            )}
+            {index < profileSections.length - 1 && <Separator />}
+          </div>
+        ))}
+      </Card>
 
       {/* Theme Selection Modal/Drawer */}
       {isMobile ? (
-        <Drawer open={themeDialogOpen} onOpenChange={setThemeDialogOpen}>
+        <Drawer
+          open={themeDialogOpen}
+          onOpenChange={setThemeDialogOpen}
+          shouldScaleBackground={false}
+        >
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Choose Theme</DrawerTitle>
+            </DrawerHeader>
+            <div className="p-4">
+              <ThemeSelector />
+            </div>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={themeDialogOpen} onOpenChange={setThemeDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Choose Theme</DialogTitle>
+            </DialogHeader>
+            <div className="pt-4">
+              <ThemeSelector />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Logout Section - Only show on mobile */}
+      {isMobile && (
+        <Card className="p-0 overflow-hidden">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-3 p-4 text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <LogOut className="h-5 w-5" />
+            <span className="font-medium">Logout</span>
+          </button>
+        </Card>
+      )}
+
+      {/* Version Info */}
+      <div className="text-center">
+        <p className="text-xs text-muted-foreground">Version 1.20.0</p>
+      </div>
+
+      {/* Theme Selection Modal/Drawer */}
+      {isMobile ? (
+        <Drawer
+          open={themeDialogOpen}
+          onOpenChange={setThemeDialogOpen}
+          shouldScaleBackground={false}
+        >
           <DrawerContent>
             <DrawerHeader>
               <DrawerTitle>Choose Theme</DrawerTitle>

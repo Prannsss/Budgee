@@ -43,15 +43,15 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background",
-        // Handle mobile keyboard opening
-        "env(safe-area-inset-bottom, 0px)",
+        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background overscroll-contain",
+        // Prevent layout shifts on mobile when virtual keyboard opens
         "focus-within:translate-y-0",
         className
       )}
       style={{
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        maxHeight: "calc(100vh - env(safe-area-inset-top, 0px) - 2rem)"
+        // Use svh (stable viewport height) to prevent keyboard-induced size changes
+        maxHeight: "calc(100svh - env(safe-area-inset-top, 0px) - 2rem)"
       }}
       {...props}
     >
