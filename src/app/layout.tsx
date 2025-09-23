@@ -10,6 +10,7 @@ import { OfflineIndicator } from "@/components/offline-indicator";
 import { AuthProvider } from "@/contexts/auth-context";
 import { SubscriptionProvider } from "@/contexts/subscription-context";
 import { PinProvider } from "@/contexts/pin-context";
+import { DynamicStatusBar } from "@/components/dynamic-status-bar";
 
 export const metadata: Metadata = {
   title: 'Budgee',
@@ -83,14 +84,14 @@ export default function RootLayout({
         {/* PWA Meta Tags */}
         <meta name="application-name" content="Budgee" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Budgee" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="msapplication-config" content="/icons/browserconfig.xml" />
-        <meta name="msapplication-TileColor" content="#ffffff" />
+        <meta name="msapplication-TileColor" content="#000000" />
         <meta name="msapplication-tap-highlight" content="no" />
-        {/* theme-color set in manifest; removed duplicate */}
+        <meta name="theme-color" content="#000000" />
         
         {/* Chrome-specific PWA enhancements */}
         <meta name="mobile-web-app-capable" content="yes" />
@@ -113,6 +114,7 @@ export default function RootLayout({
                 enableSystem
                 disableTransitionOnChange
               >
+                <DynamicStatusBar />
                 {children}
                 <Toaster />
                 <InstallPrompt />
