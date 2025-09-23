@@ -41,14 +41,14 @@ interface SkeletonStatCardProps {
 export function SkeletonStatCard({ className }: SkeletonStatCardProps) {
   return (
     <Card className={className}>
-      <CardContent className="p-6">
+      <CardContent className="p-4 md:p-6">
         <div className="flex items-center justify-between">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-4 w-4 rounded" />
+          <Skeleton className="h-3 md:h-4 w-20 md:w-24" />
+          <Skeleton className="h-3 md:h-4 w-3 md:w-4 rounded" />
         </div>
-        <div className="mt-4">
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="h-3 w-20 mt-2" />
+        <div className="mt-3 md:mt-4">
+          <Skeleton className="h-6 md:h-8 w-24 md:w-32" />
+          <Skeleton className="h-2 md:h-3 w-16 md:w-20 mt-2" />
         </div>
       </CardContent>
     </Card>

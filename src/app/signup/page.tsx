@@ -15,7 +15,8 @@ export default function SignupPage() {
             <span className="text-2xl font-bold font-headline">Budgee</span>
           </Link>
         </div>
-        <Card className="shadow-2xl">
+        {/* Card wrapper only visible on md+ screens (desktop) */}
+        <Card className="shadow-2xl hidden md:block">
           <CardHeader>
             <CardTitle>Create an account</CardTitle>
             <CardDescription>Enter your details below to create your account.</CardDescription>
@@ -24,6 +25,15 @@ export default function SignupPage() {
             <UserAuthForm formType="signup" />
           </CardContent>
         </Card>
+        
+        {/* Mobile layout without card wrapper */}
+        <div className="md:hidden space-y-6">
+          <div className="space-y-2 text-center">
+            <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
+            <p className="text-sm text-muted-foreground">Enter your details below to create your account.</p>
+          </div>
+          <UserAuthForm formType="signup" />
+        </div>
         <p className="px-8 text-center text-sm text-muted-foreground mt-6">
           <Link
             href="/login"

@@ -5,11 +5,27 @@ import { ArrowLeft, Plus, Tag, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Category } from "@/lib/types";
@@ -28,8 +44,22 @@ export default function CategoriesPage() {
   const [incomeCategories, setIncomeCategories] = useState<Category[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [selectedType, setSelectedType] = useState<"expense" | "income">("expense");
+  const [selectedType, setSelectedType] = useState<"expense" | "income">(
+    "expense"
+  );
   const [activeTab, setActiveTab] = useState("expenses");
+
+  // Prevent background scroll when the drawer is open on mobile
+  useEffect(() => {
+    if (!isMobile) return;
+    if (isAddModalOpen) {
+      const previous = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = previous;
+      };
+    }
+  }, [isMobile, isAddModalOpen]);
 
   // Load user categories
   useEffect(() => {
@@ -38,11 +68,15 @@ export default function CategoriesPage() {
     const loadCategories = () => {
       // Ensure default categories are initialized
       TransactionService.initializeDefaultCategories(user.id);
-      
+
       const userCategories = TransactionService.getCategories(user.id);
-      const expenseCategories = userCategories.filter(cat => cat.type === 'Expense');
-      const incomeCategories = userCategories.filter(cat => cat.type === 'Income');
-      
+      const expenseCategories = userCategories.filter(
+        (cat) => cat.type === "Expense"
+      );
+      const incomeCategories = userCategories.filter(
+        (cat) => cat.type === "Income"
+      );
+
       setExpenseCategories(expenseCategories);
       setIncomeCategories(incomeCategories);
     };
@@ -63,9 +97,9 @@ export default function CategoriesPage() {
 
     // Update local state
     if (selectedType === "expense") {
-      setExpenseCategories(prev => [...prev, newCategory]);
+      setExpenseCategories((prev) => [...prev, newCategory]);
     } else {
-      setIncomeCategories(prev => [...prev, newCategory]);
+      setIncomeCategories((prev) => [...prev, newCategory]);
     }
 
     // Reset form
@@ -73,7 +107,10 @@ export default function CategoriesPage() {
     setIsAddModalOpen(false);
   };
 
-  const handleDeleteCategory = (categoryId: string, type: "expense" | "income") => {
+  const handleDeleteCategory = (
+    categoryId: string,
+    type: "expense" | "income"
+  ) => {
     if (!user?.id) return;
 
     // Delete category using storage service
@@ -81,9 +118,13 @@ export default function CategoriesPage() {
 
     // Update local state
     if (type === "expense") {
-      setExpenseCategories(prev => prev.filter(cat => cat.id !== categoryId));
+      setExpenseCategories((prev) =>
+        prev.filter((cat) => cat.id !== categoryId)
+      );
     } else {
-      setIncomeCategories(prev => prev.filter(cat => cat.id !== categoryId));
+      setIncomeCategories((prev) =>
+        prev.filter((cat) => cat.id !== categoryId)
+      );
     }
   };
 
@@ -92,7 +133,13 @@ export default function CategoriesPage() {
     setIsAddModalOpen(true);
   };
 
-  const CategoryCard = ({ category, onDelete }: { category: Category; onDelete: () => void }) => (
+  const CategoryCard = ({
+    category,
+    onDelete,
+  }: {
+    category: Category;
+    onDelete: () => void;
+  }) => (
     <Card className="p-4 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -126,7 +173,12 @@ export default function CategoriesPage() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="categoryType">Category Type</Label>
-        <Select value={selectedType} onValueChange={(value: "expense" | "income") => setSelectedType(value)}>
+        <Select
+          value={selectedType}
+          onValueChange={(value: "expense" | "income") =>
+            setSelectedType(value)
+          }
+        >
           <SelectTrigger>
             <SelectValue placeholder="Select category type" />
           </SelectTrigger>
@@ -136,7 +188,11 @@ export default function CategoriesPage() {
           </SelectContent>
         </Select>
       </div>
-      <Button onClick={handleAddCategory} className="w-full" disabled={!newCategoryName.trim()}>
+      <Button
+        onClick={handleAddCategory}
+        className="w-full"
+        disabled={!newCategoryName.trim()}
+      >
         Save Category
       </Button>
     </div>
@@ -164,12 +220,12 @@ export default function CategoriesPage() {
               <TabsTrigger value="income">Income</TabsTrigger>
             </TabsList>
           </div>
-          
+
           <TabsContent value="expenses" className="space-y-4 p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Expense Categories</h2>
               {!isMobile && (
-                <Button 
+                <Button
                   onClick={() => openAddModal("expense")}
                   size="sm"
                   className="gap-2"
@@ -182,10 +238,12 @@ export default function CategoriesPage() {
             <div className="grid gap-3">
               {expenseCategories.length > 0 ? (
                 expenseCategories.map((category) => (
-                  <CategoryCard 
-                    key={category.id} 
-                    category={category} 
-                    onDelete={() => handleDeleteCategory(category.id, "expense")}
+                  <CategoryCard
+                    key={category.id}
+                    category={category}
+                    onDelete={() =>
+                      handleDeleteCategory(category.id, "expense")
+                    }
                   />
                 ))
               ) : (
@@ -197,10 +255,11 @@ export default function CategoriesPage() {
                     <div>
                       <h3 className="font-semibold">No expense categories</h3>
                       <p className="text-sm text-muted-foreground">
-                        Create your first expense category to start organizing your spending.
+                        Create your first expense category to start organizing
+                        your spending.
                       </p>
                     </div>
-                    <Button 
+                    <Button
                       onClick={() => openAddModal("expense")}
                       size="sm"
                       className="gap-2"
@@ -213,12 +272,12 @@ export default function CategoriesPage() {
               )}
             </div>
           </TabsContent>
-          
+
           <TabsContent value="income" className="space-y-4 p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Income Categories</h2>
               {!isMobile && (
-                <Button 
+                <Button
                   onClick={() => openAddModal("income")}
                   size="sm"
                   className="gap-2"
@@ -231,9 +290,9 @@ export default function CategoriesPage() {
             <div className="grid gap-3">
               {incomeCategories.length > 0 ? (
                 incomeCategories.map((category) => (
-                  <CategoryCard 
-                    key={category.id} 
-                    category={category} 
+                  <CategoryCard
+                    key={category.id}
+                    category={category}
                     onDelete={() => handleDeleteCategory(category.id, "income")}
                   />
                 ))
@@ -246,10 +305,11 @@ export default function CategoriesPage() {
                     <div>
                       <h3 className="font-semibold">No income categories</h3>
                       <p className="text-sm text-muted-foreground">
-                        Create your first income category to start tracking your earnings.
+                        Create your first income category to start tracking your
+                        earnings.
                       </p>
                     </div>
-                    <Button 
+                    <Button
                       onClick={() => openAddModal("income")}
                       size="sm"
                       className="gap-2"
@@ -268,7 +328,9 @@ export default function CategoriesPage() {
       {/* Mobile Floating Action Button */}
       {isMobile && (
         <Button
-          onClick={() => openAddModal(activeTab === "expenses" ? "expense" : "income")}
+          onClick={() =>
+            openAddModal(activeTab === "expenses" ? "expense" : "income")
+          }
           size="icon"
           className="fixed bottom-24 right-4 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow z-50"
         >
@@ -278,8 +340,12 @@ export default function CategoriesPage() {
 
       {/* Add Category Modal/Drawer */}
       {isMobile ? (
-        <Drawer open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-          <DrawerContent className="max-h-[80vh] min-h-[40vh]">
+        <Drawer
+          open={isAddModalOpen}
+          onOpenChange={setIsAddModalOpen}
+          shouldScaleBackground={false}
+        >
+          <DrawerContent className="max-h-[80dvh]">
             <DrawerHeader>
               <DrawerTitle>Add New Category</DrawerTitle>
             </DrawerHeader>

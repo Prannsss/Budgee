@@ -5,7 +5,7 @@ import { useAuth } from './auth-context';
 import { TransactionService } from '@/lib/storage-service';
 import { useRouter, usePathname } from 'next/navigation';
 import type { AppLockState, PinStatus } from '@/lib/types';
-import { PIN_REQUIRED_ON_STARTUP_KEY, APP_LOCK_KEY, VISIBILITY_CHANGE_KEY } from '@/lib/constants';
+import { PIN_REQUIRED_ON_STARTUP_KEY, APP_LOCK_KEY, VISIBILITY_CHANGE_KEY, PIN_VERIFIED_SESSION_KEY } from '@/lib/constants';
 
 interface PinContextType {
   pinStatus: PinStatus;
@@ -72,7 +72,8 @@ export function PinProvider({ children }: { children: React.ReactNode }) {
           const timeDiff = Date.now() - new Date(visibilityTimestamp).getTime();
           
           // If app was hidden for any amount of time and PIN is enabled, require verification
-          if (lockState.shouldRequirePin && timeDiff > 0) {
+          const isSessionVerified = sessionStorage.getItem(PIN_VERIFIED_SESSION_KEY) === 'true';
+          if (lockState.shouldRequirePin && timeDiff > 0 && !isSessionVerified) {
             setIsAppLocked(true);
             setPinStatus('required');
             
@@ -123,7 +124,8 @@ export function PinProvider({ children }: { children: React.ReactNode }) {
     const lockStateStr = sessionStorage.getItem(APP_LOCK_KEY);
     if (lockStateStr) {
       const lockState: AppLockState = JSON.parse(lockStateStr);
-      if (lockState.isLocked && lockState.shouldRequirePin) {
+      const isSessionVerified = sessionStorage.getItem(PIN_VERIFIED_SESSION_KEY) === 'true';
+      if (lockState.isLocked && lockState.shouldRequirePin && !isSessionVerified) {
         const hasPinEnabled = TransactionService.hasPinEnabled(user.id);
         if (hasPinEnabled && pathname !== '/pin-verify') {
           setIsAppLocked(true);
@@ -138,7 +140,8 @@ export function PinProvider({ children }: { children: React.ReactNode }) {
     const pinRequiredOnStartup = localStorage.getItem(PIN_REQUIRED_ON_STARTUP_KEY);
     if (pinRequiredOnStartup === 'true') {
       const hasPinEnabled = TransactionService.hasPinEnabled(user.id);
-      if (hasPinEnabled && pathname !== '/pin-verify') {
+      const isSessionVerified = sessionStorage.getItem(PIN_VERIFIED_SESSION_KEY) === 'true';
+      if (hasPinEnabled && pathname !== '/pin-verify' && !isSessionVerified) {
         // Set app as locked and require PIN verification
         setIsAppLocked(true);
         setPinStatus('required');
@@ -160,6 +163,8 @@ export function PinProvider({ children }: { children: React.ReactNode }) {
     
     const hasPinEnabled = TransactionService.hasPinEnabled(user.id);
     if (hasPinEnabled) {
+      // Clear session verified marker when locking again
+      sessionStorage.removeItem(PIN_VERIFIED_SESSION_KEY);
       const lockState: AppLockState = {
         isLocked: true,
         lockTriggeredAt: new Date().toISOString(),
@@ -177,8 +182,14 @@ export function PinProvider({ children }: { children: React.ReactNode }) {
     // Don't remove PIN_REQUIRED_ON_STARTUP_KEY here as we want it to persist
     // until the user disables PIN or logs out
     setIsAppLocked(false);
-    setShouldShowPinVerification(false); // Add this line to clear the verification flag
-    setPinStatus(user?.id && TransactionService.hasPinEnabled(user.id) ? 'verified' : 'not-set');
+    setShouldShowPinVerification(false);
+    // Explicitly mark the current session as verified if PIN is enabled
+    if (user?.id && TransactionService.hasPinEnabled(user.id)) {
+      sessionStorage.setItem(PIN_VERIFIED_SESSION_KEY, 'true');
+      setPinStatus('verified');
+    } else {
+      setPinStatus('not-set');
+    }
   };
 
   const checkPinRequired = (): boolean => {

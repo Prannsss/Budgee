@@ -22,6 +22,7 @@ export default function PersonalInformationPage() {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [pinSetupOpen, setPinSetupOpen] = useState(false);
+  const [removePinConfirmOpen, setRemovePinConfirmOpen] = useState(false);
   const [hasPinSet, setHasPinSet] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
@@ -160,10 +161,15 @@ export default function PersonalInformationPage() {
     // Also clear the persistent PIN requirement flag
     localStorage.removeItem(PIN_REQUIRED_ON_STARTUP_KEY);
     setHasPinSet(false);
+    setRemovePinConfirmOpen(false);
     toast({
       title: "PIN Removed",
       description: "PIN protection has been disabled for your account.",
     });
+  };
+
+  const handleRemovePinClick = () => {
+    setRemovePinConfirmOpen(true);
   };
   return (
     <div className="min-h-screen bg-background">
@@ -274,7 +280,7 @@ export default function PersonalInformationPage() {
                 </Button>
                 <Button 
                   variant="outline" 
-                  onClick={handleRemovePin}
+                  onClick={handleRemovePinClick}
                   className="w-full text-red-600 hover:text-red-700"
                 >
                   Remove PIN
@@ -294,7 +300,7 @@ export default function PersonalInformationPage() {
 
       {/* PIN Setup Modal/Drawer */}
       {isMobile ? (
-        <Drawer open={pinSetupOpen} onOpenChange={setPinSetupOpen}>
+  <Drawer open={pinSetupOpen} onOpenChange={setPinSetupOpen} shouldScaleBackground={false}>
           <DrawerContent>
             <DrawerHeader>
               <DrawerTitle>
@@ -322,6 +328,77 @@ export default function PersonalInformationPage() {
                 onSuccess={handlePinSetupSuccess}
                 onCancel={() => setPinSetupOpen(false)}
               />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Remove PIN Confirmation Modal/Drawer */}
+      {isMobile ? (
+        <Drawer open={removePinConfirmOpen} onOpenChange={setRemovePinConfirmOpen} shouldScaleBackground={false}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Remove PIN</DrawerTitle>
+            </DrawerHeader>
+            <div className="p-4 space-y-4">
+              <div className="text-center space-y-2">
+                <div className="mx-auto w-12 h-12 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
+                  <Shield className="h-6 w-6 text-red-600 dark:text-red-400" />
+                </div>
+                <p className="text-lg font-semibold">Are you sure you want to remove your PIN?</p>
+                <p className="text-sm text-muted-foreground">
+                  Your account will no longer be protected with a PIN. You can always add one back later.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setRemovePinConfirmOpen(false)}
+                  className="w-full"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={handleRemovePin}
+                  className="w-full"
+                >
+                  Remove PIN
+                </Button>
+              </div>
+            </div>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={removePinConfirmOpen} onOpenChange={setRemovePinConfirmOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Remove PIN</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="text-center space-y-2">
+                <div className="mx-auto w-12 h-12 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
+                  <Shield className="h-6 w-6 text-red-600 dark:text-red-400" />
+                </div>
+                <p className="text-lg font-semibold">Are you sure you want to remove your PIN?</p>
+                <p className="text-sm text-muted-foreground">
+                  Your account will no longer be protected with a PIN. You can always add one back later.
+                </p>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setRemovePinConfirmOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={handleRemovePin}
+                >
+                  Remove PIN
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>

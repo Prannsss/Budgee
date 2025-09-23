@@ -26,6 +26,7 @@ function PinVerificationContent() {
   const [error, setError] = useState('');
   const [attempts, setAttempts] = useState(0);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [blockRemaining, setBlockRemaining] = useState<number>(0); // milliseconds remaining
   const [isRedirecting, setIsRedirecting] = useState(false); // Add this state
   
   const { user, logout } = useAuth();
@@ -34,6 +35,7 @@ function PinVerificationContent() {
 
   const MAX_ATTEMPTS = 3;
   const BLOCK_DURATION = 30000; // 30 seconds
+  const BLOCK_UNTIL_KEY = 'budgee_pin_block_until';
 
   useEffect(() => {
     // If user is not logged in, redirect to login
@@ -42,11 +44,8 @@ function PinVerificationContent() {
       return;
     }
 
-    // If user doesn't have PIN enabled, redirect to dashboard
-    if (!TransactionService.hasPinEnabled(user.id)) {
-      router.push('/dashboard');
-      return;
-    }
+    // Don't auto-redirect based on PIN status here - let ProtectedRoute handle it
+    // The PIN verification page should stay open until user completes verification
   }, [user, router]);
 
   const handlePinSubmit = async () => {
@@ -76,25 +75,18 @@ function PinVerificationContent() {
         // Set redirecting state to prevent multiple submissions
         setIsRedirecting(true);
         
-        // Use replace instead of push to avoid back navigation issues
-        // Add a small delay to ensure state is updated
-        setTimeout(() => {
-          router.replace('/dashboard');
-        }, 100);
+        // Navigate immediately after unlocking
+        router.replace('/dashboard');
       } else {
         const newAttempts = attempts + 1;
         setAttempts(newAttempts);
         
         if (newAttempts >= MAX_ATTEMPTS) {
+          const unblockAt = Date.now() + BLOCK_DURATION;
+          localStorage.setItem(BLOCK_UNTIL_KEY, String(unblockAt));
           setIsBlocked(true);
-          setError(`Too many failed attempts. Please wait 30 seconds before trying again.`);
-          
-          // Block for 30 seconds
-          setTimeout(() => {
-            setIsBlocked(false);
-            setAttempts(0);
-            setError('');
-          }, BLOCK_DURATION);
+          setBlockRemaining(BLOCK_DURATION);
+          setError('Too many failed attempts. Please wait 30 seconds before trying again.');
         } else {
           setError(`Incorrect PIN. ${MAX_ATTEMPTS - newAttempts} attempts remaining.`);
         }
@@ -134,6 +126,45 @@ function PinVerificationContent() {
     }
   }, [pin.length, isLoading, isBlocked, isRedirecting]); // Only depend on pin.length, not the whole pin
 
+  // Initialize block state from storage
+  useEffect(() => {
+    const untilStr = localStorage.getItem(BLOCK_UNTIL_KEY);
+    if (!untilStr) return;
+    const until = Number(untilStr);
+    if (Number.isFinite(until)) {
+      const remaining = until - Date.now();
+      if (remaining > 0) {
+        setIsBlocked(true);
+        setBlockRemaining(remaining);
+        setError('Too many failed attempts. Please wait 30 seconds before trying again.');
+      } else {
+        localStorage.removeItem(BLOCK_UNTIL_KEY);
+      }
+    }
+  }, []);
+
+  // Countdown tick
+  useEffect(() => {
+    if (!isBlocked) return;
+    const id = setInterval(() => {
+      setBlockRemaining((prev) => {
+        const untilStr = localStorage.getItem(BLOCK_UNTIL_KEY);
+        const until = untilStr ? Number(untilStr) : 0;
+        const remaining = until - Date.now();
+        if (remaining <= 0) {
+          clearInterval(id);
+          localStorage.removeItem(BLOCK_UNTIL_KEY);
+          setIsBlocked(false);
+          setAttempts(0);
+          setError('');
+          return 0;
+        }
+        return remaining;
+      });
+    }, 250);
+    return () => clearInterval(id);
+  }, [isBlocked]);
+
   if (!user) {
     return null; // Will redirect to login
   }
@@ -141,16 +172,13 @@ function PinVerificationContent() {
   const numbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary to-primary/80 text-white relative overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/50 via-transparent to-primary/30" />
-      
+    <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
       <div className="relative z-10 flex flex-col h-screen">
         {/* Header */}
         <div className="flex-shrink-0 pt-12 pb-8 px-6 text-center">
           <div className="flex items-center justify-center mb-6">
-            <div className="bg-white backdrop-blur-sm rounded-2xl p-4">
-              <Logo className="h-8 w-8" />
+            <div className="bg-muted rounded-2xl p-4">
+              <Logo className="h-8 w-8 text-primary" />
             </div>
           </div>
           <h1 className="text-3xl font-bold font-headline mb-2">Budgee</h1>
@@ -161,7 +189,7 @@ function PinVerificationContent() {
           {/* Greeting */}
           <div className="text-center mb-8">
             <h2 className="text-2xl font-semibold mb-2">Good Day!</h2>
-            <p className="text-white/80">
+            <p className="text-muted-foreground">
               {user.firstName} {user.lastName}
             </p>
           </div>
@@ -175,22 +203,24 @@ function PinVerificationContent() {
                   key={index}
                   className={`w-4 h-4 rounded-full border-2 transition-all duration-200 ${
                     index < pin.length
-                      ? 'bg-white border-white'
-                      : 'border-white/50 bg-transparent'
+                      ? 'bg-foreground border-foreground'
+                      : 'border-foreground/40 bg-transparent'
                   }`}
                 />
               ))}
             </div>
             
             {error && (
-              <Alert className="mb-4 bg-red-500/20 border-red-400/50 text-white">
+              <Alert variant="destructive" className="mb-4">
                 <AlertDescription className="text-center text-sm">
-                  {error}
+                  {isBlocked && blockRemaining > 0
+                    ? `Too many failed attempts. Please wait ${Math.ceil(blockRemaining/1000)} seconds before trying again.`
+                    : error}
                 </AlertDescription>
               </Alert>
             )}
             
-            <p className="text-sm text-white/70">
+            <p className="text-sm text-muted-foreground">
               Never share your PIN or OTP with anyone.
             </p>
           </div>
@@ -201,11 +231,11 @@ function PinVerificationContent() {
               {numbers.slice(0, 9).map((number) => (
                 <Button
                   key={number}
-                  variant="ghost"
+                  variant="outline"
                   size="lg"
                   onClick={() => handleNumberPress(number)}
                   disabled={isLoading || isBlocked || isRedirecting}
-                  className="h-16 w-16 text-2xl font-semibold text-white hover:bg-white/10 border border-white/20 rounded-xl transition-all duration-200 active:scale-95"
+                  className="h-16 w-16 text-2xl font-semibold rounded-xl transition-all duration-200 active:scale-95"
                 >
                   {number}
                 </Button>
@@ -216,20 +246,20 @@ function PinVerificationContent() {
             <div className="grid grid-cols-3 gap-4 items-center">
               <div /> {/* Empty space */}
               <Button
-                variant="ghost"
+                variant="outline"
                 size="lg"
                 onClick={() => handleNumberPress('0')}
                 disabled={isLoading || isBlocked || isRedirecting}
-                className="h-16 w-16 text-2xl font-semibold text-white hover:bg-white/10 border border-white/20 rounded-xl transition-all duration-200 active:scale-95"
+                className="h-16 w-16 text-2xl font-semibold rounded-xl transition-all duration-200 active:scale-95"
               >
                 0
               </Button>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="lg"
                 onClick={handleDelete}
                 disabled={isLoading || isBlocked || pin.length === 0 || isRedirecting}
-                className="h-16 w-16 text-white hover:bg-white/10 border border-white/20 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-50"
+                className="h-16 w-16 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-50"
               >
                 <Delete className="h-5 w-5" />
               </Button>
@@ -242,12 +272,12 @@ function PinVerificationContent() {
           <div className="flex justify-between items-center text-sm">
             <button
               onClick={handleLogout}
-              className="text-white/80 hover:text-white transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
               disabled={isLoading}
             >
               Sign out instead
             </button>
-            <div className="flex items-center gap-2 text-white/70">
+            <div className="flex items-center gap-2 text-muted-foreground">
               <Shield className="h-4 w-4" />
               <span>Secured with PIN</span>
             </div>
@@ -257,10 +287,10 @@ function PinVerificationContent() {
       
       {/* Loading overlay */}
       {(isLoading || isRedirecting) && (
-        <div className="absolute inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-white/30 border-t-white mx-auto mb-2"></div>
-            <p className="text-white text-sm">{isRedirecting ? 'Redirecting...' : 'Verifying...'}</p>
+        <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-card rounded-xl p-6 text-center border">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-muted-foreground/30 border-t-primary mx-auto mb-2"></div>
+            <p className="text-foreground text-sm">{isRedirecting ? 'Redirecting...' : 'Verifying...'}</p>
           </div>
         </div>
       )}

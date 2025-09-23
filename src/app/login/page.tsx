@@ -15,7 +15,8 @@ export default function LoginPage() {
             <span className="text-2xl font-bold font-headline">Budgee</span>
           </Link>
         </div>
-        <Card className="shadow-2xl">
+        {/* Card wrapper only visible on md+ screens (desktop) */}
+        <Card className="shadow-2xl hidden md:block">
           <CardHeader>
             <CardTitle>Welcome back</CardTitle>
             <CardDescription>Enter your email and password to login to your account.</CardDescription>
@@ -24,6 +25,15 @@ export default function LoginPage() {
             <UserAuthForm formType="login" />
           </CardContent>
         </Card>
+        
+        {/* Mobile layout without card wrapper */}
+        <div className="md:hidden space-y-6">
+          <div className="space-y-2 text-center">
+            <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+            <p className="text-sm text-muted-foreground">Enter your email and password to login to your account.</p>
+          </div>
+          <UserAuthForm formType="login" />
+        </div>
         <p className="px-8 text-center text-sm text-muted-foreground mt-6">
           <Link
             href="/signup"
