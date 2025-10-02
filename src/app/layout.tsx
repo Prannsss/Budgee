@@ -11,6 +11,8 @@ import { AuthProvider } from "@/contexts/auth-context";
 import { SubscriptionProvider } from "@/contexts/subscription-context";
 import { PinProvider } from "@/contexts/pin-context";
 import { DynamicStatusBar } from "@/components/dynamic-status-bar";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { GlobalErrorHandler } from "@/components/global-error-handler";
 
 export const metadata: Metadata = {
   title: 'Budgee',
@@ -91,7 +93,8 @@ export default function RootLayout({
         <meta name="msapplication-config" content="/icons/browserconfig.xml" />
         <meta name="msapplication-TileColor" content="#000000" />
         <meta name="msapplication-tap-highlight" content="no" />
-        <meta name="theme-color" content="#000000" />
+        <meta name="theme-color" content="#000000" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
         
         {/* Chrome-specific PWA enhancements */}
         <meta name="mobile-web-app-capable" content="yes" />
@@ -104,25 +107,28 @@ export default function RootLayout({
         <link rel="shortcut icon" href="/favicon.ico" />
       </head>
   <body className={cn("antialiased", "min-h-screen bg-background font-sans")}>
-        <PWAInstaller />
-        <AuthProvider>
-          <PinProvider>
-            <SubscriptionProvider>
-              <ThemeProvider
-                attribute="class"
-                defaultTheme="light"
-                enableSystem
-                disableTransitionOnChange
-              >
-                <DynamicStatusBar />
-                {children}
-                <Toaster />
-                <InstallPrompt />
-                <OfflineIndicator />
-              </ThemeProvider>
-            </SubscriptionProvider>
-          </PinProvider>
-        </AuthProvider>
+        <ErrorBoundary>
+          <PWAInstaller />
+          <AuthProvider>
+            <PinProvider>
+              <SubscriptionProvider>
+                <ThemeProvider
+                  attribute="class"
+                  defaultTheme="light"
+                  enableSystem
+                  disableTransitionOnChange
+                >
+                  <GlobalErrorHandler />
+                  <DynamicStatusBar />
+                  {children}
+                  <Toaster />
+                  <InstallPrompt />
+                  <OfflineIndicator />
+                </ThemeProvider>
+              </SubscriptionProvider>
+            </PinProvider>
+          </AuthProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );
