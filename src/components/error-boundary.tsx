@@ -22,6 +22,18 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    // Don't catch network/chunk loading errors - let them be handled by service worker
+    const isNetworkError = error.message?.includes('Loading chunk') || 
+                          error.message?.includes('Loading CSS chunk') ||
+                          error.message?.includes('Failed to fetch') ||
+                          error.message?.includes('NetworkError');
+    
+    if (isNetworkError) {
+      console.log('Network/chunk error detected, not catching in ErrorBoundary:', error);
+      // Don't catch these errors, let the service worker handle offline scenarios
+      return { hasError: false };
+    }
+    
     return { hasError: true, error };
   }
 
