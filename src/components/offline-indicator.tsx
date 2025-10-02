@@ -8,20 +8,30 @@ import { useState, useEffect } from 'react';
 export function OfflineIndicator() {
   const isOnline = useOnlineStatus();
   const [showOfflineMessage, setShowOfflineMessage] = useState(false);
+  const [hasBeenOffline, setHasBeenOffline] = useState(false);
 
   useEffect(() => {
-    if (!isOnline) {
-      setShowOfflineMessage(true);
-    } else {
-      // Hide the message after a brief delay when back online
-      const timer = setTimeout(() => {
-        setShowOfflineMessage(false);
-      }, 2000);
-      return () => clearTimeout(timer);
+    try {
+      if (!isOnline) {
+        setShowOfflineMessage(true);
+        setHasBeenOffline(true);
+      } else if (hasBeenOffline) {
+        // Show "back online" message briefly when reconnected
+        setShowOfflineMessage(true);
+        const timer = setTimeout(() => {
+          setShowOfflineMessage(false);
+        }, 2000);
+        return () => clearTimeout(timer);
+      }
+    } catch (error) {
+      console.warn('Error in OfflineIndicator:', error);
+      // Don't show indicator if there's an error
+      setShowOfflineMessage(false);
     }
-  }, [isOnline]);
+  }, [isOnline, hasBeenOffline]);
 
-  if (!showOfflineMessage) {
+  // Don't render during SSR or if there's no message to show
+  if (typeof window === 'undefined' || !showOfflineMessage) {
     return null;
   }
 
