@@ -25,8 +25,8 @@ const plans = [
     href: "/signup",
   },
   {
-    name: "Basic",
-    price: "₱299",
+    name: "Budgeet",
+    price: "₱199",
     period: "/ month",
     description: "For users who want more control and smarter insights.",
     features: [
@@ -43,7 +43,7 @@ const plans = [
   },
   {
     name: "Premium",
-    price: "₱499",
+    price: "₱399",
     period: "/ month",
     description: "For power users and small businesses needing advanced features.",
     features: [
@@ -52,7 +52,6 @@ const plans = [
       "Full AI financial assistant access",
       "Investment and savings tracking",
       "Custom financial reports",
-      "Priority customer support",
     ],
     cta: "Choose Premium",
     href: "/signup?plan=premium",
