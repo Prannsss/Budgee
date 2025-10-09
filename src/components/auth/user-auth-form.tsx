@@ -275,22 +275,34 @@ export function UserAuthForm({ className, formType, ...props }: UserAuthFormProp
           </span>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <Button variant="outline" type="button" disabled={isLoading || !!isSocialLoading} onClick={() => onSocialLogin('google')}>
+      <div className="grid gap-3">
+        <Button 
+          variant="outline" 
+          type="button" 
+          disabled={isLoading || !!isSocialLoading} 
+          onClick={() => onSocialLogin('google')}
+          className="w-full h-12 rounded-full border-2"
+        >
           {isSocialLoading === 'google' ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
           ) : (
-            <GoogleIcon className="mr-2 h-4 w-4" />
-          )}{" "}
-          Google
+            <GoogleIcon className="mr-2 h-5 w-5" />
+          )}
+          Sign {formType === 'login' ? 'in' : 'up'} with Google
         </Button>
-        <Button variant="outline" type="button" disabled={isLoading || !!isSocialLoading} onClick={() => onSocialLogin('facebook')}>
+        <Button 
+          variant="outline" 
+          type="button" 
+          disabled={isLoading || !!isSocialLoading} 
+          onClick={() => onSocialLogin('facebook')}
+          className="w-full h-12 rounded-full border-2"
+        >
           {isSocialLoading === 'facebook' ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
           ) : (
-            <FacebookIcon className="mr-2 h-4 w-4" />
-          )}{" "}
-          Facebook
+            <FacebookIcon className="mr-2 h-5 w-5" />
+          )}
+          Sign {formType === 'login' ? 'in' : 'up'} with Facebook
         </Button>
       </div>
     </div>

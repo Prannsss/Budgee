@@ -7,64 +7,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { PaymentModal } from "@/components/payment/payment-modal";
 import { useSubscription } from "@/contexts/subscription-context";
-
-const plans = [
-  {
-    name: "Free",
-    price: "₱0",
-    period: "/ month",
-    description: "For individuals just starting with budgeting.",
-    features: [
-      "Connect 1 bank account",
-      "Connect 1 e-wallet",
-      "Basic transaction categorization",
-      "Net worth tracking",
-      "Monthly spending summary",
-    ],
-    cta: "Current Plan",
-    href: "/pricing",
-  },
-  {
-    name: "Basic",
-    price: "₱299",
-    period: "/ month",
-    description: "For users who want more control and smarter insights.",
-    features: [
-      "Everything in Free",
-      "Connect up to 5 accounts",
-      "Advanced categorization rules",
-      "AI-powered financial insights",
-      "Export transactions to CSV/Excel",
-      "Budget goals and alerts",
-    ],
-    cta: "Upgrade to Basic",
-    href: "/pricing",
-    popular: true,
-  },
-  {
-    name: "Premium",
-    price: "₱499",
-    period: "/ month",
-    description: "For power users and small businesses needing advanced features.",
-    features: [
-      "Everything in Basic",
-      "Unlimited account connections",
-      "Full AI financial assistant access",
-      "Investment and savings tracking",
-      "Custom financial reports",
-      "Priority customer support",
-    ],
-    cta: "Upgrade to Premium",
-    href: "/pricing",
-  },
-];
+import { pricingPlans, PricingPlan } from "@/lib/pricing-plans";
 
 export default function YourPlanPage() {
   const { currentPlan, subscription, isLoading } = useSubscription();
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<typeof plans[0] | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
 
-  const handleUpgradeClick = (plan: typeof plans[0]) => {
+  const handleUpgradeClick = (plan: PricingPlan) => {
     if (plan.name !== currentPlan) {
       setSelectedPlan(plan);
       setIsPaymentModalOpen(true);
@@ -120,7 +70,7 @@ export default function YourPlanPage() {
 
         {/* Plans Layout - Simple Grid for both Desktop and Mobile */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {plans.map((plan) => {
+          {pricingPlans.map((plan) => {
             const isCurrent = plan.name === currentPlan;
             return (
               <Card 
@@ -173,7 +123,7 @@ export default function YourPlanPage() {
                     variant={isCurrent ? 'outline' : plan.popular ? 'default' : 'outline'}
                     disabled={isCurrent}
                   >
-                    {isCurrent ? plan.cta : plan.cta}
+                    {isCurrent ? plan.currentPlanCta : plan.cta}
                   </Button>
                 </CardFooter>
               </Card>

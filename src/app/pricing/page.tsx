@@ -7,56 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import PublicHeader from "@/components/layout/public-header";
 import Footer from "@/components/layout/footer";
-
-const plans = [
-  {
-    name: "Free",
-    price: "₱0",
-    period: "/ month",
-    description: "For individuals just starting with budgeting.",
-    features: [
-      "Connect 1 bank account",
-      "Connect 1 e-wallet",
-      "Basic transaction categorization",
-      "Net worth tracking",
-      "Monthly spending summary",
-    ],
-    cta: "Get Started for Free",
-    href: "/signup",
-  },
-  {
-    name: "Budgeet",
-    price: "₱199",
-    period: "/ month",
-    description: "For users who want more control and smarter insights.",
-    features: [
-      "Everything in Free",
-      "Connect up to 5 accounts",
-      "Advanced categorization rules",
-      "AI-powered financial insights",
-      "Export transactions to CSV/Excel",
-      "Budget goals and alerts",
-    ],
-    cta: "Choose Basic",
-    href: "/signup?plan=basic",
-    popular: true,
-  },
-  {
-    name: "Premium",
-    price: "₱399",
-    period: "/ month",
-    description: "For power users and small businesses needing advanced features.",
-    features: [
-      "Everything in Basic",
-      "Unlimited account connections",
-      "Full AI financial assistant access",
-      "Investment and savings tracking",
-      "Custom financial reports",
-    ],
-    cta: "Choose Premium",
-    href: "/signup?plan=premium",
-  },
-];
+import { pricingPlans } from "@/lib/pricing-plans";
 
 export default function PricingPage() {
   const router = useRouter();
@@ -79,7 +30,7 @@ export default function PricingPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-12 mt-10 w-full max-w-5xl">
-            {plans.map((plan) => (
+            {pricingPlans.map((plan) => (
               <Card 
                 key={plan.name} 
                 className={`flex flex-col cursor-pointer transition-all duration-200 hover:scale-105 ${
