@@ -48,27 +48,27 @@ export const getDashboardSummary = asyncHandler(async (req: Request, res: Respon
   // Calculate totals
   const totalIncome = transactions
     .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
   const totalExpense = transactions
     .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-  const netBalance = totalIncome - totalExpense;
+  const netBalance = (Number(totalIncome) || 0) - (Number(totalExpense) || 0);
 
   // Get account balances
   const accounts = await Account.findAll({
     where: { user_id: userId, is_active: true },
   });
 
-  const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
+  const totalBalance = accounts.reduce((sum, acc) => sum + (Number(acc.balance) || 0), 0);
 
   // Group by category
   const expensesByCategory = transactions
     .filter(t => t.type === 'expense')
     .reduce((acc: any, t) => {
       const categoryName = t.category?.name || 'Uncategorized';
-      acc[categoryName] = (acc[categoryName] || 0) + Number(t.amount);
+      acc[categoryName] = (acc[categoryName] || 0) + (Number(t.amount) || 0);
       return acc;
     }, {});
 
@@ -76,7 +76,7 @@ export const getDashboardSummary = asyncHandler(async (req: Request, res: Respon
     .filter(t => t.type === 'income')
     .reduce((acc: any, t) => {
       const categoryName = t.category?.name || 'Uncategorized';
-      acc[categoryName] = (acc[categoryName] || 0) + Number(t.amount);
+      acc[categoryName] = (acc[categoryName] || 0) + (Number(t.amount) || 0);
       return acc;
     }, {});
 
@@ -176,7 +176,7 @@ export const getSpendingByCategory = asyncHandler(async (req: Request, res: Resp
       [sequelize.fn('SUM', sequelize.col('amount')), 'total'],
       [sequelize.fn('COUNT', sequelize.col('Transaction.id')), 'count'],
     ],
-    group: ['category_id', 'category.id', 'category.name', 'category.icon', 'category.color'],
+    group: ['category_id', 'category.id', 'category.name', 'category.icon'],
     order: [[sequelize.fn('SUM', sequelize.col('amount')), 'DESC']],
     raw: false,
   });
@@ -226,7 +226,7 @@ export const getIncomeBySource = asyncHandler(async (req: Request, res: Response
       [sequelize.fn('SUM', sequelize.col('amount')), 'total'],
       [sequelize.fn('COUNT', sequelize.col('Transaction.id')), 'count'],
     ],
-    group: ['category_id', 'category.id', 'category.name', 'category.icon', 'category.color'],
+    group: ['category_id', 'category.id', 'category.name', 'category.icon'],
     order: [[sequelize.fn('SUM', sequelize.col('amount')), 'DESC']],
     raw: false,
   });

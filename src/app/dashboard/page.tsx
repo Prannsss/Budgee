@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, LineChart, Plus, PiggyBank, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo, useState, useEffect, useCallback } from "react";
-import { TransactionService } from "@/lib/storage-service";
+import { API } from "@/lib/api-service";
 import { useAuth } from "@/contexts/auth-context";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -68,14 +68,29 @@ export default function DashboardPage() {
       // Simulate loading delay for better UX
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      const userTransactions = TransactionService.getTransactions(user.id);
-      const userAccounts = TransactionService.getAccounts(user.id);
-      const userTotals = TransactionService.calculateTotals(user.id);
+      try {
+        const [userTransactions, userAccounts, dashboardStats] = await Promise.all([
+          API.transactions.getAll(),
+          API.accounts.getAll(),
+          API.dashboard.getSummary()
+        ]);
 
-      setTransactions(userTransactions);
-      setAccounts(userAccounts);
-      setTotals(userTotals);
-      setIsLoading(false);
+        setTransactions(Array.isArray(userTransactions) ? userTransactions : []);
+        setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
+        setTotals({
+          totalIncome: Number(dashboardStats?.totalIncome) || 0,
+          totalExpenses: Number(dashboardStats?.totalExpenses) || 0,
+          savings: Number(dashboardStats?.savings) || 0,
+        });
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        // Set empty defaults on error
+        setTransactions([]);
+        setAccounts([]);
+        setTotals({ totalIncome: 0, totalExpenses: 0, savings: 0 });
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadData();
@@ -91,14 +106,19 @@ export default function DashboardPage() {
 
   // Calculate financial metrics with memoization
   const assets = useMemo(() => {
-    return accounts.reduce((sum, a) => sum + (a.type !== 'Crypto' ? a.balance : 0), 0);
+    if (!Array.isArray(accounts)) return 0;
+    return accounts.reduce((sum, a) => sum + (Number(a.balance) || 0), 0);
   }, [accounts]);
 
   const savings = useMemo(() => {
-    return totals.savings;
+    return Number(totals?.savings) || 0;
   }, [totals]);
 
-  const netWorth = useMemo(() => assets + savings, [assets, savings]);
+  const netWorth = useMemo(() => {
+    const assetsValue = Number(assets) || 0;
+    const savingsValue = Number(savings) || 0;
+    return assetsValue + savingsValue;
+  }, [assets, savings]);
   
   // For now, we don't have liabilities in our simple model
   const liabilities = 0;
@@ -109,7 +129,10 @@ export default function DashboardPage() {
     []
   );
   
-  const fmt = useCallback((n: number) => formatter.format(n), [formatter]);
+  const fmt = useCallback((n: number) => {
+    const safeNumber = Number(n) || 0;
+    return formatter.format(safeNumber);
+  }, [formatter]);
   return (
     <div className="flex flex-col gap-6">
       <Card className="shadow-lg bg-primary text-primary-foreground">
@@ -181,8 +204,8 @@ export default function DashboardPage() {
             const now = new Date();
             const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
             const monthly = transactions.filter((t: Transaction) => t.date.startsWith(ym));
-            const income = monthly.filter((t: Transaction) => t.amount > 0).reduce((s: number, t: Transaction) => s + t.amount, 0);
-            const expenses = monthly.filter((t: Transaction) => t.amount < 0).reduce((s: number, t: Transaction) => s + Math.abs(t.amount), 0);
+            const income = monthly.filter((t: Transaction) => t.amount > 0).reduce((s: number, t: Transaction) => s + (Number(t.amount) || 0), 0);
+            const expenses = monthly.filter((t: Transaction) => t.amount < 0).reduce((s: number, t: Transaction) => s + Math.abs(Number(t.amount) || 0), 0);
             return (
               <>
                 <StatCard

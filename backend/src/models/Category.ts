@@ -8,8 +8,6 @@ export interface CategoryAttributes {
   user_id: number;
   name: string;
   type: 'income' | 'expense';
-  icon?: string;
-  color?: string;
   is_default: boolean;
   created_at?: Date;
   updated_at?: Date;
@@ -25,8 +23,6 @@ class Category extends Model<CategoryAttributes, CategoryCreationAttributes> imp
   public user_id!: number;
   public name!: string;
   public type!: 'income' | 'expense';
-  public icon?: string;
-  public color?: string;
   public is_default!: boolean;
 
   public readonly created_at!: Date;
@@ -59,17 +55,9 @@ Category.init(
       type: DataTypes.ENUM('income', 'expense'),
       allowNull: false,
     },
-    icon: {
-      type: DataTypes.STRING(50),
-      allowNull: true,
-    },
-    color: {
-      type: DataTypes.STRING(7),
-      allowNull: true,
-    },
     is_default: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false,
+      defaultValue: true,
     },
     created_at: {
       type: DataTypes.DATE,

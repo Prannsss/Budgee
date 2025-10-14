@@ -7,7 +7,7 @@ import { Shield, Lock, Delete } from "lucide-react";
 import { Logo } from "@/components/icons/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { PinUtils } from "@/lib/utils";
-import { TransactionService } from "@/lib/storage-service";
+import { API } from "@/lib/api-service";
 import { useAuth } from "@/contexts/auth-context";
 import { usePin } from "@/contexts/pin-context";
 import { useRouter } from "next/navigation";
@@ -56,22 +56,11 @@ function PinVerificationContent() {
     setError('');
 
     try {
-      const pinData = TransactionService.getPinData(user.id);
+      const { valid } = await API.pin.verifyPin(pin);
       
-      if (!pinData || !pinData.isEnabled) {
-        setError('PIN not found. Please contact support.');
-        setIsLoading(false);
-        return;
-      }
-
-      const isValid = await PinUtils.verifyPin(pin, pinData.hashedPin);
-      
-      if (isValid) {
-        // Update last used timestamp
-        TransactionService.updatePinLastUsed(user.id);
-        
+      if (valid) {
         // Unlock the app using PIN context
-        unlockApp();
+        await unlockApp();
         
         // Set redirecting state to prevent multiple submissions
         setIsRedirecting(true);

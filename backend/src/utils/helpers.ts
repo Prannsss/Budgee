@@ -36,9 +36,10 @@ export const isOTPExpired = (expiresAt: Date): boolean => {
  * Generate OTP expiration time (default: 10 minutes from now)
  */
 export const getOTPExpiration = (minutes: number = 10): Date => {
-  const expiration = new Date();
-  expiration.setMinutes(expiration.getMinutes() + minutes);
-  return expiration;
+  // Use timestamp-based calculation for more reliable expiration
+  const now = Date.now();
+  const expirationTime = now + (minutes * 60 * 1000); // minutes to milliseconds
+  return new Date(expirationTime);
 };
 
 /**

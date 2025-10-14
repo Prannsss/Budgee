@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
+import passport from './config/passport';
 import routes from './routes';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 
@@ -28,11 +29,19 @@ const createApp = (): Application => {
     })
   );
 
+  // Initialize Passport for OAuth
+  app.use(passport.initialize());
+
   // Rate limiting
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
-    message: 'Too many requests from this IP, please try again later.',
+    max: process.env.NODE_ENV === 'development' ? 1000 : 100, // Higher limit for development
+    message: { 
+      success: false, 
+      message: 'Too many requests from this IP, please try again later.' 
+    },
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   });
   app.use('/api/', limiter);
 

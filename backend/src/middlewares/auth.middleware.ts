@@ -1,23 +1,18 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-// Extend Express Request type to include user
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: number;
-        email: string;
-        plan_id: number;
-      };
-    }
-  }
-}
-
-interface JWTPayload {
+// JWT Payload interface
+export interface JWTPayload {
   id: number;
   email: string;
   plan_id: number;
+}
+
+// Extend Express Request to include our JWT user data  
+declare global {
+  namespace Express {
+    interface User extends JWTPayload {}
+  }
 }
 
 /**

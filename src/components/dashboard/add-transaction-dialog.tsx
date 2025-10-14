@@ -17,7 +17,7 @@ import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Textarea } from "../ui/textarea";
 import { Plus, DollarSign, Landmark } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { TransactionService } from "@/lib/storage-service";
+import { API } from "@/lib/api-service";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import type { Transaction, Account, Category } from "@/lib/types";
@@ -46,23 +46,31 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
   useEffect(() => {
     if (!user?.id || !isOpen) return;
     
-    // Ensure user has a cash account for manual transactions
-    TransactionService.ensureCashAccount(user.id);
+    const loadData = async () => {
+      try {
+        const [userAccounts, userCategories] = await Promise.all([
+          API.accounts.getAll(),
+          API.categories.getAll()
+        ]);
+        
+        setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
+        setCategories(Array.isArray(userCategories) ? userCategories : []);
+        
+        // Set first account as default if none selected
+        if (Array.isArray(userAccounts) && userAccounts.length > 0 && !selectedAccount) {
+          setSelectedAccount(userAccounts[0].id);
+        }
+      } catch (error) {
+        console.error('Error loading transaction dialog data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load accounts and categories.",
+          variant: "destructive",
+        });
+      }
+    };
     
-    // Initialize default categories if none exist
-    TransactionService.initializeDefaultCategories(user.id);
-    
-    const userAccounts = TransactionService.getAccounts(user.id);
-    setAccounts(userAccounts);
-    
-    const userCategories = TransactionService.getCategories(user.id);
-    setCategories(userCategories);
-    
-    // Set cash account as default for manual transactions
-    const cashAccount = userAccounts.find(account => account.type === 'Cash');
-    if (cashAccount && !selectedAccount) {
-      setSelectedAccount(cashAccount.id);
-    }
+    loadData();
   }, [user?.id, isOpen, selectedAccount]);
 
   const handleAddTransaction = async () => {
@@ -92,16 +100,8 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
         notes: notes || undefined,
       };
       
-      // Add to localStorage
-      TransactionService.addTransaction(user.id, transactionData);
-      
-      // Update account balance for all account types including Cash
-      const account = accounts.find(a => a.id === selectedAccount);
-      if (account) {
-        TransactionService.updateAccount(user.id, selectedAccount, {
-          balance: account.balance + transactionData.amount
-        });
-      }
+      // Add transaction via API
+      await API.transactions.create(transactionData);
       
       // Reset form
       setAmount("");

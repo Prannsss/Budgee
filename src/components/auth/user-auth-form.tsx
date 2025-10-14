@@ -15,7 +15,6 @@ import { Loader2 } from "lucide-react";
 import { GoogleIcon } from "../icons/google";
 import { FacebookIcon } from "../icons/facebook";
 import { useAuth } from "@/contexts/auth-context";
-import { TransactionService } from "@/lib/storage-service";
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
   formType: "login" | "signup";
@@ -62,7 +61,7 @@ export function UserAuthForm({ className, formType, ...props }: UserAuthFormProp
   const [isSocialLoading, setIsSocialLoading] = React.useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, signup } = useAuth();
 
   async function onSubmit(data: any) {
     setIsLoading(true);
@@ -71,53 +70,65 @@ export function UserAuthForm({ className, formType, ...props }: UserAuthFormProp
       let success = false;
       
       if (formType === "login") {
-        success = await login(data.email, data.password);
-        
-        if (success) {
-          toast({
-            title: "Success!",
-            description: "You are now logged in.",
-          });
-          router.push("/dashboard");
-        } else {
-          toast({
-            title: "Error",
-            description: "Invalid credentials. Please try again.",
-            variant: "destructive",
-          });
+        try {
+          success = await login(data.email, data.password);
+          
+          if (success) {
+            toast({
+              title: "Success!",
+              description: "You are now logged in.",
+            });
+            router.push("/dashboard");
+          } else {
+            toast({
+              title: "Error",
+              description: "Invalid credentials. Please try again.",
+              variant: "destructive",
+            });
+          }
+        } catch (error: any) {
+          // Check if error is due to unverified email
+          if (error.message && error.message.includes('verify')) {
+            toast({
+              title: "Email Not Verified",
+              description: "Please verify your email address before logging in.",
+              variant: "destructive",
+            });
+            // Redirect to verification page with email
+            router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+          } else {
+            toast({
+              title: "Error",
+              description: "Invalid credentials. Please try again.",
+              variant: "destructive",
+            });
+          }
         }
       } else {
-        // Check if email is already registered
-        if (TransactionService.isEmailRegistered(data.email)) {
-          toast({
-            title: "Error",
-            description: "An account with this email already exists.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        // Create account directly without phone verification
-        const newUser = TransactionService.addUser({
-          email: data.email,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          password: data.password, // In a real app, this would be hashed
-        });
-
-        if (newUser) {
-          toast({
-            title: "Account Created Successfully!",
-            description: "Please log in with your credentials to access your account.",
-          });
+        // Signup using auth context
+        try {
+          const success = await signup(data.email, data.password, data.firstName, data.lastName);
           
-          // Redirect to login page
-          router.push("/login");
-        } else {
+          if (success) {
+            toast({
+              title: "Account Created! 🎉",
+              description: "Please check your email to verify your account.",
+            });
+            
+            // Redirect to verification page with email
+            router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+          } else {
+            toast({
+              title: "Error",
+              description: "Failed to create account. Please try again.",
+              variant: "destructive",
+            });
+          }
+        } catch (error: any) {
+          console.error('Signup error:', error);
           toast({
             title: "Error",
-            description: "Failed to create account. Please try again.",
+            description: error.message || "Failed to connect to server. Please check your internet connection and try again.",
             variant: "destructive",
           });
         }
@@ -137,30 +148,15 @@ export function UserAuthForm({ className, formType, ...props }: UserAuthFormProp
     setIsSocialLoading(provider);
     
     try {
-      // Simulate social login with a test account
-      const testEmail = `test@${provider}.com`;
-      const success = await login(testEmail, "testpassword123");
-      
-      if (success) {
-        toast({
-          title: "Success!",
-          description: `Logged in with ${provider}.`,
-        });
-        router.push("/dashboard");
-      } else {
-        toast({
-          title: "Error",
-          description: "Social login failed. Please try again.",
-          variant: "destructive",
-        });
-      }
+      // Redirect to backend OAuth endpoint
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      window.location.href = `${apiUrl}/api/auth/${provider}`;
     } catch (error) {
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsSocialLoading(null);
     }
   }

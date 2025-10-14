@@ -1,5 +1,6 @@
 import type { Account, Transaction, Subscription, PlanType, Category, SavingsAllocation, PinData } from './types';
 import { PIN_REQUIRED_ON_STARTUP_KEY } from './constants';
+import { TransactionAPI, AccountAPI, CategoryAPI, type TransactionInput as APITransactionInput, type AccountInput as APIAccountInput, type CategoryInput as APICategoryInput } from './api-service';
 
 interface User {
   id: string;
@@ -8,12 +9,9 @@ interface User {
   lastName: string;
 }
 
-// localStorage keys
-const TRANSACTIONS_STORAGE_KEY = 'budgee_transactions';
-const ACCOUNTS_STORAGE_KEY = 'budgee_accounts';
+// localStorage keys (now only used for local-only features like PIN)
 const USERS_STORAGE_KEY = 'budgee_users';
 const SUBSCRIPTIONS_STORAGE_KEY = 'budgee_subscriptions';
-const CATEGORIES_STORAGE_KEY = 'budgee_categories';
 const SAVINGS_STORAGE_KEY = 'budgee_savings';
 const PIN_STORAGE_KEY = 'budgee_pins';
 
@@ -23,7 +21,7 @@ export interface TransactionInput {
   category: Transaction['category'];
   accountId: string;
   date?: string;
-  notes?: string; // Optional notes field
+  notes?: string;
 }
 
 export interface AccountInput {
@@ -49,165 +47,218 @@ export interface SavingsAllocationInput {
 }
 
 export class TransactionService {
-  private static getUserKey(baseKey: string, userId: string): string {
-    return `${baseKey}_${userId}`;
+  // ==================== Transaction methods (now using API) ====================
+  
+  static async getTransactions(userId: string): Promise<Transaction[]> {
+    try {
+      return await TransactionAPI.getAll();
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      return [];
+    }
   }
 
-  // Transaction methods
-  static getTransactions(userId: string): Transaction[] {
-    if (typeof window === 'undefined') return [];
-    const key = this.getUserKey(TRANSACTIONS_STORAGE_KEY, userId);
-    const transactionsStr = localStorage.getItem(key);
-    return transactionsStr ? JSON.parse(transactionsStr) : [];
+  static async addTransaction(userId: string, transaction: TransactionInput): Promise<Transaction | null> {
+    try {
+      const apiTransaction: APITransactionInput = {
+        description: transaction.description,
+        amount: transaction.amount,
+        category: transaction.category,
+        accountId: transaction.accountId,
+        date: transaction.date,
+        notes: transaction.notes,
+      };
+      
+      const newTransaction = await TransactionAPI.create(apiTransaction);
+      
+      // Dispatch event for UI updates
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('budgee:dataUpdate'));
+      }
+      
+      return newTransaction;
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      return null;
+    }
   }
 
-  static addTransaction(userId: string, transaction: TransactionInput): Transaction {
-    const newTransaction: Transaction = {
-      id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      date: transaction.date || new Date().toISOString().split('T')[0],
-      description: transaction.description,
-      amount: transaction.amount,
-      category: transaction.category,
-      status: 'completed' as const,
-      accountId: transaction.accountId,
-      notes: transaction.notes,
-    };
-
-    const transactions = this.getTransactions(userId);
-    transactions.push(newTransaction);
-    this.saveTransactions(userId, transactions);
-    
-    return newTransaction;
+  static async updateTransaction(
+    userId: string, 
+    transactionId: string, 
+    updates: Partial<TransactionInput>
+  ): Promise<Transaction | null> {
+    try {
+      const updatedTransaction = await TransactionAPI.update(transactionId, updates);
+      
+      // Dispatch event for UI updates
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('budgee:dataUpdate'));
+      }
+      
+      return updatedTransaction;
+    } catch (error) {
+      console.error('Error updating transaction:', error);
+      return null;
+    }
   }
 
-  static updateTransaction(userId: string, transactionId: string, updates: Partial<TransactionInput>): Transaction | null {
-    const transactions = this.getTransactions(userId);
-    const index = transactions.findIndex(t => t.id === transactionId);
-    
-    if (index === -1) return null;
-    
-    transactions[index] = {
-      ...transactions[index],
-      ...updates,
-    };
-    
-    this.saveTransactions(userId, transactions);
-    return transactions[index];
+  static async removeTransaction(userId: string, transactionId: string): Promise<boolean> {
+    try {
+      await TransactionAPI.delete(transactionId);
+      
+      // Dispatch event for UI updates
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('budgee:dataUpdate'));
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error removing transaction:', error);
+      return false;
+    }
   }
 
-  static removeTransaction(userId: string, transactionId: string): boolean {
-    const transactions = this.getTransactions(userId);
-    const filteredTransactions = transactions.filter(t => t.id !== transactionId);
-    
-    if (filteredTransactions.length === transactions.length) return false;
-    
-    this.saveTransactions(userId, filteredTransactions);
-    return true;
+  // ==================== Account methods (now using API) ====================
+  
+  static async getAccounts(userId: string): Promise<Account[]> {
+    try {
+      return await AccountAPI.getAll();
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
+      return [];
+    }
   }
 
-  private static saveTransactions(userId: string, transactions: Transaction[]): void {
-    if (typeof window === 'undefined') return;
-    const key = this.getUserKey(TRANSACTIONS_STORAGE_KEY, userId);
-    localStorage.setItem(key, JSON.stringify(transactions));
+  static async addAccount(userId: string, account: AccountInput): Promise<Account | null> {
+    try {
+      const apiAccount: APIAccountInput = {
+        name: account.name,
+        type: account.type,
+        balance: account.balance,
+        lastFour: account.lastFour,
+      };
+      
+      const newAccount = await AccountAPI.create(apiAccount);
+      
+      // Dispatch event for UI updates
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('budgee:dataUpdate'));
+      }
+      
+      return newAccount;
+    } catch (error) {
+      console.error('Error adding account:', error);
+      return null;
+    }
   }
 
-  // Account methods
-  static getAccounts(userId: string): Account[] {
-    if (typeof window === 'undefined') return [];
-    const key = this.getUserKey(ACCOUNTS_STORAGE_KEY, userId);
-    const accountsStr = localStorage.getItem(key);
-    return accountsStr ? JSON.parse(accountsStr) : [];
+  static async updateAccount(
+    userId: string, 
+    accountId: string, 
+    updates: Partial<AccountInput>
+  ): Promise<Account | null> {
+    try {
+      const updatedAccount = await AccountAPI.update(accountId, updates);
+      
+      // Dispatch event for UI updates
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('budgee:dataUpdate'));
+      }
+      
+      return updatedAccount;
+    } catch (error) {
+      console.error('Error updating account:', error);
+      return null;
+    }
   }
 
-  static addAccount(userId: string, account: AccountInput): Account {
-    const newAccount: Account = {
-      id: `acc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name: account.name,
-      type: account.type,
-      balance: account.balance,
-      lastFour: account.lastFour,
-    };
-
-    const accounts = this.getAccounts(userId);
-    accounts.push(newAccount);
-    this.saveAccounts(userId, accounts);
-    
-    return newAccount;
-  }
-
-  static updateAccount(userId: string, accountId: string, updates: Partial<AccountInput>): Account | null {
-    const accounts = this.getAccounts(userId);
-    const index = accounts.findIndex(a => a.id === accountId);
-    
-    if (index === -1) return null;
-    
-    accounts[index] = {
-      ...accounts[index],
-      ...updates,
-    };
-    
-    this.saveAccounts(userId, accounts);
-    return accounts[index];
-  }
-
-  static removeAccount(userId: string, accountId: string): boolean {
-    const accounts = this.getAccounts(userId);
-    const filteredAccounts = accounts.filter(a => a.id !== accountId);
-    
-    if (filteredAccounts.length === accounts.length) return false;
-    
-    this.saveAccounts(userId, filteredAccounts);
-    return true;
-  }
-
-  private static saveAccounts(userId: string, accounts: Account[]): void {
-    if (typeof window === 'undefined') return;
-    const key = this.getUserKey(ACCOUNTS_STORAGE_KEY, userId);
-    localStorage.setItem(key, JSON.stringify(accounts));
+  static async removeAccount(userId: string, accountId: string): Promise<boolean> {
+    try {
+      await AccountAPI.delete(accountId);
+      
+      // Dispatch event for UI updates
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('budgee:dataUpdate'));
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error removing account:', error);
+      return false;
+    }
   }
 
   // Ensure user has a cash account for manual transactions
-  static ensureCashAccount(userId: string): Account {
-    const accounts = this.getAccounts(userId);
-    let cashAccount = accounts.find(account => account.type === 'Cash');
-    
-    if (!cashAccount) {
-      cashAccount = this.addAccount(userId, {
-        name: 'Cash',
-        type: 'Cash',
-        balance: 0.00,
-        lastFour: '----'
-      });
+  static async ensureCashAccount(userId: string): Promise<Account | null> {
+    try {
+      const accounts = await this.getAccounts(userId);
+      
+      // Safety check - ensure accounts is an array
+      if (!Array.isArray(accounts)) {
+        console.warn('ensureCashAccount: accounts is not an array', accounts);
+        return null;
+      }
+      
+      // Look for Cash account by name (backend creates it with type='bank', name='Cash')
+      let cashAccount = accounts.find(account => account.name === 'Cash');
+      
+      if (!cashAccount) {
+        const newAccount = await this.addAccount(userId, {
+          name: 'Cash',
+          type: 'Bank', // Backend expects 'bank' (will be converted to lowercase)
+          balance: 0.00,
+          lastFour: '----'
+        });
+        cashAccount = newAccount || undefined;
+      }
+      
+      return cashAccount || null;
+    } catch (error) {
+      console.error('Error ensuring cash account:', error);
+      return null;
     }
-    
-    return cashAccount;
   }
 
   // Analytics methods
-  static getTransactionsByDateRange(userId: string, startDate: string, endDate: string): Transaction[] {
-    const transactions = this.getTransactions(userId);
-    return transactions.filter(t => t.date >= startDate && t.date <= endDate);
+  static async getTransactionsByDateRange(userId: string, startDate: string, endDate: string): Promise<Transaction[]> {
+    try {
+      const transactions = await this.getTransactions(userId);
+      return transactions.filter(t => t.date >= startDate && t.date <= endDate);
+    } catch (error) {
+      console.error('Error fetching transactions by date range:', error);
+      return [];
+    }
   }
 
-  static getTransactionsByCategory(userId: string, category: Transaction['category']): Transaction[] {
-    const transactions = this.getTransactions(userId);
-    return transactions.filter(t => t.category === category);
+  static async getTransactionsByCategory(userId: string, category: Transaction['category']): Promise<Transaction[]> {
+    try {
+      const transactions = await this.getTransactions(userId);
+      return transactions.filter(t => t.category === category);
+    } catch (error) {
+      console.error('Error fetching transactions by category:', error);
+      return [];
+    }
   }
 
-  static getTransactionsByAccount(userId: string, accountId: string): Transaction[] {
-    const transactions = this.getTransactions(userId);
-    return transactions.filter(t => t.accountId === accountId);
+  static async getTransactionsByAccount(userId: string, accountId: string): Promise<Transaction[]> {
+    try {
+      const transactions = await this.getTransactions(userId);
+      return transactions.filter(t => t.accountId === accountId);
+    } catch (error) {
+      console.error('Error fetching transactions by account:', error);
+      return [];
+    }
   }
 
-  // Savings allocation methods
+  // Savings allocation methods (kept in localStorage for now - no backend endpoint yet)
   static getSavingsAllocations(userId: string): SavingsAllocation[] {
     if (typeof window === 'undefined') return [];
-    const key = this.getUserKey(SAVINGS_STORAGE_KEY, userId);
-    const savingsStr = localStorage.getItem(key);
+    const savingsStr = localStorage.getItem(`${SAVINGS_STORAGE_KEY}_${userId}`);
     return savingsStr ? JSON.parse(savingsStr) : [];
   }
 
-  static addSavingsAllocation(userId: string, allocation: SavingsAllocationInput): SavingsAllocation {
+  static async addSavingsAllocation(userId: string, allocation: SavingsAllocationInput): Promise<SavingsAllocation> {
     const newAllocation: SavingsAllocation = {
       id: `sav_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       userId,
@@ -222,13 +273,11 @@ export class TransactionService {
     allocations.push(newAllocation);
     this.saveSavingsAllocations(userId, allocations);
     
-    // Update the account balance
+    // Update the account balance via API
     if (allocation.type === 'deposit') {
-      // Remove money from account when depositing to savings
-      this.updateAccountBalance(userId, allocation.fromAccountId, -allocation.amount);
+      await this.updateAccountBalance(userId, allocation.fromAccountId, -allocation.amount);
     } else {
-      // Add money to account when withdrawing from savings
-      this.updateAccountBalance(userId, allocation.fromAccountId, allocation.amount);
+      await this.updateAccountBalance(userId, allocation.fromAccountId, allocation.amount);
     }
     
     return newAllocation;
@@ -245,8 +294,7 @@ export class TransactionService {
 
   private static saveSavingsAllocations(userId: string, allocations: SavingsAllocation[]): void {
     if (typeof window === 'undefined') return;
-    const key = this.getUserKey(SAVINGS_STORAGE_KEY, userId);
-    localStorage.setItem(key, JSON.stringify(allocations));
+    localStorage.setItem(`${SAVINGS_STORAGE_KEY}_${userId}`, JSON.stringify(allocations));
     
     // Dispatch event for UI updates
     if (typeof window !== 'undefined') {
@@ -254,73 +302,104 @@ export class TransactionService {
     }
   }
 
-  private static updateAccountBalance(userId: string, accountId: string, amount: number): void {
-    const accounts = this.getAccounts(userId);
-    const accountIndex = accounts.findIndex(a => a.id === accountId);
-    
-    if (accountIndex !== -1) {
-      accounts[accountIndex].balance += amount;
-      this.saveAccounts(userId, accounts);
+  private static async updateAccountBalance(userId: string, accountId: string, amount: number): Promise<void> {
+    try {
+      const account = await AccountAPI.getById(accountId);
+      const newBalance = account.balance + amount;
+      await AccountAPI.update(accountId, { balance: newBalance });
+    } catch (error) {
+      console.error('Error updating account balance:', error);
     }
   }
 
-  static calculateTotals(userId: string): { totalIncome: number; totalExpenses: number; savings: number } {
-    const transactions = this.getTransactions(userId);
-    
-    const totalIncome = transactions
-      .filter(t => t.amount > 0)
-      .reduce((sum, t) => sum + t.amount, 0);
-    
-    const totalExpenses = Math.abs(transactions
-      .filter(t => t.amount < 0)
-      .reduce((sum, t) => sum + t.amount, 0));
-    
-    // Calculate savings from savings allocations, not income-expenses
-    const savings = this.getTotalSavings(userId);
-    
-    return { totalIncome, totalExpenses, savings };
+  static async calculateTotals(userId: string): Promise<{ totalIncome: number; totalExpenses: number; savings: number }> {
+    try {
+      const transactions = await this.getTransactions(userId);
+      
+      // Safety check - ensure transactions is an array
+      if (!Array.isArray(transactions)) {
+        console.warn('calculateTotals: transactions is not an array', transactions);
+        return { totalIncome: 0, totalExpenses: 0, savings: 0 };
+      }
+      
+      const totalIncome = transactions
+        .filter((t: Transaction) => t.amount > 0)
+        .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
+      
+      const totalExpenses = Math.abs(transactions
+        .filter((t: Transaction) => t.amount < 0)
+        .reduce((sum: number, t: Transaction) => sum + t.amount, 0));
+      
+      // Calculate savings from savings allocations, not income-expenses
+      const savings = this.getTotalSavings(userId);
+      
+      return { totalIncome, totalExpenses, savings };
+    } catch (error) {
+      console.error('Error calculating totals:', error);
+      return { totalIncome: 0, totalExpenses: 0, savings: 0 };
+    }
   }
 
   // Seed data for new users
-  static seedUserData(userId: string): void {
-    // Only seed if user has no existing data
-    if (this.getTransactions(userId).length > 0 || this.getAccounts(userId).length > 0) {
-      return;
+  static async seedUserData(userId: string): Promise<void> {
+    try {
+      // Only seed if user has no existing data
+      const [transactions, accounts] = await Promise.all([
+        this.getTransactions(userId),
+        this.getAccounts(userId)
+      ]);
+      
+      if (transactions.length > 0 || accounts.length > 0) {
+        return;
+      }
+
+      // Add only a default Cash account for manual transactions
+      await this.addAccount(userId, {
+        name: 'Cash',
+        type: 'Cash',
+        balance: 0.00,
+        lastFour: '----'
+      });
+    } catch (error) {
+      console.error('Error seeding user data:', error);
     }
-
-    // Add only a default Cash account for manual transactions
-    const defaultAccounts: AccountInput[] = [
-      { name: 'Cash', type: 'Cash', balance: 0.00, lastFour: '----' },
-    ];
-
-    defaultAccounts.forEach(acc => this.addAccount(userId, acc));
-
-    // No sample transactions added - users start with a clean slate
   }
 
   // Clear all user data (for logout)
   static clearUserData(userId: string): void {
     if (typeof window === 'undefined') return;
     
-    const transactionsKey = this.getUserKey(TRANSACTIONS_STORAGE_KEY, userId);
-    const accountsKey = this.getUserKey(ACCOUNTS_STORAGE_KEY, userId);
-    
-    localStorage.removeItem(transactionsKey);
-    localStorage.removeItem(accountsKey);
+    // Clear savings data from localStorage
+    localStorage.removeItem(`${SAVINGS_STORAGE_KEY}_${userId}`);
     
     // Also clear subscription and category data
     this.clearSubscriptionData(userId);
     this.clearCategoryData(userId);
+    
+    // Note: Transactions and accounts are now in the database,
+    // so they're not cleared here on logout
   }
 
-  // User management functions
+  // ==================== DEPRECATED USER MANAGEMENT FUNCTIONS ====================
+  // User data is now stored in PostgreSQL database, not localStorage
+  // These functions are kept for backward compatibility but should not be used
+  // Use AuthAPI and backend endpoints instead
+  
+  /**
+   * @deprecated User data is now in the database. Use AuthAPI instead.
+   */
   static getAllUsers(): User[] {
+    console.warn('TransactionService.getAllUsers() is deprecated. User data is now in the database.');
     if (typeof window === 'undefined') return [];
     const usersStr = localStorage.getItem(USERS_STORAGE_KEY);
     return usersStr ? JSON.parse(usersStr) : [];
   }
 
+  /**
+   * @deprecated User data is now in the database. Use AuthAPI.signup() instead.
+   */
   static addUser(userInput: UserInput): User {
+    console.warn('TransactionService.addUser() is deprecated. Use AuthAPI.signup() instead.');
     const newUser: User = {
       id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       email: userInput.email,
@@ -335,17 +414,29 @@ export class TransactionService {
     return newUser;
   }
 
+  /**
+   * @deprecated User data is now in the database. Query the backend API instead.
+   */
   static getUserByEmail(email: string): User | null {
+    console.warn('TransactionService.getUserByEmail() is deprecated. User data is now in the database.');
     const users = this.getAllUsers();
     return users.find(user => user.email === email) || null;
   }
 
+  /**
+   * @deprecated User data is now in the database. Query the backend API instead.
+   */
   static getUserById(userId: string): User | null {
+    console.warn('TransactionService.getUserById() is deprecated. User data is now in the database.');
     const users = this.getAllUsers();
     return users.find(user => user.id === userId) || null;
   }
 
+  /**
+   * @deprecated User data is now in the database. Use AuthAPI.updateProfile() instead.
+   */
   static updateUser(userId: string, updates: Partial<Omit<User, 'id'>>): User | null {
+    console.warn('TransactionService.updateUser() is deprecated. Use AuthAPI.updateProfile() instead.');
     const users = this.getAllUsers();
     const index = users.findIndex(u => u.id === userId);
     
@@ -360,7 +451,11 @@ export class TransactionService {
     return users[index];
   }
 
+  /**
+   * @deprecated User data is now in the database. Use backend API to delete users.
+   */
   static removeUser(userId: string): boolean {
+    console.warn('TransactionService.removeUser() is deprecated. User data is now in the database.');
     const users = this.getAllUsers();
     const filteredUsers = users.filter(u => u.id !== userId);
     
@@ -378,10 +473,17 @@ export class TransactionService {
     localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
   }
 
-  // Check if email is already registered
+  /**
+   * @deprecated User data is now in the database. This always returns false.
+   * Email validation happens on the backend during signup.
+   */
   static isEmailRegistered(email: string): boolean {
-    return this.getUserByEmail(email) !== null;
+    console.warn('TransactionService.isEmailRegistered() is deprecated. Email validation happens on the backend.');
+    // Always return false since we don't check localStorage anymore
+    return false;
   }
+  
+  // ==================== END DEPRECATED FUNCTIONS ====================
 
   // Subscription management methods
   static getUserSubscription(userId: string): Subscription | null {
@@ -474,102 +576,70 @@ export class TransactionService {
     localStorage.setItem(SUBSCRIPTIONS_STORAGE_KEY, JSON.stringify(subscriptions));
   }
 
-  // Category management methods
-  static getCategories(userId: string, type?: 'Income' | 'Expense'): Category[] {
-    if (typeof window === 'undefined') return [];
-    const categoriesStr = localStorage.getItem(CATEGORIES_STORAGE_KEY);
-    if (!categoriesStr) return [];
-    
-    const allCategories: Category[] = JSON.parse(categoriesStr);
-    let userCategories = allCategories.filter(cat => cat.userId === userId);
-    
-    if (type) {
-      userCategories = userCategories.filter(cat => cat.type === type);
+  // ==================== Category management methods (now using API) ====================
+  
+  static async getCategories(userId: string, type?: 'Income' | 'Expense'): Promise<Category[]> {
+    try {
+      return await CategoryAPI.getAll(type);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      return [];
     }
-    
-    return userCategories;
   }
 
-  static addCategory(userId: string, name: string, type: 'Income' | 'Expense', color: string): Category {
-    const newCategory: Category = {
-      id: `cat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name,
-      color,
-      type,
-      userId,
-      isDefault: false
-    };
-
-    const categoriesStr = localStorage.getItem(CATEGORIES_STORAGE_KEY);
-    const categories: Category[] = categoriesStr ? JSON.parse(categoriesStr) : [];
-    categories.push(newCategory);
-    
-    localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
-    return newCategory;
-  }
-
-  static deleteCategory(userId: string, categoryId: string): boolean {
-    const categoriesStr = localStorage.getItem(CATEGORIES_STORAGE_KEY);
-    if (!categoriesStr) return false;
-    
-    let categories: Category[] = JSON.parse(categoriesStr);
-    const categoryToDelete = categories.find(cat => cat.id === categoryId && cat.userId === userId);
-    
-    // Check if category exists for this user
-    if (!categoryToDelete) return false;
-    
-    categories = categories.filter(cat => !(cat.id === categoryId && cat.userId === userId));
-    localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
-    
-    return true;
-  }
-
-  static initializeDefaultCategories(userId: string): void {
-    // Check if user already has categories
-    if (this.getCategories(userId).length > 0) return;
-
-    const defaultCategories = [
-      // Income categories
-      { name: 'Salary', type: 'Income' as const, color: '#00B894' },
-      { name: 'Miscellaneous', type: 'Income' as const, color: '#6C5CE7' },
+  static async addCategory(userId: string, name: string, type: 'Income' | 'Expense'): Promise<Category | null> {
+    try {
+      const newCategory = await CategoryAPI.create({ name, type });
       
-      // Expense categories  
-      { name: 'Food', type: 'Expense' as const, color: '#FF6B6B' },
-      { name: 'Transportation', type: 'Expense' as const, color: '#4ECDC4' },
-      { name: 'Rent', type: 'Expense' as const, color: '#45B7D1' },
-      { name: 'Utilities', type: 'Expense' as const, color: '#FFEAA7' },
-      { name: 'Entertainment', type: 'Expense' as const, color: '#96CEB4' },
-      { name: 'Miscellaneous', type: 'Expense' as const, color: '#DDA0DD' },
-    ];
+      // Dispatch event for UI updates
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('budgee:dataUpdate'));
+      }
+      
+      return newCategory;
+    } catch (error) {
+      console.error('Error adding category:', error);
+      return null;
+    }
+  }
 
-    const categoriesStr = localStorage.getItem(CATEGORIES_STORAGE_KEY);
-    const existingCategories: Category[] = categoriesStr ? JSON.parse(categoriesStr) : [];
+  static async deleteCategory(userId: string, categoryId: string): Promise<boolean> {
+    try {
+      await CategoryAPI.delete(categoryId);
+      
+      // Dispatch event for UI updates
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('budgee:dataUpdate'));
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      return false;
+    }
+  }
 
-    defaultCategories.forEach(cat => {
-      const category: Category = {
-        id: `cat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        name: cat.name,
-        color: cat.color,
-        type: cat.type,
-        userId,
-        isDefault: true
-      };
-      existingCategories.push(category);
-    });
-
-    localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(existingCategories));
+  static async initializeDefaultCategories(userId: string): Promise<void> {
+    try {
+      // Default categories are now created by the backend during email verification
+      // This function just ensures categories are loaded from backend
+      const existingCategories = await this.getCategories(userId);
+      
+      // If no categories exist (shouldn't happen for verified users), log a warning
+      if (existingCategories.length === 0) {
+        console.warn('No categories found for user. Default categories should be created by backend during email verification.');
+      }
+      
+      // Categories are automatically fetched from backend via getCategories
+      // No need to create them here
+    } catch (error) {
+      console.error('Error checking default categories:', error);
+    }
   }
 
   static clearCategoryData(userId: string): void {
-    if (typeof window === 'undefined') return;
-    
-    const categoriesStr = localStorage.getItem(CATEGORIES_STORAGE_KEY);
-    if (!categoriesStr) return;
-    
-    let categories: Category[] = JSON.parse(categoriesStr);
-    categories = categories.filter(cat => cat.userId !== userId);
-    
-    localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
+    // Categories are now in the database, so this method no longer needs to do anything
+    // Kept for backward compatibility
   }
 
   // PIN Management Methods

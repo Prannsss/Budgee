@@ -12,7 +12,13 @@ const sequelize = new Sequelize(
     dialect: databaseConfig.dialect,
     logging: databaseConfig.logging,
     pool: databaseConfig.pool,
-    dialectOptions: databaseConfig.dialectOptions,
+    dialectOptions: {
+      ...databaseConfig.dialectOptions,
+      // Ensure timezone consistency between Node.js and PostgreSQL
+      timezone: '+08:00',
+    },
+    // Store dates in UTC but work with local timezone
+    timezone: '+08:00',
   }
 );
 

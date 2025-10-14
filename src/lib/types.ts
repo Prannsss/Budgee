@@ -1,7 +1,6 @@
 export type Category = {
   id: string;
   name: string;
-  color: string;
   type: 'Income' | 'Expense';
   userId: string;
   isDefault: boolean;
@@ -21,7 +20,7 @@ export type Transaction = {
 export type Account = {
   id: string;
   name: string;
-  type: 'Bank' | 'E-Wallet' | 'Crypto' | 'Cash';
+  type: 'Bank' | 'E-Wallet' | 'Cash';
   balance: number;
   lastFour: string;
 };
@@ -70,4 +69,63 @@ export type AppLockState = {
   isLocked: boolean;
   lockTriggeredAt?: string;
   shouldRequirePin: boolean;
+};
+
+// Additional types for backend integration
+export type User = {
+  id: string;
+  email: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  isEmailVerified: boolean;
+  planId: string;
+  plan?: Plan;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Plan = {
+  id: string;
+  name: string;
+  price: number;
+  maxWallets: number;
+  maxAccounts: number;
+  aiEnabled: boolean;
+  adsEnabled: boolean;
+  description?: string;
+  features: string[];
+};
+
+export type SavingsGoal = {
+  id: string;
+  userId: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ActivityLog = {
+  id: string;
+  userId: string;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  metadata?: Record<string, any>;
+  createdAt: string;
+};
+
+export type OTP = {
+  id: string;
+  userId: string;
+  code: string;
+  purpose: 'email-verification' | 'password-reset' | 'login';
+  expiresAt: string;
+  isUsed: boolean;
+  createdAt: string;
 };

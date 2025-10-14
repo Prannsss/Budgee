@@ -31,7 +31,7 @@ export const getAllTransactions = asyncHandler(async (req: Request, res: Respons
     where,
     include: [
       { model: Account, as: 'account', attributes: ['id', 'name', 'type', 'logo_url'] },
-      { model: Category, as: 'category', attributes: ['id', 'name', 'type', 'icon', 'color'] },
+      { model: Category, as: 'category', attributes: ['id', 'name', 'type', 'icon'] },
     ],
     order: [['date', 'DESC'], ['created_at', 'DESC']],
     limit: Number(limit),
@@ -88,7 +88,7 @@ export const getTransactionById = asyncHandler(async (req: Request, res: Respons
  */
 export const createTransaction = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.id!;
-  const { account_id, category_id, type, amount, date, note, receipt_url, is_recurring, recurring_frequency } = req.body;
+  const { account_id, category_id, type, amount, date, notes, receipt_url, is_recurring, recurring_frequency } = req.body;
 
   // Verify account belongs to user
   const account = await Account.findOne({
@@ -124,7 +124,7 @@ export const createTransaction = asyncHandler(async (req: Request, res: Response
     type,
     amount,
     date,
-    note,
+    notes,
     receipt_url,
     is_recurring,
     recurring_frequency,
@@ -166,7 +166,7 @@ export const createTransaction = asyncHandler(async (req: Request, res: Response
 export const updateTransaction = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.id!;
   const { id } = req.params;
-  const { amount, date, note, receipt_url } = req.body;
+  const { amount, date, notes, receipt_url } = req.body;
 
   const transaction = await Transaction.findOne({
     where: { id, user_id: userId },
@@ -188,7 +188,7 @@ export const updateTransaction = asyncHandler(async (req: Request, res: Response
   const updateData: any = {};
   if (amount !== undefined) updateData.amount = amount;
   if (date) updateData.date = date;
-  if (note) updateData.note = note;
+  if (notes) updateData.notes = notes;
   if (receipt_url) updateData.receipt_url = receipt_url;
 
   await transaction.update(updateData);

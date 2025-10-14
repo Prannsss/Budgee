@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getMockProviderData } from "@/lib/data";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import { TransactionService } from "@/lib/storage-service";
+import { API } from "@/lib/api-service";
 
 const accountTypes = [
     { name: "Bank", icon: <Landmark className="h-8 w-8" /> },
@@ -90,24 +90,24 @@ export function ConnectAccountDialog({ trigger }: { trigger?: React.ReactNode })
     // Generate mock account + transactions and save to user's storage
     const { account, transactions } = getMockProviderData(type as any, provider);
     
-    // Add account to user's data via storage service
-    const newAccount = TransactionService.addAccount(user.id, {
+    // Add account via API
+    const newAccount = await API.accounts.create({
       name: account.name,
       type: account.type,
       balance: account.balance,
       lastFour: account.lastFour,
     });
 
-    // Add transactions to user's data via storage service
-    transactions.forEach(txn => {
-      TransactionService.addTransaction(user.id, {
+    // Add transactions via API
+    for (const txn of transactions) {
+      await API.transactions.create({
         description: txn.description,
         amount: txn.amount,
         category: txn.category,
-        accountId: newAccount.id, // Use the real account ID from storage
+        accountId: newAccount.id,
         date: txn.date,
       });
-    });
+    }
 
     setIsConnecting(false);
     setIsOpen(false);

@@ -36,7 +36,7 @@ async function getJsPDF() {
   _jsPDF = mod.default || mod;
   return _jsPDF;
 }
-import { TransactionService } from "@/lib/storage-service";
+import { API } from "@/lib/api-service";
 import { useAuth } from "@/contexts/auth-context";
 import type { Transaction, Account } from "@/lib/types";
 import { SkeletonTable } from "@/components/ui/skeleton-components";
@@ -64,12 +64,21 @@ export default function TransactionsPage() {
       // Simulate loading delay for better UX
       await new Promise(resolve => setTimeout(resolve, 400));
       
-      const userTransactions = TransactionService.getTransactions(user.id);
-      setTransactions(userTransactions);
-      
-      const userAccounts = TransactionService.getAccounts(user.id);
-      setAccounts(userAccounts);
-      setIsLoading(false);
+      try {
+        const [userTransactions, userAccounts] = await Promise.all([
+          API.transactions.getAll(),
+          API.accounts.getAll()
+        ]);
+        
+        setTransactions(Array.isArray(userTransactions) ? userTransactions : []);
+        setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
+      } catch (error) {
+        console.error('Error loading transactions:', error);
+        setTransactions([]);
+        setAccounts([]);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadData();

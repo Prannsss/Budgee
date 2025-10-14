@@ -96,43 +96,35 @@ export default function PersonalInformationPage() {
     }
 
     try {
-      // Update user data in storage
-      const updatedUser = TransactionService.updateUser(user.id, {
+      // Update user profile via API
+      const { AuthAPI } = await import('@/lib/api-service');
+      await AuthAPI.updateProfile({
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
       });
 
-      if (updatedUser) {
-        // Update the auth context's user data
-        const { AuthService } = await import('@/contexts/auth-context');
-        AuthService.updateCurrentUser(updatedUser);
-        refreshUser();
-        
-        // Update local state
-        const updatedUserData = {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email
-        };
-        setOriginalData(updatedUserData);
-        
-        toast({
-          title: "Success",
-          description: "Personal information updated successfully.",
-        });
-        setIsEditing(false);
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update personal information.",
-          variant: "destructive",
-        });
-      }
+      // Refresh user data in auth context
+      refreshUser();
+      
+      // Update local state
+      const updatedUserData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email
+      };
+      setOriginalData(updatedUserData);
+      
+      toast({
+        title: "Success",
+        description: "Personal information updated successfully.",
+      });
+      setIsEditing(false);
     } catch (error) {
+      console.error('Failed to update profile:', error);
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: "Failed to update personal information.",
         variant: "destructive",
       });
     }

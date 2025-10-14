@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Category } from "@/lib/types";
 import { useAuth } from "@/contexts/auth-context";
@@ -59,66 +59,89 @@ export default function CategoriesPage() {
   useEffect(() => {
     if (!user?.id) return;
 
-    const loadCategories = () => {
-      // Ensure default categories are initialized
-      TransactionService.initializeDefaultCategories(user.id);
+    const loadCategories = async () => {
+      try {
+        console.log('[Categories Page] Loading categories for user:', user.id);
+        
+        // Ensure default categories are initialized
+        await TransactionService.initializeDefaultCategories(user.id);
 
-      const userCategories = TransactionService.getCategories(user.id);
-      const expenseCategories = userCategories.filter(
-        (cat) => cat.type === "Expense"
-      );
-      const incomeCategories = userCategories.filter(
-        (cat) => cat.type === "Income"
-      );
+        const userCategories = await TransactionService.getCategories(user.id);
+        console.log('[Categories Page] Fetched categories:', userCategories);
+        
+        if (!Array.isArray(userCategories)) {
+          console.warn('[Categories Page] Categories is not an array:', userCategories);
+          setExpenseCategories([]);
+          setIncomeCategories([]);
+          return;
+        }
+        
+        const expenseCategories = userCategories.filter(
+          (cat) => cat.type === "Expense"
+        );
+        const incomeCategories = userCategories.filter(
+          (cat) => cat.type === "Income"
+        );
 
-      setExpenseCategories(expenseCategories);
-      setIncomeCategories(incomeCategories);
+        console.log('[Categories Page] Expense categories:', expenseCategories);
+        console.log('[Categories Page] Income categories:', incomeCategories);
+
+        setExpenseCategories(expenseCategories);
+        setIncomeCategories(incomeCategories);
+      } catch (error) {
+        console.error('[Categories Page] Error loading categories:', error);
+        setExpenseCategories([]);
+        setIncomeCategories([]);
+      }
     };
 
     loadCategories();
   }, [user?.id]);
 
-  const handleAddCategory = () => {
+  const handleAddCategory = useCallback(async () => {
     if (!newCategoryName.trim() || !user?.id) return;
 
     // Add category using storage service
-    const newCategory = TransactionService.addCategory(
+    const newCategory = await TransactionService.addCategory(
       user.id,
       newCategoryName.trim(),
-      selectedType === "expense" ? "Expense" : "Income",
-      ""
+      selectedType === "expense" ? "Expense" : "Income"
     );
 
-    // Update local state
-    if (selectedType === "expense") {
-      setExpenseCategories((prev) => [...prev, newCategory]);
-    } else {
-      setIncomeCategories((prev) => [...prev, newCategory]);
+    // Update local state only if category was created successfully
+    if (newCategory) {
+      if (selectedType === "expense") {
+        setExpenseCategories((prev) => [...prev, newCategory]);
+      } else {
+        setIncomeCategories((prev) => [...prev, newCategory]);
+      }
     }
 
     // Reset form
     setNewCategoryName("");
     setIsAddModalOpen(false);
-  };
+  }, [newCategoryName, user?.id, selectedType]);
 
-  const handleDeleteCategory = (
+  const handleDeleteCategory = async (
     categoryId: string,
     type: "expense" | "income"
   ) => {
     if (!user?.id) return;
 
     // Delete category using storage service
-    TransactionService.deleteCategory(user.id, categoryId);
+    const success = await TransactionService.deleteCategory(user.id, categoryId);
 
-    // Update local state
-    if (type === "expense") {
-      setExpenseCategories((prev) =>
-        prev.filter((cat) => cat.id !== categoryId)
-      );
-    } else {
-      setIncomeCategories((prev) =>
-        prev.filter((cat) => cat.id !== categoryId)
-      );
+    // Update local state only if deletion was successful
+    if (success) {
+      if (type === "expense") {
+        setExpenseCategories((prev) =>
+          prev.filter((cat) => cat.id !== categoryId)
+        );
+      } else {
+        setIncomeCategories((prev) =>
+          prev.filter((cat) => cat.id !== categoryId)
+        );
+      }
     }
   };
 
@@ -161,8 +184,8 @@ export default function CategoriesPage() {
           placeholder="Enter category name"
           value={newCategoryName}
           onChange={(e) => setNewCategoryName(e.target.value)}
-          autoFocus={isMobile}
-          className="focus:ring-2 focus:ring-primary"
+          autoFocus={!isMobile}
+          autoComplete="off"
         />
       </div>
       <div className="space-y-2">

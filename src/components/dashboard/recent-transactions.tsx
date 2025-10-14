@@ -19,7 +19,7 @@ import {
 import { Button } from "../ui/button"
 import Link from "next/link"
 import { ArrowUpRight } from "lucide-react"
-import { TransactionService } from "@/lib/storage-service"
+import { API } from "@/lib/api-service"
 import { useAuth } from "@/contexts/auth-context"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
@@ -37,14 +37,22 @@ export function RecentTransactions() {
 
     const loadData = async () => {
       setIsLoading(true);
-      // Simulate loading delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 200));
       
-      const userTransactions = TransactionService.getTransactions(user.id).slice(0, 5);
-      const userAccounts = TransactionService.getAccounts(user.id);
-      setTransactions(userTransactions);
-      setAccounts(userAccounts);
-      setIsLoading(false);
+      try {
+        const [userTransactions, userAccounts] = await Promise.all([
+          API.transactions.getAll({ limit: 5 }),
+          API.accounts.getAll()
+        ]);
+        
+        setTransactions(Array.isArray(userTransactions) ? userTransactions : []);
+        setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
+      } catch (error) {
+        console.error('Error loading recent transactions:', error);
+        setTransactions([]);
+        setAccounts([]);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadData();

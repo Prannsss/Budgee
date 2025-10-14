@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import createApp from './app';
 import { testConnection } from './config/sequelize';
+import { verifyEmailConnection } from './utils/email.service';
 
 // Load environment variables
 dotenv.config();
@@ -15,6 +16,9 @@ const startServer = async () => {
   try {
     // Test database connection
     await testConnection();
+
+    // Verify email service connection
+    await verifyEmailConnection();
 
     // Create Express app
     const app = createApp();

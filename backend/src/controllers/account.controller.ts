@@ -16,7 +16,7 @@ export const getAllAccounts = asyncHandler(async (req: Request, res: Response) =
 
   res.json({
     success: true,
-    data: { accounts },
+    data: accounts, // Return array directly, not wrapped in object
   });
 });
 

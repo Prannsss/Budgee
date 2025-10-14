@@ -20,7 +20,7 @@ export const getAllCategories = asyncHandler(async (req: Request, res: Response)
 
   res.json({
     success: true,
-    data: { categories },
+    data: categories,
   });
 });
 
@@ -46,7 +46,7 @@ export const getCategoryById = asyncHandler(async (req: Request, res: Response) 
 
   res.json({
     success: true,
-    data: { category },
+    data: category,
   });
 });
 
@@ -56,7 +56,7 @@ export const getCategoryById = asyncHandler(async (req: Request, res: Response) 
  */
 export const createCategory = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.id!;
-  const { name, type, icon, color } = req.body;
+  const { name, type } = req.body;
 
   // Check if category already exists for this user
   const existingCategory = await Category.findOne({
@@ -71,13 +71,12 @@ export const createCategory = asyncHandler(async (req: Request, res: Response) =
     return;
   }
 
-  // Create category
+  // Create category (is_default will be false by default for user-created categories)
   const category = await Category.create({
     user_id: userId,
     name,
     type,
-    icon,
-    color,
+    is_default: false, // User-created categories are not default
   });
 
   // Log activity
@@ -90,7 +89,7 @@ export const createCategory = asyncHandler(async (req: Request, res: Response) =
   res.status(201).json({
     success: true,
     message: 'Category created successfully',
-    data: { category },
+    data: category,
   });
 });
 
@@ -101,7 +100,7 @@ export const createCategory = asyncHandler(async (req: Request, res: Response) =
 export const updateCategory = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.id!;
   const { id } = req.params;
-  const { name, icon, color } = req.body;
+  const { name } = req.body;
 
   const category = await Category.findOne({
     where: { id, user_id: userId },
@@ -124,13 +123,10 @@ export const updateCategory = asyncHandler(async (req: Request, res: Response) =
     return;
   }
 
-  // Update fields
-  const updateData: any = {};
-  if (name) updateData.name = name;
-  if (icon) updateData.icon = icon;
-  if (color) updateData.color = color;
-
-  await category.update(updateData);
+  // Update name if provided
+  if (name) {
+    await category.update({ name });
+  }
 
   // Log activity
   await ActivityLog.create({
@@ -142,7 +138,7 @@ export const updateCategory = asyncHandler(async (req: Request, res: Response) =
   res.json({
     success: true,
     message: 'Category updated successfully',
-    data: { category },
+    data: category,
   });
 });
 
@@ -191,3 +187,35 @@ export const deleteCategory = asyncHandler(async (req: Request, res: Response) =
     message: 'Category deleted successfully',
   });
 });
+
+/**
+ * Initialize default categories for a new user
+ * This function should be called when a user signs up
+ */
+export const initializeDefaultCategories = async (userId: number): Promise<void> => {
+  try {
+    // Income Categories
+    const incomeCategories = [
+      { user_id: userId, name: 'Salary', type: 'income' as const, is_default: true },
+      { user_id: userId, name: 'Miscellaneous', type: 'income' as const, is_default: true },
+    ];
+
+    // Expense Categories
+    const expenseCategories = [
+      { user_id: userId, name: 'Food', type: 'expense' as const, is_default: true },
+      { user_id: userId, name: 'Transportation', type: 'expense' as const, is_default: true },
+      { user_id: userId, name: 'Rent', type: 'expense' as const, is_default: true },
+      { user_id: userId, name: 'Utilities', type: 'expense' as const, is_default: true },
+      { user_id: userId, name: 'Entertainment', type: 'expense' as const, is_default: true },
+      { user_id: userId, name: 'Miscellaneous', type: 'expense' as const, is_default: true },
+    ];
+
+    // Bulk create all default categories
+    await Category.bulkCreate([...incomeCategories, ...expenseCategories]);
+    
+    console.log(`✓ Default categories initialized for user ${userId}`);
+  } catch (error) {
+    console.error('Error initializing default categories:', error);
+    throw error;
+  }
+};

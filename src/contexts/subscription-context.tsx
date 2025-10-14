@@ -1,14 +1,14 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { TransactionService } from '@/lib/storage-service';
+import { API } from '@/lib/api-service';
 import { useAuth } from './auth-context';
-import type { PlanType, Subscription } from '@/lib/types';
+import type { PlanType } from '@/lib/types';
 
 interface SubscriptionContextType {
   currentPlan: PlanType;
-  subscription: Subscription | null;
-  setCurrentPlan: (plan: PlanType) => void;
+  userPlan: any | null;
+  setCurrentPlan: (plan: PlanType) => Promise<void>;
   isAIEnabled: boolean;
   isLoading: boolean;
 }
@@ -18,44 +18,63 @@ const SubscriptionContext = createContext<SubscriptionContextType | undefined>(u
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [currentPlan, setCurrentPlanState] = useState<PlanType>('Free');
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [userPlan, setUserPlan] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load subscription data when user changes
+  // Load user plan data from backend when user changes
   useEffect(() => {
-    if (!user?.id) {
-      setCurrentPlanState('Free');
-      setSubscription(null);
-      setIsLoading(false);
-      return;
-    }
-
-    const loadSubscription = () => {
-      const userSubscription = TransactionService.getUserSubscription(user.id);
-      if (userSubscription) {
-        setCurrentPlanState(userSubscription.planType);
-        setSubscription(userSubscription);
-      } else {
-        // Create default free subscription for new users
-        const newSubscription = TransactionService.createOrUpdateSubscription(user.id, 'Free');
+    const loadUserPlan = async () => {
+      if (!user?.id) {
         setCurrentPlanState('Free');
-        setSubscription(newSubscription);
+        setUserPlan(null);
+        setIsLoading(false);
+        return;
       }
-      setIsLoading(false);
+
+      try {
+        setIsLoading(true);
+        // Get user profile with plan information
+        const userProfile = await API.user.getProfile();
+        
+        if (userProfile.plan) {
+          setUserPlan(userProfile.plan);
+          setCurrentPlanState(userProfile.plan.name as PlanType);
+        } else {
+          // Fallback to Free plan if no plan info
+          setCurrentPlanState('Free');
+          setUserPlan(null);
+        }
+      } catch (error) {
+        console.error('Error loading user plan:', error);
+        setCurrentPlanState('Free');
+        setUserPlan(null);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    loadSubscription();
+    loadUserPlan();
   }, [user?.id]);
 
-  const setCurrentPlan = (plan: PlanType) => {
+  const setCurrentPlan = async (planId: PlanType) => {
     if (!user?.id) return;
     
-    // Update localStorage
-    const updatedSubscription = TransactionService.createOrUpdateSubscription(user.id, plan);
-    
-    // Update local state
-    setCurrentPlanState(plan);
-    setSubscription(updatedSubscription);
+    try {
+      setIsLoading(true);
+      // Use the plan upgrade API
+      await API.plans.upgrade(planId);
+      
+      // Refresh user profile to get updated plan
+      const userProfile = await API.user.getProfile();
+      if (userProfile.plan) {
+        setUserPlan(userProfile.plan);
+        setCurrentPlanState(userProfile.plan.name as PlanType);
+      }
+    } catch (error) {
+      console.error('Error upgrading plan:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const isAIEnabled = currentPlan !== 'Free';
@@ -64,7 +83,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     <SubscriptionContext.Provider 
       value={{ 
         currentPlan, 
-        subscription,
+        userPlan,
         setCurrentPlan, 
         isAIEnabled,
         isLoading

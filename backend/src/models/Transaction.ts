@@ -13,7 +13,7 @@ export interface TransactionAttributes {
   type: 'income' | 'expense';
   amount: number;
   date: Date;
-  note?: string;
+  notes?: string;
   receipt_url?: string;
   is_recurring: boolean;
   recurring_frequency?: string;
@@ -34,7 +34,7 @@ class Transaction extends Model<TransactionAttributes, TransactionCreationAttrib
   public type!: 'income' | 'expense';
   public amount!: number;
   public date!: Date;
-  public note?: string;
+  public notes?: string;
   public receipt_url?: string;
   public is_recurring!: boolean;
   public recurring_frequency?: string;
@@ -91,7 +91,7 @@ Transaction.init(
       type: DataTypes.DATEONLY,
       allowNull: false,
     },
-    note: {
+    notes: {
       type: DataTypes.TEXT,
       allowNull: true,
     },

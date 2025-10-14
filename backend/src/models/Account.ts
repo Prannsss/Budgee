@@ -7,7 +7,7 @@ export interface AccountAttributes {
   id: number;
   user_id: number;
   name: string;
-  type: 'bank' | 'e-wallet';
+  type: 'Cash' | 'Bank' | 'E-Wallet';
   account_number?: string;
   balance: number;
   verified: boolean;
@@ -26,7 +26,7 @@ class Account extends Model<AccountAttributes, AccountCreationAttributes> implem
   public id!: number;
   public user_id!: number;
   public name!: string;
-  public type!: 'bank' | 'e-wallet';
+  public type!: 'Cash' | 'Bank' | 'E-Wallet';
   public account_number?: string;
   public balance!: number;
   public verified!: boolean;
@@ -60,7 +60,7 @@ Account.init(
       allowNull: false,
     },
     type: {
-      type: DataTypes.ENUM('bank', 'e-wallet'),
+      type: DataTypes.ENUM('Cash', 'Bank', 'E-Wallet'),
       allowNull: false,
     },
     account_number: {

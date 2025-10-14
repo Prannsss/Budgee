@@ -7,9 +7,9 @@ export const mockAccounts: Account[] = [];
 // Generate mock data for a provider connection
 export function getMockProviderData(type: Account['type'], provider: string): { account: Account; transactions: Transaction[] } {
   const id = `${Date.now()}`;
-  const balanceBase = type === 'Bank' ? 20000 : type === 'E-Wallet' ? 2000 : 8000;
+  const balanceBase = type === 'Bank' ? 20000 : type === 'E-Wallet' ? 2000 : 1000;
   const balance = parseFloat((balanceBase + Math.random() * balanceBase).toFixed(2));
-  const lastFour = type === 'Crypto' ? '...C' + Math.floor(Math.random() * 10) : ('' + Math.floor(1000 + Math.random() * 9000));
+  const lastFour = ('' + Math.floor(1000 + Math.random() * 9000));
 
   const account: Account = {
     id,

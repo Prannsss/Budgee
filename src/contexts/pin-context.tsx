@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from './auth-context';
-import { TransactionService } from '@/lib/storage-service';
+import { API } from '@/lib/api-service';
 import { useRouter, usePathname } from 'next/navigation';
 import type { AppLockState, PinStatus } from '@/lib/types';
 import { PIN_REQUIRED_ON_STARTUP_KEY, APP_LOCK_KEY, VISIBILITY_CHANGE_KEY, PIN_VERIFIED_SESSION_KEY } from '@/lib/constants';
@@ -11,9 +11,9 @@ interface PinContextType {
   pinStatus: PinStatus;
   isAppLocked: boolean;
   shouldShowPinVerification: boolean;
-  lockApp: () => void;
-  unlockApp: () => void;
-  checkPinRequired: () => boolean;
+  lockApp: () => Promise<void>;
+  unlockApp: () => Promise<void>;
+  checkPinRequired: () => Promise<boolean>;
 }
 
 const PinContext = createContext<PinContextType | undefined>(undefined);
@@ -29,38 +29,54 @@ export function PinProvider({ children }: { children: React.ReactNode }) {
 
   // Check PIN status when user changes
   useEffect(() => {
-    if (user?.id) {
-      const hasPinEnabled = TransactionService.hasPinEnabled(user.id);
-      setPinStatus(hasPinEnabled ? 'set' : 'not-set');
-      
-      // Set persistent flag that PIN is required on startup
-      if (hasPinEnabled) {
-        localStorage.setItem(PIN_REQUIRED_ON_STARTUP_KEY, 'true');
+    const checkPinStatus = async () => {
+      if (user?.id) {
+        try {
+          const { enabled } = await API.pin.hasPinEnabled();
+          setPinStatus(enabled ? 'set' : 'not-set');
+          
+          // Set persistent flag that PIN is required on startup
+          if (enabled) {
+            localStorage.setItem(PIN_REQUIRED_ON_STARTUP_KEY, 'true');
+          } else {
+            localStorage.removeItem(PIN_REQUIRED_ON_STARTUP_KEY);
+          }
+        } catch (error) {
+          // If PIN API is not implemented yet, gracefully default to no PIN
+          console.warn('PIN API not available, defaulting to no PIN protection:', error);
+          setPinStatus('not-set');
+          localStorage.removeItem(PIN_REQUIRED_ON_STARTUP_KEY);
+        }
       } else {
+        setPinStatus('not-set');
         localStorage.removeItem(PIN_REQUIRED_ON_STARTUP_KEY);
       }
-    } else {
-      setPinStatus('not-set');
-      localStorage.removeItem(PIN_REQUIRED_ON_STARTUP_KEY);
-    }
+    };
+
+    checkPinStatus();
   }, [user]);
 
   // Handle visibility change detection
   useEffect(() => {
     if (typeof window === 'undefined' || !isAuthenticated || !user?.id) return;
 
-    const handleVisibilityChange = () => {
+    const handleVisibilityChange = async () => {
       if (document.hidden) {
         // App is being hidden/minimized
-        const hasPinEnabled = TransactionService.hasPinEnabled(user.id);
-        if (hasPinEnabled) {
-          const lockState: AppLockState = {
-            isLocked: true,
-            lockTriggeredAt: new Date().toISOString(),
-            shouldRequirePin: true
-          };
-          sessionStorage.setItem(APP_LOCK_KEY, JSON.stringify(lockState));
-          sessionStorage.setItem(VISIBILITY_CHANGE_KEY, new Date().toISOString());
+        try {
+          const { enabled } = await API.pin.hasPinEnabled();
+          if (enabled) {
+            const lockState: AppLockState = {
+              isLocked: true,
+              lockTriggeredAt: new Date().toISOString(),
+              shouldRequirePin: true
+            };
+            sessionStorage.setItem(APP_LOCK_KEY, JSON.stringify(lockState));
+            sessionStorage.setItem(VISIBILITY_CHANGE_KEY, new Date().toISOString());
+          }
+        } catch (error) {
+          // If PIN API is not available, skip PIN locking on visibility change
+          console.warn('PIN API not available on visibility change:', error);
         }
       } else {
         // App is being shown/restored
@@ -126,22 +142,27 @@ export function PinProvider({ children }: { children: React.ReactNode }) {
       const lockState: AppLockState = JSON.parse(lockStateStr);
       const isSessionVerified = sessionStorage.getItem(PIN_VERIFIED_SESSION_KEY) === 'true';
       if (lockState.isLocked && lockState.shouldRequirePin && !isSessionVerified) {
-        const hasPinEnabled = TransactionService.hasPinEnabled(user.id);
-        if (hasPinEnabled && pathname !== '/pin-verify') {
-          setIsAppLocked(true);
-          setPinStatus('required');
-          setShouldShowPinVerification(true);
-          return;
-        }
+        // Check PIN status asynchronously
+        API.pin.hasPinEnabled()
+          .then(({ enabled }) => {
+            if (enabled && pathname !== '/pin-verify') {
+              setIsAppLocked(true);
+              setPinStatus('required');
+              setShouldShowPinVerification(true);
+            }
+          })
+          .catch(error => {
+            console.error('Error checking PIN status on mount:', error);
+          });
+        return;
       }
     }
 
     // Check localStorage for persistent PIN requirement on app startup
     const pinRequiredOnStartup = localStorage.getItem(PIN_REQUIRED_ON_STARTUP_KEY);
     if (pinRequiredOnStartup === 'true') {
-      const hasPinEnabled = TransactionService.hasPinEnabled(user.id);
       const isSessionVerified = sessionStorage.getItem(PIN_VERIFIED_SESSION_KEY) === 'true';
-      if (hasPinEnabled && pathname !== '/pin-verify' && !isSessionVerified) {
+      if (pathname !== '/pin-verify' && !isSessionVerified) {
         // Set app as locked and require PIN verification
         setIsAppLocked(true);
         setPinStatus('required');
@@ -158,25 +179,30 @@ export function PinProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, user, pathname]);
 
-  const lockApp = () => {
+  const lockApp = async () => {
     if (!user?.id) return;
     
-    const hasPinEnabled = TransactionService.hasPinEnabled(user.id);
-    if (hasPinEnabled) {
-      // Clear session verified marker when locking again
-      sessionStorage.removeItem(PIN_VERIFIED_SESSION_KEY);
-      const lockState: AppLockState = {
-        isLocked: true,
-        lockTriggeredAt: new Date().toISOString(),
-        shouldRequirePin: true
-      };
-      sessionStorage.setItem(APP_LOCK_KEY, JSON.stringify(lockState));
-      setIsAppLocked(true);
-      setPinStatus('required');
+    try {
+      const { enabled } = await API.pin.hasPinEnabled();
+      if (enabled) {
+        // Clear session verified marker when locking again
+        sessionStorage.removeItem(PIN_VERIFIED_SESSION_KEY);
+        const lockState: AppLockState = {
+          isLocked: true,
+          lockTriggeredAt: new Date().toISOString(),
+          shouldRequirePin: true
+        };
+        sessionStorage.setItem(APP_LOCK_KEY, JSON.stringify(lockState));
+        setIsAppLocked(true);
+        setPinStatus('required');
+      }
+    } catch (error) {
+      // If PIN API is not available, silently skip PIN locking
+      console.warn('PIN API not available, skipping app lock:', error);
     }
   };
 
-  const unlockApp = () => {
+  const unlockApp = async () => {
     sessionStorage.removeItem(APP_LOCK_KEY);
     sessionStorage.removeItem(VISIBILITY_CHANGE_KEY);
     // Don't remove PIN_REQUIRED_ON_STARTUP_KEY here as we want it to persist
@@ -184,17 +210,33 @@ export function PinProvider({ children }: { children: React.ReactNode }) {
     setIsAppLocked(false);
     setShouldShowPinVerification(false);
     // Explicitly mark the current session as verified if PIN is enabled
-    if (user?.id && TransactionService.hasPinEnabled(user.id)) {
-      sessionStorage.setItem(PIN_VERIFIED_SESSION_KEY, 'true');
-      setPinStatus('verified');
-    } else {
-      setPinStatus('not-set');
+    if (user?.id) {
+      try {
+        const { enabled } = await API.pin.hasPinEnabled();
+        if (enabled) {
+          sessionStorage.setItem(PIN_VERIFIED_SESSION_KEY, 'true');
+          setPinStatus('verified');
+        } else {
+          setPinStatus('not-set');
+        }
+      } catch (error) {
+        // If PIN API is not available, default to not-set
+        console.warn('PIN API not available when unlocking app:', error);
+        setPinStatus('not-set');
+      }
     }
   };
 
-  const checkPinRequired = (): boolean => {
+  const checkPinRequired = async (): Promise<boolean> => {
     if (!user?.id) return false;
-    return TransactionService.hasPinEnabled(user.id);
+    try {
+      const { enabled } = await API.pin.hasPinEnabled();
+      return enabled;
+    } catch (error) {
+      // If PIN API is not available, PIN is not required
+      console.warn('PIN API not available, PIN not required:', error);
+      return false;
+    }
   };
 
   const value: PinContextType = {

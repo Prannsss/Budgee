@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Shield, Eye, EyeOff } from "lucide-react";
 import { PinUtils } from "@/lib/utils";
-import { TransactionService } from "@/lib/storage-service";
+import { API } from "@/lib/api-service";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -96,8 +96,7 @@ export function PinSetup({ onSuccess, onCancel }: PinSetupProps) {
 
     setIsLoading(true);
     try {
-      const hashedPin = await PinUtils.hashPin(pin);
-      TransactionService.setPinData(user.id, hashedPin);
+      await API.pin.setupPin(pin);
       
       toast({
         title: "PIN Set Successfully",
@@ -106,7 +105,8 @@ export function PinSetup({ onSuccess, onCancel }: PinSetupProps) {
       
       onSuccess?.();
     } catch (error) {
-      setError('Failed to set up PIN. Please try again.');
+      console.error('PIN setup error:', error);
+      setError('PIN setup is not available yet. This feature will be enabled soon.');
     } finally {
       setIsLoading(false);
     }
