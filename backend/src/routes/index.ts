@@ -6,7 +6,15 @@ import transactionRoutes from './transaction.routes';
 import categoryRoutes from './category.routes';
 import dashboardRoutes from './dashboard.routes';
 
-const router = Router();
+const router = Router(); // API Routes Configuration
+
+// Base API route
+router.get('/', (_, res) => {
+  res.json({
+    success: true,
+    message: 'API base route active',
+  });
+});
 
 // Health check
 router.get('/health', (_, res) => {
