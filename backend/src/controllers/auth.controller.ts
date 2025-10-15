@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { User as UserModel, Plan, ActivityLog } from '../models';
+import { User as UserModel, Plan, ActivityLog, OTP } from '../models';
 import { hashPassword, comparePassword, sanitizeUser, generateOTP, getOTPExpiration } from '../utils/helpers';
 import { generateToken, generateRefreshToken } from '../middlewares/auth.middleware';
 import { asyncHandler } from '../middlewares/error.middleware';
@@ -27,11 +27,6 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
   // Hash password
   const password_hash = await hashPassword(password);
 
-  // Generate verification token (6-digit OTP)
-  const verification_token = generateOTP();
-  const verification_token_expires = getOTPExpiration(10); // 10 minutes
-  const last_verification_sent = new Date();
-
   // Create user with free plan (plan_id = 1)
   const user = await UserModel.create({
     name,
@@ -40,16 +35,25 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
     password_hash,
     plan_id: 1, // Free plan by default
     email_verified: false,
-    verification_token,
-    verification_token_expires,
-    last_verification_sent,
+  });
+
+  // Generate verification OTP (6-digit code)
+  const verification_code = generateOTP();
+  const otp_expires = getOTPExpiration(10); // 10 minutes
+
+  // Store OTP in otps table
+  await OTP.create({
+    user_id: user.id,
+    code: verification_code,
+    purpose: 'email_verify',
+    expires_at: otp_expires,
   });
 
   // Default accounts will be created after email verification
 
   // Send verification email
   try {
-    await sendVerificationEmail(email, name, verification_token);
+    await sendVerificationEmail(email, name, verification_code);
   } catch (error) {
     console.error('Failed to send verification email:', error);
     // Continue even if email fails
@@ -344,8 +348,18 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     return;
   }
 
-  // Check if verification token matches
-  if (user.verification_token !== code) {
+  // Find valid OTP for this user
+  const otp = await OTP.findOne({
+    where: {
+      user_id: user.id,
+      code: code,
+      purpose: 'email_verify',
+      is_verified: false,
+    },
+    order: [['created_at', 'DESC']],
+  });
+
+  if (!otp) {
     res.status(400).json({
       success: false,
       message: 'Invalid verification code',
@@ -353,35 +367,23 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     return;
   }
 
-  // Check if token is expired
-  if (user.verification_token_expires) {
-    const now = new Date();
-    const expiresAt = new Date(user.verification_token_expires);
-    
-    // Debug logging
-    console.log('Verification check:', {
-      now: now.toISOString(),
-      expiresAt: expiresAt.toISOString(),
-      nowTimestamp: now.getTime(),
-      expiresAtTimestamp: expiresAt.getTime(),
-      isExpired: now.getTime() > expiresAt.getTime()
+  // Check if OTP is expired
+  const now = new Date();
+  if (now.getTime() > otp.expires_at.getTime()) {
+    res.status(400).json({
+      success: false,
+      message: 'Verification code has expired. Please request a new one.',
+      expired: true,
     });
-    
-    if (now.getTime() > expiresAt.getTime()) {
-      res.status(400).json({
-        success: false,
-        message: 'Verification code has expired. Please request a new one.',
-        expired: true,
-      });
-      return;
-    }
+    return;
   }
+
+  // Mark OTP as verified
+  await otp.update({ is_verified: true });
 
   // Verify email
   await user.update({
     email_verified: true,
-    verification_token: undefined,
-    verification_token_expires: undefined,
   });
 
   // Create default Cash account for the newly verified user
@@ -456,8 +458,16 @@ export const resendVerification = asyncHandler(async (req: Request, res: Respons
   }
 
   // Check if user is trying to resend too quickly (30 seconds cooldown)
-  if (user.last_verification_sent) {
-    const timeSinceLastSent = Date.now() - new Date(user.last_verification_sent).getTime();
+  const lastOTP = await OTP.findOne({
+    where: {
+      user_id: user.id,
+      purpose: 'email_verify',
+    },
+    order: [['created_at', 'DESC']],
+  });
+
+  if (lastOTP) {
+    const timeSinceLastSent = Date.now() - lastOTP.created_at.getTime();
     const cooldownPeriod = 30 * 1000; // 30 seconds in milliseconds
     
     if (timeSinceLastSent < cooldownPeriod) {
@@ -471,20 +481,21 @@ export const resendVerification = asyncHandler(async (req: Request, res: Respons
     }
   }
 
-  // Generate new verification token
-  const verification_token = generateOTP();
-  const verification_token_expires = getOTPExpiration(10); // 10 minutes
-  const last_verification_sent = new Date();
+  // Generate new verification code
+  const verification_code = generateOTP();
+  const otp_expires = getOTPExpiration(10); // 10 minutes
 
-  await user.update({
-    verification_token,
-    verification_token_expires,
-    last_verification_sent,
+  // Create new OTP
+  await OTP.create({
+    user_id: user.id,
+    code: verification_code,
+    purpose: 'email_verify',
+    expires_at: otp_expires,
   });
 
   // Send verification email
   try {
-    await sendVerificationEmail(email, user.name, verification_token);
+    await sendVerificationEmail(email, user.name, verification_code);
     
     res.json({
       success: true,

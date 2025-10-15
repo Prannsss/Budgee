@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpCircle, ArrowDownCircle, PiggyBank } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowUpCircle, ArrowDownCircle, PiggyBank, ArrowRight } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
-import { TransactionService } from "@/lib/storage-service";
+import { API } from "@/lib/api-service";
 import type { SavingsAllocation, Account } from "@/lib/types";
 
 export function SavingsHistory() {
@@ -16,17 +18,26 @@ export function SavingsHistory() {
   useEffect(() => {
     if (!user?.id) return;
 
-    const loadData = () => {
-      const allocations = TransactionService.getSavingsAllocations(user.id);
-      const userAccounts = TransactionService.getAccounts(user.id);
-      
-      // Sort by date descending (most recent first)
-      const sortedAllocations = allocations.sort((a, b) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-      
-      setSavingsAllocations(sortedAllocations.slice(0, 5)); // Show last 5
-      setAccounts(userAccounts);
+    const loadData = async () => {
+      try {
+        const [allocations, userAccounts] = await Promise.all([
+          API.savingsAllocations.getAll({ limit: 5 }), // Get last 5 allocations
+          API.accounts.getAll(),
+        ]);
+        
+        // Sort by date descending (most recent first)
+        const sortedAllocations = allocations.sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        
+        setSavingsAllocations(sortedAllocations.slice(0, 5)); // Show last 5
+        // Ensure accounts is an array
+        setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
+      } catch (error) {
+        console.error('Error loading savings data:', error);
+        setSavingsAllocations([]);
+        setAccounts([]);
+      }
     };
 
     loadData();
@@ -56,10 +67,18 @@ export function SavingsHistory() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <PiggyBank className="h-5 w-5" />
-            Recent Savings Activity
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <PiggyBank className="h-5 w-5" />
+              Recent Savings Activity
+            </CardTitle>
+            <Link href="/dashboard/savings">
+              <Button variant="ghost" size="sm">
+                View All
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </Link>
+          </div>
           <CardDescription>
             Your recent savings deposits and withdrawals will appear here.
           </CardDescription>
@@ -78,10 +97,18 @@ export function SavingsHistory() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <PiggyBank className="h-5 w-5" />
-          Recent Savings Activity
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <PiggyBank className="h-5 w-5" />
+            Recent Savings Activity
+          </CardTitle>
+          <Link href="/dashboard/savings">
+            <Button variant="ghost" size="sm">
+              View All
+              <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
+          </Link>
+        </div>
         <CardDescription>
           Your latest savings deposits and withdrawals
         </CardDescription>

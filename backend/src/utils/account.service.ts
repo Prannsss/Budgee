@@ -23,6 +23,7 @@ export async function ensureDefaultCashAccount(userId: number): Promise<Account>
       name: 'Cash',
       type: 'Cash',
       balance: 0.00,
+      is_manual: true, // Manual account (not connected to any institution)
       is_active: true,
     });
   }

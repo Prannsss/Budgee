@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { PIN_REQUIRED_ON_STARTUP_KEY } from '@/lib/constants';
+import { PIN_REQUIRED_ON_STARTUP_KEY, PIN_VERIFIED_SESSION_KEY, APP_LOCK_KEY, VISIBILITY_CHANGE_KEY, FRESH_LOGIN_KEY } from '@/lib/constants';
 import { AuthAPI, TokenManager, UserAPI } from '@/lib/api-service';
 import { User, Plan } from '@/lib/types';
 
@@ -27,11 +27,12 @@ export class AuthService {
   static clearAuth(): void {
     if (typeof window === 'undefined') return;
     TokenManager.clearTokens();
-    // Also clear PIN-related session data on logout
-    sessionStorage.removeItem('budgee_app_locked');
-    sessionStorage.removeItem('budgee_visibility_timestamp');
-    // Clear PIN requirement flag from localStorage
-    localStorage.removeItem(PIN_REQUIRED_ON_STARTUP_KEY);
+    // Clear all PIN-related session and local storage data on logout
+    sessionStorage.removeItem(APP_LOCK_KEY);
+    sessionStorage.removeItem(VISIBILITY_CHANGE_KEY);
+    sessionStorage.removeItem(PIN_VERIFIED_SESSION_KEY);
+    sessionStorage.removeItem(FRESH_LOGIN_KEY);
+    // Don't clear PIN_REQUIRED_ON_STARTUP_KEY here - it's user preference that persists
   }
 
   static async login(email: string, password: string): Promise<{ success: boolean; user?: User }> {
@@ -187,6 +188,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await AuthService.login(email, password);
       if (result.success && result.user) {
         setUser(result.user);
+        
+        // Mark this as a fresh login - skip PIN verification for this session
+        sessionStorage.setItem(FRESH_LOGIN_KEY, 'true');
+        sessionStorage.setItem(PIN_VERIFIED_SESSION_KEY, 'true');
+        
         return true;
       }
       return false;

@@ -104,6 +104,7 @@ export const createAccount = asyncHandler(async (req: Request, res: Response) =>
     account_number,
     logo_url,
     balance: balance || 0,
+    is_manual: true, // Default to manual unless API-connected
   });
 
   // Log activity

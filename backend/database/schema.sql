@@ -15,6 +15,7 @@ DROP TABLE IF EXISTS otps CASCADE;
 DROP TABLE IF EXISTS transactions CASCADE;
 DROP TABLE IF EXISTS categories CASCADE;
 DROP TABLE IF EXISTS accounts CASCADE;
+DROP TABLE IF EXISTS institutions CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS plans CASCADE;
 
@@ -39,6 +40,7 @@ CREATE TABLE plans (
 -- ================================================
 -- Table: users
 -- Description: User accounts and authentication
+-- REMOVED: verification_token, verification_token_expires, last_verification_sent (use otps table instead)
 -- ================================================
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
@@ -50,9 +52,6 @@ CREATE TABLE users (
     avatar_url VARCHAR(500),
     email_verified BOOLEAN DEFAULT FALSE,
     phone_verified BOOLEAN DEFAULT FALSE,
-    verification_token VARCHAR(6),
-    verification_token_expires TIMESTAMP WITH TIME ZONE,
-    last_verification_sent TIMESTAMP WITH TIME ZONE,
     is_active BOOLEAN DEFAULT TRUE,
     oauth_provider VARCHAR(50), -- 'google', 'facebook', or NULL
     oauth_id VARCHAR(255),
@@ -63,36 +62,57 @@ CREATE TABLE users (
 );
 
 -- ================================================
+-- Table: institutions
+-- Description: Reference table for financial institutions (banks, e-wallets, etc.)
+-- ================================================
+CREATE TABLE institutions (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    type VARCHAR(50) CHECK (type IN ('bank', 'e-wallet', 'credit', 'others')),
+    country VARCHAR(50) DEFAULT 'Philippines',
+    logo_url TEXT,
+    is_supported BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ================================================
 -- Table: accounts
 -- Description: All financial accounts (Cash, Bank, E-Wallet)
+-- REMOVED: last_four (can be derived from account_number when needed)
+-- ADDED: institution_id (references institutions table)
+-- NOTE: is_manual = TRUE means user-declared account with no live API connection
 -- ================================================
 CREATE TABLE accounts (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
+    institution_id INTEGER,
     name VARCHAR(100) NOT NULL, -- e.g., "GCash", "BDO Savings", "Cash"
     type VARCHAR(20) NOT NULL CHECK (type IN ('Cash', 'Bank', 'E-Wallet')),
     account_number VARCHAR(100), -- Masked or encrypted (null for cash)
     balance DECIMAL(15, 2) DEFAULT 0.00,
-    last_four VARCHAR(4), -- Last 4 digits for display (null for cash)
     verified BOOLEAN DEFAULT FALSE,
     logo_url VARCHAR(500), -- Logo of bank/e-wallet
+    is_manual BOOLEAN DEFAULT TRUE, -- TRUE = user-declared, FALSE = API-connected
     is_active BOOLEAN DEFAULT TRUE,
     metadata JSONB, -- Store additional account-specific data
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (institution_id) REFERENCES institutions(id) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- ================================================
 -- Table: categories
 -- Description: Income and expense categories (user-specific)
+-- NOTE: is_default = TRUE only for system-level categories (where user_id references a system user)
+--       Custom user categories should have is_default = FALSE
 -- ================================================
 CREATE TABLE categories (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     name VARCHAR(100) NOT NULL,
     type VARCHAR(20) NOT NULL CHECK (type IN ('income', 'expense')),
-    is_default BOOLEAN DEFAULT TRUE, -- System default categories
+    is_default BOOLEAN DEFAULT FALSE, -- TRUE only for system default categories
     parent_id INTEGER, -- For subcategories
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -104,6 +124,7 @@ CREATE TABLE categories (
 -- ================================================
 -- Table: transactions
 -- Description: Financial transactions (income/expense/transfer)
+-- REMOVED: is_recurring (can be derived from recurring_parent_id - if NOT NULL, it's recurring)
 -- ================================================
 CREATE TABLE transactions (
     id SERIAL PRIMARY KEY,
@@ -117,9 +138,8 @@ CREATE TABLE transactions (
     notes TEXT,
     receipt_url VARCHAR(500), -- Optional receipt image
     status VARCHAR(20) DEFAULT 'completed' CHECK (status IN ('pending', 'completed', 'failed')),
-    is_recurring BOOLEAN DEFAULT FALSE,
     recurring_frequency VARCHAR(20), -- 'daily', 'weekly', 'monthly', 'yearly'
-    recurring_parent_id INTEGER, -- References the original transaction for recurring ones
+    recurring_parent_id INTEGER, -- References the original transaction for recurring ones (if NOT NULL, this is a recurring transaction)
     metadata JSONB, -- Store additional transaction data
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -187,12 +207,12 @@ CREATE TABLE savings_allocations (
 -- ================================================
 -- Table: user_pins
 -- Description: User PIN storage for app security (always 6 digits)
+-- REMOVED: pin_length (redundant - PIN is always 6 digits)
 -- ================================================
 CREATE TABLE user_pins (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL UNIQUE,
     pin_hash VARCHAR(255) NOT NULL,
-    pin_length INTEGER NOT NULL DEFAULT 6 CHECK (pin_length = 6),
     is_enabled BOOLEAN DEFAULT TRUE,
     failed_attempts INTEGER DEFAULT 0,
     locked_until TIMESTAMP WITH TIME ZONE,
@@ -257,6 +277,10 @@ CREATE TABLE activity_logs (
 -- Indexes for Performance Optimization
 -- ================================================
 
+-- Institutions
+CREATE INDEX idx_institutions_type ON institutions(type);
+CREATE INDEX idx_institutions_supported ON institutions(is_supported);
+
 -- User lookups
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_plan_id ON users(plan_id);
@@ -265,8 +289,10 @@ CREATE INDEX idx_users_active ON users(is_active);
 
 -- Account queries
 CREATE INDEX idx_accounts_user_id ON accounts(user_id);
+CREATE INDEX idx_accounts_institution_id ON accounts(institution_id);
 CREATE INDEX idx_accounts_type ON accounts(type);
 CREATE INDEX idx_accounts_active ON accounts(user_id, is_active);
+CREATE INDEX idx_accounts_manual ON accounts(is_manual);
 
 -- Transaction queries (most frequently accessed)
 CREATE INDEX idx_transactions_user_id ON transactions(user_id);
@@ -276,7 +302,7 @@ CREATE INDEX idx_transactions_date ON transactions(date);
 CREATE INDEX idx_transactions_type ON transactions(type);
 CREATE INDEX idx_transactions_status ON transactions(status);
 CREATE INDEX idx_transactions_user_date ON transactions(user_id, date DESC);
-CREATE INDEX idx_transactions_recurring ON transactions(is_recurring, recurring_parent_id);
+CREATE INDEX idx_transactions_recurring ON transactions(recurring_parent_id);
 
 -- Transfer queries
 CREATE INDEX idx_transaction_transfers_from ON transaction_transfers(from_transaction_id);
@@ -286,6 +312,7 @@ CREATE INDEX idx_transaction_transfers_to ON transaction_transfers(to_transactio
 CREATE INDEX idx_categories_user_id ON categories(user_id);
 CREATE INDEX idx_categories_type ON categories(type);
 CREATE INDEX idx_categories_parent ON categories(parent_id);
+CREATE INDEX idx_categories_default ON categories(is_default);
 
 -- Savings goals
 CREATE INDEX idx_savings_goals_user_id ON savings_goals(user_id);
@@ -397,7 +424,7 @@ INSERT INTO plans (name, price, max_wallets, max_accounts, ai_enabled, ads_enabl
 -- Functions and Triggers
 -- ================================================
 
--- Update updated_at timestamp automatically
+-- Shared function to update updated_at timestamp automatically
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -664,6 +691,7 @@ END $$;
 -- Comments for Documentation
 -- ================================================
 
+COMMENT ON TABLE institutions IS 'Reference table for financial institutions (banks, e-wallets, credit providers)';
 COMMENT ON TABLE plans IS 'Subscription plans with feature limits and pricing';
 COMMENT ON TABLE users IS 'User accounts with authentication and profile data';
 COMMENT ON TABLE accounts IS 'Financial accounts including cash, bank, and e-wallets';
@@ -676,6 +704,30 @@ COMMENT ON TABLE user_pins IS 'Secure PIN storage for app authentication';
 COMMENT ON TABLE refresh_tokens IS 'JWT refresh tokens for session management';
 COMMENT ON TABLE otps IS 'One-time passwords for various verification purposes';
 COMMENT ON TABLE activity_logs IS 'Comprehensive audit trail of user actions';
+
+-- ================================================
+-- SCHEMA CHANGE LOG
+-- ================================================
+-- Changes applied for optimization and normalization:
+--
+-- 1. REMOVED COLUMNS:
+--    - users: verification_token, verification_token_expires, last_verification_sent (use otps table)
+--    - accounts: last_four (can be derived from account_number)
+--    - categories: changed is_default default from TRUE to FALSE (only system categories should be TRUE)
+--    - transactions: is_recurring (can be derived from recurring_parent_id)
+--    - user_pins: pin_length (redundant - always 6 digits)
+--
+-- 2. ADDED TABLES:
+--    - institutions: Reference table for banks, e-wallets, and other financial institutions
+--
+-- 3. MODIFIED TABLES:
+--    - accounts: Added institution_id FK, is_manual column for tracking API vs manual accounts
+--
+-- 4. OPTIMIZED:
+--    - Consolidated update_updated_at_column() trigger function (shared across all tables)
+--    - Added indexes for new columns (institution_id, is_manual, is_default)
+--    - Updated recurring transaction index to use recurring_parent_id only
+-- ================================================
 
 -- ================================================
 -- Security and Constraints

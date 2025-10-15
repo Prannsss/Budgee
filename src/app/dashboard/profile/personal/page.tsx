@@ -10,10 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { TransactionService } from "@/lib/storage-service";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PinSetup } from "@/components/auth/pin-setup";
+import { PinRemove } from "@/components/auth/pin-remove";
+import { API } from "@/lib/api-service";
 import { PIN_REQUIRED_ON_STARTUP_KEY } from "@/lib/constants";
 
 export default function PersonalInformationPage() {
@@ -39,16 +40,25 @@ export default function PersonalInformationPage() {
   useEffect(() => {
     if (user) {
       const userData = {
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: user.firstName ?? "",
+        lastName: user.lastName ?? "",
         email: user.email
       };
       setFormData(userData);
       setOriginalData(userData);
       
-      // Check if user has PIN set up
-      const pinEnabled = TransactionService.hasPinEnabled(user.id);
-      setHasPinSet(pinEnabled);
+      // Fetch PIN status from backend
+      const fetchPinStatus = async () => {
+        try {
+          const { enabled, hasPin } = await API.pin.hasPinEnabled();
+          setHasPinSet(enabled && hasPin);
+        } catch (error) {
+          console.error('Error fetching PIN status:', error);
+          setHasPinSet(false);
+        }
+      };
+      
+      fetchPinStatus();
     }
   }, [user]);
 
@@ -137,8 +147,16 @@ export default function PersonalInformationPage() {
     }));
   };
 
-  const handlePinSetupSuccess = () => {
-    setHasPinSet(true);
+  const handlePinSetupSuccess = async () => {
+    // Refetch PIN status from backend to confirm
+    try {
+      const { enabled, hasPin } = await API.pin.hasPinEnabled();
+      setHasPinSet(enabled && hasPin);
+    } catch (error) {
+      console.error('Error fetching PIN status after setup:', error);
+      setHasPinSet(true); // Assume success if API call fails
+    }
+    
     setPinSetupOpen(false);
     toast({
       title: "PIN Protection Enabled",
@@ -146,13 +164,18 @@ export default function PersonalInformationPage() {
     });
   };
 
-  const handleRemovePin = () => {
+  const handleRemovePin = async () => {
     if (!user?.id) return;
     
-    TransactionService.removePinData(user.id);
-    // Also clear the persistent PIN requirement flag
-    localStorage.removeItem(PIN_REQUIRED_ON_STARTUP_KEY);
-    setHasPinSet(false);
+    // Refetch PIN status from backend to confirm removal
+    try {
+      const { enabled, hasPin } = await API.pin.hasPinEnabled();
+      setHasPinSet(enabled && hasPin);
+    } catch (error) {
+      console.error('Error fetching PIN status after removal:', error);
+      setHasPinSet(false); // Assume removed if API call fails
+    }
+    
     setRemovePinConfirmOpen(false);
     toast({
       title: "PIN Removed",
@@ -301,6 +324,7 @@ export default function PersonalInformationPage() {
             </DrawerHeader>
             <div className="p-4">
               <PinSetup 
+                mode={hasPinSet ? 'change' : 'setup'}
                 onSuccess={handlePinSetupSuccess}
                 onCancel={() => setPinSetupOpen(false)}
               />
@@ -317,6 +341,7 @@ export default function PersonalInformationPage() {
             </DialogHeader>
             <div className="p-4">
               <PinSetup 
+                mode={hasPinSet ? 'change' : 'setup'}
                 onSuccess={handlePinSetupSuccess}
                 onCancel={() => setPinSetupOpen(false)}
               />
@@ -332,32 +357,11 @@ export default function PersonalInformationPage() {
             <DrawerHeader>
               <DrawerTitle>Remove PIN</DrawerTitle>
             </DrawerHeader>
-            <div className="p-4 space-y-4">
-              <div className="text-center space-y-2">
-                <div className="mx-auto w-12 h-12 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
-                  <Shield className="h-6 w-6 text-red-600 dark:text-red-400" />
-                </div>
-                <p className="text-lg font-semibold">Are you sure you want to remove your PIN?</p>
-                <p className="text-sm text-muted-foreground">
-                  Your account will no longer be protected with a PIN. You can always add one back later.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setRemovePinConfirmOpen(false)}
-                  className="w-full"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  variant="destructive" 
-                  onClick={handleRemovePin}
-                  className="w-full"
-                >
-                  Remove PIN
-                </Button>
-              </div>
+            <div className="p-4">
+              <PinRemove 
+                onSuccess={handleRemovePin}
+                onCancel={() => setRemovePinConfirmOpen(false)}
+              />
             </div>
           </DrawerContent>
         </Drawer>
@@ -367,31 +371,10 @@ export default function PersonalInformationPage() {
             <DialogHeader>
               <DialogTitle>Remove PIN</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="text-center space-y-2">
-                <div className="mx-auto w-12 h-12 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
-                  <Shield className="h-6 w-6 text-red-600 dark:text-red-400" />
-                </div>
-                <p className="text-lg font-semibold">Are you sure you want to remove your PIN?</p>
-                <p className="text-sm text-muted-foreground">
-                  Your account will no longer be protected with a PIN. You can always add one back later.
-                </p>
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setRemovePinConfirmOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  variant="destructive" 
-                  onClick={handleRemovePin}
-                >
-                  Remove PIN
-                </Button>
-              </div>
-            </div>
+            <PinRemove 
+              onSuccess={handleRemovePin}
+              onCancel={() => setRemovePinConfirmOpen(false)}
+            />
           </DialogContent>
         </Dialog>
       )}

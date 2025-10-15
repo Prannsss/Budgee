@@ -52,11 +52,11 @@ export function OverviewChart() {
 
           const monthTransactions = transactions.filter((t: Transaction) => t.date.startsWith(monthStr));
           const income = monthTransactions
-            .filter((t: Transaction) => t.amount > 0)
+            .filter((t: Transaction) => t.type === 'income')
             .reduce((sum: number, t: Transaction) => sum + (Number(t.amount) || 0), 0);
-          const expenses = Math.abs(monthTransactions
-            .filter((t: Transaction) => t.amount < 0)
-            .reduce((sum: number, t: Transaction) => sum + (Number(t.amount) || 0), 0));
+          const expenses = monthTransactions
+            .filter((t: Transaction) => t.type === 'expense')
+            .reduce((sum: number, t: Transaction) => sum + (Number(t.amount) || 0), 0);
 
           data.push({
             name: monthName,

@@ -6,12 +6,14 @@ import User from './User';
 export interface AccountAttributes {
   id: number;
   user_id: number;
+  institution_id?: number;
   name: string;
   type: 'Cash' | 'Bank' | 'E-Wallet';
   account_number?: string;
   balance: number;
   verified: boolean;
   logo_url?: string;
+  is_manual: boolean;
   is_active: boolean;
   created_at?: Date;
   updated_at?: Date;
@@ -19,18 +21,20 @@ export interface AccountAttributes {
 
 // Optional fields for creation
 interface AccountCreationAttributes 
-  extends Optional<AccountAttributes, 'id' | 'balance' | 'verified' | 'is_active' | 'created_at' | 'updated_at'> {}
+  extends Optional<AccountAttributes, 'id' | 'balance' | 'verified' | 'is_manual' | 'is_active' | 'created_at' | 'updated_at'> {}
 
 // Account Model
 class Account extends Model<AccountAttributes, AccountCreationAttributes> implements AccountAttributes {
   public id!: number;
   public user_id!: number;
+  public institution_id?: number;
   public name!: string;
   public type!: 'Cash' | 'Bank' | 'E-Wallet';
   public account_number?: string;
   public balance!: number;
   public verified!: boolean;
   public logo_url?: string;
+  public is_manual!: boolean;
   public is_active!: boolean;
 
   public readonly created_at!: Date;
@@ -52,6 +56,14 @@ Account.init(
       allowNull: false,
       references: {
         model: 'users',
+        key: 'id',
+      },
+    },
+    institution_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'institutions',
         key: 'id',
       },
     },
@@ -78,6 +90,10 @@ Account.init(
     logo_url: {
       type: DataTypes.STRING(500),
       allowNull: true,
+    },
+    is_manual: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
     },
     is_active: {
       type: DataTypes.BOOLEAN,

@@ -120,7 +120,13 @@ class HttpClient {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || data.error || 'Request failed');
+        // Create error object with response data for better error handling
+        const error: any = new Error(data.message || data.error || 'Request failed');
+        error.response = {
+          status: response.status,
+          data: data
+        };
+        throw error;
       }
 
       return data;
@@ -144,8 +150,8 @@ class HttpClient {
     return this.request<T>(endpoint, { method: 'PUT', body, requiresAuth });
   }
 
-  async delete<T>(endpoint: string, requiresAuth = true): Promise<T> {
-    return this.request<T>(endpoint, { method: 'DELETE', requiresAuth });
+  async delete<T>(endpoint: string, requiresAuth = true, body?: any): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE', requiresAuth, body });
   }
 }
 
@@ -349,12 +355,14 @@ export class AuthAPI {
 // ==================== Transaction API ====================
 
 export interface TransactionInput {
-  description: string;
+  account_id: number;
+  category_id: number;
+  type: 'income' | 'expense';
   amount: number;
-  category: string;
-  accountId: string;
-  date?: string;
+  description: string;
+  date: string;
   notes?: string;
+  receipt_url?: string;
 }
 
 export class TransactionAPI {
@@ -379,38 +387,89 @@ export class TransactionAPI {
     }
     
     const endpoint = `/api/transactions${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    const response = await httpClient.get<ApiResponse<Transaction[]>>(endpoint);
-    return response.data;
+    const response = await httpClient.get<ApiResponse<{ transactions: any[]; pagination: any }>>(endpoint);
+    // Backend returns { success: true, data: { transactions: [...], pagination: {...} } }
+    // Backend includes nested category/account objects, we need to flatten them
+    const transactions = (response.data.transactions || []).map((txn: any) => ({
+      id: txn.id?.toString() || '',
+      date: txn.date || '',
+      description: txn.description || '',
+      amount: Number(txn.amount) || 0,
+      type: txn.type || 'expense', // Include transaction type (income/expense)
+      category: txn.category?.name || 'Uncategorized', // Flatten category object to string
+      status: txn.status || 'completed',
+      accountId: txn.account_id?.toString() || '',
+      notes: txn.notes,
+    }));
+    
+    return transactions;
   }
 
   /**
    * Get a single transaction by ID
    */
   static async getById(id: string): Promise<Transaction> {
-    const response = await httpClient.get<ApiResponse<Transaction>>(`/api/transactions/${id}`);
-    return response.data;
+    const response = await httpClient.get<ApiResponse<{ transaction: any }>>(`/api/transactions/${id}`);
+    // Flatten the nested category object
+    const txn = response.data.transaction;
+    return {
+      id: txn.id?.toString() || '',
+      date: txn.date || '',
+      description: txn.description || '',
+      amount: Number(txn.amount) || 0,
+      type: txn.type || 'expense', // Include transaction type
+      category: txn.category?.name || 'Uncategorized',
+      status: txn.status || 'completed',
+      accountId: txn.account_id?.toString() || '',
+      notes: txn.notes,
+    };
   }
 
   /**
    * Create a new transaction
    */
   static async create(transaction: TransactionInput): Promise<Transaction> {
-    const response = await httpClient.post<ApiResponse<Transaction>>(
+    const response = await httpClient.post<ApiResponse<{ transaction: any }>>(
       '/api/transactions',
       transaction
     );
-    return response.data;
+    // Backend returns { success: true, data: { transaction: {...} } }
+    // Flatten the nested category object
+    const txn = response.data.transaction;
+    return {
+      id: txn.id?.toString() || '',
+      date: txn.date || '',
+      description: txn.description || '',
+      amount: Number(txn.amount) || 0,
+      type: txn.type || 'expense', // Include transaction type
+      category: txn.category?.name || 'Uncategorized',
+      status: txn.status || 'completed',
+      accountId: txn.account_id?.toString() || '',
+      notes: txn.notes,
+    };
   }
 
   /**
    * Update an existing transaction
    */
   static async update(id: string, updates: Partial<TransactionInput>): Promise<Transaction> {
-    const response = await httpClient.put<ApiResponse<Transaction>>(
+    const response = await httpClient.put<ApiResponse<{ transaction: any }>>(
       `/api/transactions/${id}`,
       updates
     );
-    return response.data;
+    // Flatten the nested category object
+    const txn = response.data.transaction;
+    return {
+      id: txn.id?.toString() || '',
+      date: txn.date || '',
+      description: txn.description || '',
+      amount: Number(txn.amount) || 0,
+      type: txn.type || 'expense', // Include transaction type
+      category: txn.category?.name || 'Uncategorized',
+      status: txn.status || 'completed',
+      accountId: txn.account_id?.toString() || '',
+      notes: txn.notes,
+    };
   }
 
   /**
@@ -428,6 +487,9 @@ export interface AccountInput {
   type: Account['type'];
   balance: number;
   lastFour?: string;
+  institutionId?: number;
+  institutionName?: string;
+  institutionLogo?: string;
 }
 
 export class AccountAPI {
@@ -435,38 +497,89 @@ export class AccountAPI {
    * Get all accounts for the current user
    */
   static async getAll(): Promise<Account[]> {
-    const response = await httpClient.get<ApiResponse<Account[]>>('/api/accounts');
-    return response.data;
+    const response = await httpClient.get<ApiResponse<any[]>>('/api/accounts');
+    // Transform backend account data to frontend format
+    // Backend returns balance as string (DECIMAL), we need to convert to number
+    return (response.data || []).map((acc: any) => ({
+      id: acc.id?.toString() || '',
+      name: acc.name || '',
+      type: acc.type || 'Cash',
+      balance: Number(acc.balance) || 0, // Convert string to number
+      lastFour: acc.account_number?.slice(-4) || '----',
+      institutionId: acc.institution_id,
+      institutionName: acc.institution_name,
+      institutionLogo: acc.logo_url,
+    }));
   }
 
   /**
    * Get a single account by ID
    */
   static async getById(id: string): Promise<Account> {
-    const response = await httpClient.get<ApiResponse<Account>>(`/api/accounts/${id}`);
-    return response.data;
+    const response = await httpClient.get<ApiResponse<{ account: any }>>(`/api/accounts/${id}`);
+    const acc = response.data.account;
+    return {
+      id: acc.id?.toString() || '',
+      name: acc.name || '',
+      type: acc.type || 'Cash',
+      balance: Number(acc.balance) || 0, // Convert string to number
+      lastFour: acc.account_number?.slice(-4) || '----',
+      institutionId: acc.institution_id,
+      institutionName: acc.institution_name,
+      institutionLogo: acc.logo_url,
+    };
   }
 
   /**
    * Create a new account
    */
   static async create(account: AccountInput): Promise<Account> {
-    const response = await httpClient.post<ApiResponse<Account>>(
+    // Map frontend fields to backend fields
+    const backendPayload = {
+      name: account.name,
+      type: account.type,
+      balance: account.balance,
+      account_number: account.lastFour ? `****${account.lastFour}` : undefined, // Backend expects account_number
+      logo_url: account.institutionLogo,
+      institution_id: account.institutionId,
+    };
+    
+    const response = await httpClient.post<ApiResponse<{ account: any }>>(
       '/api/accounts',
-      account
+      backendPayload
     );
-    return response.data;
+    const acc = response.data.account;
+    return {
+      id: acc.id?.toString() || '',
+      name: acc.name || '',
+      type: acc.type || 'Cash',
+      balance: Number(acc.balance) || 0,
+      lastFour: acc.account_number?.slice(-4) || '----',
+      institutionId: acc.institution_id,
+      institutionName: acc.institution_name,
+      institutionLogo: acc.logo_url,
+    };
   }
 
   /**
    * Update an existing account
    */
   static async update(id: string, updates: Partial<AccountInput>): Promise<Account> {
-    const response = await httpClient.put<ApiResponse<Account>>(
+    const response = await httpClient.put<ApiResponse<{ account: any }>>(
       `/api/accounts/${id}`,
       updates
     );
-    return response.data;
+    const acc = response.data.account;
+    return {
+      id: acc.id?.toString() || '',
+      name: acc.name || '',
+      type: acc.type || 'Cash',
+      balance: Number(acc.balance) || 0,
+      lastFour: acc.account_number?.slice(-4) || '----',
+      institutionId: acc.institution_id,
+      institutionName: acc.institution_name,
+      institutionLogo: acc.logo_url,
+    };
   }
 
   /**
@@ -657,15 +770,17 @@ export class DashboardAPI {
    * Get dashboard summary statistics
    */
   static async getSummary(): Promise<DashboardStats> {
-    const response = await httpClient.get<ApiResponse<DashboardStats>>('/api/dashboard');
-    // Ensure safe numeric values
+    const response = await httpClient.get<ApiResponse<any>>('/api/dashboard');
+    // Backend returns data.summary object
+    const summary = response.data?.summary || {};
+    const recentTxns = response.data?.recentTransactions || [];
     return {
-      totalIncome: Number(response.data?.totalIncome) || 0,
-      totalExpenses: Number(response.data?.totalExpenses) || 0,
-      savings: Number(response.data?.savings) || 0,
-      accountsCount: Number(response.data?.accountsCount) || 0,
-      transactionsCount: Number(response.data?.transactionsCount) || 0,
-      recentTransactions: Array.isArray(response.data?.recentTransactions) ? response.data.recentTransactions : [],
+      totalIncome: Number(summary.totalIncome) || 0,
+      totalExpenses: Number(summary.totalExpense) || 0,
+      savings: Number(summary.savings) || 0,
+      accountsCount: Number(summary.accountCount) || 0,
+      transactionsCount: Number(summary.transactionCount) || 0,
+      recentTransactions: Array.isArray(recentTxns) ? recentTxns : [],
     };
   }
 
@@ -773,6 +888,104 @@ export class SavingsGoalAPI {
   }
 }
 
+// ==================== Savings Allocations API ====================
+
+export interface SavingsAllocationInput {
+  account_id: number;
+  amount: number;
+  type: 'deposit' | 'withdrawal';
+  description: string;
+  date?: string;
+}
+
+export class SavingsAllocationAPI {
+  /**
+   * Get all savings allocations for the current user
+   */
+  static async getAll(params?: {
+    page?: number;
+    limit?: number;
+    type?: 'deposit' | 'withdrawal';
+    startDate?: string;
+    endDate?: string;
+  }): Promise<SavingsAllocation[]> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const endpoint = `/api/savings/allocations${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await httpClient.get<ApiResponse<{ allocations: any[]; pagination: any }>>(endpoint);
+    
+    // Transform backend data to frontend format
+    return (response.data.allocations || []).map((alloc: any) => ({
+      id: alloc.id?.toString() || '',
+      userId: alloc.user_id?.toString() || '',
+      amount: Number(alloc.amount) || 0,
+      description: alloc.description || '',
+      date: alloc.date || '',
+      fromAccountId: alloc.account_id?.toString() || '',
+      type: alloc.type as 'deposit' | 'withdrawal',
+    }));
+  }
+
+  /**
+   * Get a single savings allocation by ID
+   */
+  static async getById(id: string): Promise<SavingsAllocation> {
+    const response = await httpClient.get<ApiResponse<{ allocation: any }>>(`/api/savings/allocations/${id}`);
+    const alloc = response.data.allocation;
+    return {
+      id: alloc.id?.toString() || '',
+      userId: alloc.user_id?.toString() || '',
+      amount: Number(alloc.amount) || 0,
+      description: alloc.description || '',
+      date: alloc.date || '',
+      fromAccountId: alloc.account_id?.toString() || '',
+      type: alloc.type as 'deposit' | 'withdrawal',
+    };
+  }
+
+  /**
+   * Create a new savings allocation
+   */
+  static async create(allocation: SavingsAllocationInput): Promise<SavingsAllocation> {
+    const response = await httpClient.post<ApiResponse<{ allocation: any }>>(
+      '/api/savings/allocations',
+      allocation
+    );
+    const alloc = response.data.allocation;
+    return {
+      id: alloc.id?.toString() || '',
+      userId: alloc.user_id?.toString() || '',
+      amount: Number(alloc.amount) || 0,
+      description: alloc.description || '',
+      date: alloc.date || '',
+      fromAccountId: alloc.account_id?.toString() || '',
+      type: alloc.type as 'deposit' | 'withdrawal',
+    };
+  }
+
+  /**
+   * Delete a savings allocation
+   */
+  static async delete(id: string): Promise<void> {
+    await httpClient.delete(`/api/savings/allocations/${id}`);
+  }
+
+  /**
+   * Get total savings for the current user
+   */
+  static async getTotalSavings(): Promise<number> {
+    const response = await httpClient.get<ApiResponse<{ totalSavings: number }>>('/api/savings/total');
+    return Number(response.data.totalSavings) || 0;
+  }
+}
+
 // ==================== User/Profile API ====================
 
 export interface UserProfile {
@@ -855,43 +1068,60 @@ export interface PinVerifyInput {
 
 export class PinAPI {
   /**
+   * Check if user has PIN enabled
+   */
+  static async hasPinEnabled(): Promise<{ enabled: boolean; hasPin: boolean }> {
+    const response = await httpClient.get<ApiResponse<{ enabled: boolean; hasPin: boolean }>>('/api/pin/status');
+    return response.data;
+  }
+
+  /**
    * Set up a new PIN for the user
    */
   static async setupPin(pin: string): Promise<void> {
-    await httpClient.post('/api/auth/pin/setup', { pin });
+    await httpClient.post('/api/pin/setup', { pin });
   }
 
   /**
    * Verify a PIN
    */
-  static async verifyPin(pin: string): Promise<{ valid: boolean }> {
-    const response = await httpClient.post<ApiResponse<{ valid: boolean }>>('/api/auth/pin/verify', { pin });
-    return response.data;
+  static async verifyPin(pin: string): Promise<{ success: boolean; message: string }> {
+    const response = await httpClient.post<ApiResponse<any>>('/api/pin/verify', { pin });
+    return { 
+      success: response.success, 
+      message: response.message || 'PIN verified' 
+    };
   }
 
   /**
    * Change existing PIN
    */
   static async changePin(currentPin: string, newPin: string): Promise<void> {
-    await httpClient.post('/api/auth/pin/change', {
+    await httpClient.put('/api/pin/change', {
       currentPin,
       newPin,
     });
   }
 
   /**
-   * Remove PIN (disable PIN protection)
+   * Disable PIN (keeps it stored but inactive)
    */
-  static async removePin(pin: string): Promise<void> {
-    await httpClient.post('/api/auth/pin/remove', { pin });
+  static async disablePin(pin: string): Promise<void> {
+    await httpClient.post('/api/pin/disable', { pin });
   }
 
   /**
-   * Check if user has PIN enabled
+   * Enable previously disabled PIN
    */
-  static async hasPinEnabled(): Promise<{ enabled: boolean }> {
-    const response = await httpClient.get<ApiResponse<{ enabled: boolean }>>('/api/auth/pin/status');
-    return response.data;
+  static async enablePin(): Promise<void> {
+    await httpClient.post('/api/pin/enable', {});
+  }
+
+  /**
+   * Remove PIN completely
+   */
+  static async removePin(pin: string): Promise<void> {
+    await httpClient.delete('/api/pin', true, { pin });
   }
 }
 
@@ -929,6 +1159,7 @@ export const API = {
   plans: PlanAPI,
   dashboard: DashboardAPI,
   savingsGoals: SavingsGoalAPI,
+  savingsAllocations: SavingsAllocationAPI,
   pin: PinAPI,
   health: HealthAPI,
   tokens: TokenManager,

@@ -183,7 +183,7 @@ export default function TransactionsPage() {
       pdf.text(`Total Transactions: ${exportData.length}`, margin, yPosition);
       
       // Calculate totals
-      const totalIncome = exportData.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
+      const totalIncome = exportData.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
       const totalExpenses = exportData.filter(t => t.amount < 0).reduce((sum, t) => sum + Math.abs(t.amount), 0);
       
       yPosition += 8;
@@ -253,7 +253,7 @@ export default function TransactionsPage() {
         const absAmount = Math.abs(transaction.amount);
         const amount = 'Php ' + absAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 });
         
-        if (transaction.amount > 0) {
+        if (transaction.type === 'income') {
           pdf.setTextColor(5, 150, 105);
         } else {
           pdf.setTextColor(220, 38, 38);
@@ -292,8 +292,8 @@ export default function TransactionsPage() {
 
   const filtered = useMemo(() => {
     let base = transactions;
-    if (tab === "income") base = base.filter((t) => t.amount > 0);
-    if (tab === "expenses") base = base.filter((t) => t.amount < 0);
+    if (tab === "income") base = base.filter((t) => t.type === 'income');
+    if (tab === "expenses") base = base.filter((t) => t.type === 'expense');
     return base;
   }, [tab, transactions]);
 
@@ -516,10 +516,10 @@ function MobileTransactionList({ items }: { items: Txn[] }) {
                 <div
                   className={
                     "text-sm font-semibold tabular-nums " +
-                    (t.amount > 0 ? "text-emerald-600" : "text-red-600")
+                    (t.type === 'income' ? "text-emerald-600" : "text-red-600")
                   }
                 >
-                  {t.amount > 0 ? "+" : ""}
+                  {t.type === 'income' ? "+" : ""}
                   {formatAmount(t.amount)}
                 </div>
                 <DropdownMenu>
@@ -572,7 +572,7 @@ function MobileTransactionList({ items }: { items: Txn[] }) {
               <DetailRow
                 label="Amount"
                 value={formatAmount(active.amount)}
-                emphasize={active.amount > 0 ? "pos" : "neg"}
+                emphasize={active.type === 'income' ? "pos" : "neg"}
               />
               <DetailRow
                 label="Date"

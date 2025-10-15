@@ -126,10 +126,10 @@ export function RecentTransactions() {
                     })()}
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">{transaction.category}</TableCell>
-                  <TableCell className={cn("text-right", transaction.amount > 0 ? "text-green-600" : "text-destructive")}>
-                    {transaction.amount > 0 ? 
+                  <TableCell className={cn("text-right", transaction.type === 'income' ? "text-green-600" : "text-destructive")}>
+                    {transaction.type === 'income' ? 
                       `+${new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(transaction.amount)}` :
-                      new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(transaction.amount)
+                      `-${new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(transaction.amount)}`
                     }
                   </TableCell>
                 </TableRow>

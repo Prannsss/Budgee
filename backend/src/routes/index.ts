@@ -5,6 +5,8 @@ import accountRoutes from './account.routes';
 import transactionRoutes from './transaction.routes';
 import categoryRoutes from './category.routes';
 import dashboardRoutes from './dashboard.routes';
+import savingsRoutes from './savings.routes';
+import pinRoutes from './pin.routes';
 
 const router = Router(); // API Routes Configuration
 
@@ -32,5 +34,7 @@ router.use('/accounts', accountRoutes);
 router.use('/transactions', transactionRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/savings', savingsRoutes);
+router.use('/pin', pinRoutes);
 
 export default router;

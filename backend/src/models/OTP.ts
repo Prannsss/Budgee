@@ -10,12 +10,14 @@ export interface OTPAttributes {
   purpose: string;
   expires_at: Date;
   is_verified: boolean;
+  attempts: number;
+  max_attempts: number;
   created_at?: Date;
 }
 
 // Optional fields for creation
 interface OTPCreationAttributes 
-  extends Optional<OTPAttributes, 'id' | 'is_verified' | 'created_at'> {}
+  extends Optional<OTPAttributes, 'id' | 'is_verified' | 'attempts' | 'max_attempts' | 'created_at'> {}
 
 // OTP Model
 class OTP extends Model<OTPAttributes, OTPCreationAttributes> implements OTPAttributes {
@@ -25,6 +27,8 @@ class OTP extends Model<OTPAttributes, OTPCreationAttributes> implements OTPAttr
   public purpose!: string;
   public expires_at!: Date;
   public is_verified!: boolean;
+  public attempts!: number;
+  public max_attempts!: number;
 
   public readonly created_at!: Date;
 
@@ -62,6 +66,14 @@ OTP.init(
     is_verified: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
+    },
+    attempts: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    max_attempts: {
+      type: DataTypes.INTEGER,
+      defaultValue: 3,
     },
     created_at: {
       type: DataTypes.DATE,

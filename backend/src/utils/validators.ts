@@ -131,6 +131,12 @@ export const createTransactionValidator = [
     .isFloat({ min: 0.01 })
     .withMessage('Amount must be greater than 0'),
   
+  body('description')
+    .notEmpty()
+    .withMessage('Description is required')
+    .isString()
+    .withMessage('Description must be a string'),
+  
   body('date')
     .notEmpty()
     .withMessage('Date is required')

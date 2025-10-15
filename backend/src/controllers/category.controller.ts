@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Category, ActivityLog } from '../models';
+import { Category, ActivityLog, Transaction } from '../models';
 import { asyncHandler } from '../middlewares/error.middleware';
 
 /**
@@ -162,17 +162,19 @@ export const deleteCategory = asyncHandler(async (req: Request, res: Response) =
     return;
   }
 
-  // Prevent deleting default categories
-  if (category.is_default) {
-    res.status(403).json({
+  // Check if category has transactions
+  const transactionCount = await Transaction.count({
+    where: { category_id: id },
+  });
+
+  if (transactionCount > 0) {
+    res.status(400).json({
       success: false,
-      message: 'Cannot delete default categories',
+      message: `Cannot delete category. It has ${transactionCount} transaction(s) associated with it.`,
     });
     return;
   }
 
-  // Note: Transactions referencing this category will fail due to foreign key constraint
-  // You might want to handle this differently (e.g., move to "Uncategorized")
   await category.destroy();
 
   // Log activity
@@ -196,18 +198,18 @@ export const initializeDefaultCategories = async (userId: number): Promise<void>
   try {
     // Income Categories
     const incomeCategories = [
-      { user_id: userId, name: 'Salary', type: 'income' as const, is_default: true },
-      { user_id: userId, name: 'Miscellaneous', type: 'income' as const, is_default: true },
+      { user_id: userId, name: 'Salary', type: 'income' as const, is_default: false },
+      { user_id: userId, name: 'Miscellaneous', type: 'income' as const, is_default: false },
     ];
 
     // Expense Categories
     const expenseCategories = [
-      { user_id: userId, name: 'Food', type: 'expense' as const, is_default: true },
-      { user_id: userId, name: 'Transportation', type: 'expense' as const, is_default: true },
-      { user_id: userId, name: 'Rent', type: 'expense' as const, is_default: true },
-      { user_id: userId, name: 'Utilities', type: 'expense' as const, is_default: true },
-      { user_id: userId, name: 'Entertainment', type: 'expense' as const, is_default: true },
-      { user_id: userId, name: 'Miscellaneous', type: 'expense' as const, is_default: true },
+      { user_id: userId, name: 'Food', type: 'expense' as const, is_default: false },
+      { user_id: userId, name: 'Transportation', type: 'expense' as const, is_default: false },
+      { user_id: userId, name: 'Rent', type: 'expense' as const, is_default: false },
+      { user_id: userId, name: 'Utilities', type: 'expense' as const, is_default: false },
+      { user_id: userId, name: 'Entertainment', type: 'expense' as const, is_default: false },
+      { user_id: userId, name: 'Miscellaneous', type: 'expense' as const, is_default: false },
     ];
 
     // Bulk create all default categories

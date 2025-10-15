@@ -11,10 +11,21 @@ export type Transaction = {
   date: string;
   description: string;
   amount: number;
+  type: 'income' | 'expense'; // Transaction type
   category: string; // Now stores category name dynamically
   status: 'pending' | 'completed' | 'failed';
   accountId: string; // references Account.id
   notes?: string; // Optional notes field
+};
+
+export type Institution = {
+  id: number;
+  name: string;
+  short_name: string;
+  type: 'bank' | 'e-wallet';
+  country: string;
+  logo: string;
+  is_supported: boolean;
 };
 
 export type Account = {
@@ -23,6 +34,9 @@ export type Account = {
   type: 'Bank' | 'E-Wallet' | 'Cash';
   balance: number;
   lastFour: string;
+  institutionId?: number; // Optional: links to institutions table
+  institutionName?: string; // Display name of the institution
+  institutionLogo?: string; // Logo URL from institutions
 };
 
 export type SavingsAllocation = {

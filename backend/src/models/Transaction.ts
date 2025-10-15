@@ -12,18 +12,20 @@ export interface TransactionAttributes {
   category_id: number;
   type: 'income' | 'expense';
   amount: number;
+  description: string;
   date: Date;
   notes?: string;
   receipt_url?: string;
-  is_recurring: boolean;
+  status: string;
   recurring_frequency?: string;
+  recurring_parent_id?: number;
   created_at?: Date;
   updated_at?: Date;
 }
 
 // Optional fields for creation
 interface TransactionCreationAttributes 
-  extends Optional<TransactionAttributes, 'id' | 'is_recurring' | 'created_at' | 'updated_at'> {}
+  extends Optional<TransactionAttributes, 'id' | 'created_at' | 'updated_at'> {}
 
 // Transaction Model
 class Transaction extends Model<TransactionAttributes, TransactionCreationAttributes> implements TransactionAttributes {
@@ -33,11 +35,13 @@ class Transaction extends Model<TransactionAttributes, TransactionCreationAttrib
   public category_id!: number;
   public type!: 'income' | 'expense';
   public amount!: number;
+  public description!: string;
   public date!: Date;
   public notes?: string;
   public receipt_url?: string;
-  public is_recurring!: boolean;
+  public status!: string;
   public recurring_frequency?: string;
+  public recurring_parent_id?: number;
 
   public readonly created_at!: Date;
   public readonly updated_at!: Date;
@@ -87,6 +91,10 @@ Transaction.init(
       type: DataTypes.DECIMAL(15, 2),
       allowNull: false,
     },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
     date: {
       type: DataTypes.DATEONLY,
       allowNull: false,
@@ -99,13 +107,21 @@ Transaction.init(
       type: DataTypes.STRING(500),
       allowNull: true,
     },
-    is_recurring: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
+    status: {
+      type: DataTypes.STRING(20),
+      defaultValue: 'completed',
     },
     recurring_frequency: {
       type: DataTypes.STRING(20),
       allowNull: true,
+    },
+    recurring_parent_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'transactions',
+        key: 'id',
+      },
     },
     created_at: {
       type: DataTypes.DATE,

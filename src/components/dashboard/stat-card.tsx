@@ -7,9 +7,10 @@ type StatCardProps = {
   description?: string;
   icon: React.ReactNode;
   isLoading?: boolean;
+  variant?: 'default' | 'income' | 'expense';
 };
 
-export function StatCard({ title, value, description, icon, isLoading }: StatCardProps) {
+export function StatCard({ title, value, description, icon, isLoading, variant = 'default' }: StatCardProps) {
     if(isLoading) {
         return (
             <Card>
@@ -24,6 +25,11 @@ export function StatCard({ title, value, description, icon, isLoading }: StatCar
         )
     }
 
+  const valueColorClass = 
+    variant === 'income' ? 'text-green-600' : 
+    variant === 'expense' ? 'text-red-600' : 
+    '';
+
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -31,7 +37,7 @@ export function StatCard({ title, value, description, icon, isLoading }: StatCar
         {icon}
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className={`text-2xl font-bold ${valueColorClass}`}>{value}</div>
         {description && (
           <p className="text-xs text-muted-foreground">{description}</p>
         )}

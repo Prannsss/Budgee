@@ -111,12 +111,13 @@ export function createColumns(accounts: Account[]): ColumnDef<Transaction>[] {
       },
       cell: ({ row }) => {
         const amount = parseFloat(row.getValue("amount"))
+        const transaction = row.original
         const formatted = new Intl.NumberFormat("en-PH", {
           style: "currency",
           currency: "PHP",
         }).format(amount)
     
-    return <div className={cn("text-right font-medium", amount > 0 ? "text-green-600" : "text-red-600")}>{formatted}</div>
+        return <div className={cn("text-right font-medium", transaction.type === 'income' ? "text-green-600" : "text-red-600")}>{formatted}</div>
       },
     },
     {

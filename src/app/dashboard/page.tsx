@@ -204,8 +204,8 @@ export default function DashboardPage() {
             const now = new Date();
             const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
             const monthly = transactions.filter((t: Transaction) => t.date.startsWith(ym));
-            const income = monthly.filter((t: Transaction) => t.amount > 0).reduce((s: number, t: Transaction) => s + (Number(t.amount) || 0), 0);
-            const expenses = monthly.filter((t: Transaction) => t.amount < 0).reduce((s: number, t: Transaction) => s + Math.abs(Number(t.amount) || 0), 0);
+            const income = monthly.filter((t: Transaction) => t.type === 'income').reduce((s: number, t: Transaction) => s + (Number(t.amount) || 0), 0);
+            const expenses = monthly.filter((t: Transaction) => t.type === 'expense').reduce((s: number, t: Transaction) => s + (Number(t.amount) || 0), 0);
             return (
               <>
                 <StatCard
@@ -213,12 +213,14 @@ export default function DashboardPage() {
                   value={fmt(income)}
                   description="Income"
                   icon={<TrendingUp className="h-5 w-5 text-green-500" />}
+                  variant="income"
                 />
                 <StatCard
                   title="This Month"
                   value={fmt(expenses)}
                   description="Expenses"
                   icon={<TrendingDown className="h-5 w-5 text-red-500" />}
+                  variant="expense"
                 />
               </>
             );

@@ -12,6 +12,7 @@ import {
   CreditCard,
   User,
   Bot,
+  PiggyBank,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
@@ -24,6 +25,7 @@ const baseNavItems = [
     { href: "/dashboard", icon: <LayoutDashboard />, label: "Dashboard" },
     { href: "/dashboard/accounts", icon: <Landmark />, label: "Accounts" },
     { href: "/dashboard/transactions", icon: <CreditCard />, label: "Transactions" },
+    { href: "/dashboard/savings", icon: <PiggyBank />, label: "Savings" },
 ];
 
 const aiNavItem = { href: "/dashboard/chat", icon: <Bot />, label: "Budgee AI" };

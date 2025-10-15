@@ -13,9 +13,6 @@ export interface UserAttributes {
   avatar_url?: string;
   email_verified: boolean;
   phone_verified: boolean;
-  verification_token?: string;
-  verification_token_expires?: Date;
-  last_verification_sent?: Date;
   is_active: boolean;
   oauth_provider?: string;
   oauth_id?: string;
@@ -39,9 +36,6 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   public avatar_url?: string;
   public email_verified!: boolean;
   public phone_verified!: boolean;
-  public verification_token?: string;
-  public verification_token_expires?: Date;
-  public last_verification_sent?: Date;
   public is_active!: boolean;
   public oauth_provider?: string;
   public oauth_id?: string;
@@ -101,18 +95,6 @@ User.init(
     phone_verified: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
-    },
-    verification_token: {
-      type: DataTypes.STRING(6),
-      allowNull: true,
-    },
-    verification_token_expires: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    last_verification_sent: {
-      type: DataTypes.DATE,
-      allowNull: true,
     },
     is_active: {
       type: DataTypes.BOOLEAN,

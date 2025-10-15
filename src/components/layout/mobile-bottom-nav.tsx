@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Landmark, CreditCard, Bot, User } from "lucide-react";
+import { LayoutDashboard, Landmark, CreditCard, Bot, User, PiggyBank } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSubscription } from "@/contexts/subscription-context";
 
@@ -10,6 +10,7 @@ const baseItems = [
   { href: "/dashboard", label: "Home", Icon: LayoutDashboard },
   { href: "/dashboard/accounts", label: "Accounts", Icon: Landmark },
   { href: "/dashboard/transactions", label: "Transactions", Icon: CreditCard },
+  { href: "/dashboard/savings", label: "Savings", Icon: PiggyBank },
 ];
 
 const aiItem = { href: "/dashboard/chat", label: "Chat", Icon: Bot };
@@ -20,7 +21,7 @@ export function MobileBottomNav() {
   
   // Build navigation items based on plan
   const items = isAIEnabled ? [...baseItems, aiItem] : baseItems;
-  const gridCols = isAIEnabled ? "grid-cols-5" : "grid-cols-4";
+  const gridCols = isAIEnabled ? "grid-cols-6" : "grid-cols-5";
 
   return (
     <nav

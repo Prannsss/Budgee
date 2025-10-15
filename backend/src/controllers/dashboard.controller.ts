@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Transaction, Account, Category } from '../models';
+import { Transaction, Account, Category, SavingsAllocation } from '../models';
 import { asyncHandler } from '../middlewares/error.middleware';
 import { Op } from 'sequelize';
 import sequelize from '../config/sequelize';
@@ -63,6 +63,18 @@ export const getDashboardSummary = asyncHandler(async (req: Request, res: Respon
 
   const totalBalance = accounts.reduce((sum, acc) => sum + (Number(acc.balance) || 0), 0);
 
+  // Calculate total savings from savings allocations
+  const savingsAllocations = await SavingsAllocation.findAll({
+    where: { user_id: userId },
+    attributes: ['type', 'amount'],
+  });
+
+  const totalSavings = savingsAllocations.reduce((total, alloc) => {
+    return alloc.type === 'deposit' 
+      ? total + Number(alloc.amount)
+      : total - Number(alloc.amount);
+  }, 0);
+
   // Group by category
   const expensesByCategory = transactions
     .filter(t => t.type === 'expense')
@@ -96,6 +108,7 @@ export const getDashboardSummary = asyncHandler(async (req: Request, res: Respon
         totalExpense,
         netBalance,
         totalBalance,
+        savings: totalSavings, // Add savings to response
         transactionCount: transactions.length,
         accountCount: accounts.length,
       },

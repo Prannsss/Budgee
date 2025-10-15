@@ -6,6 +6,9 @@ import Category from './Category';
 import Transaction from './Transaction';
 import OTP from './OTP';
 import ActivityLog from './ActivityLog';
+import SavingsAllocation from './SavingsAllocation';
+import SavingsGoal from './SavingsGoal';
+import UserPin from './UserPin';
 
 // ================================================
 // Define Model Associations
@@ -113,6 +116,71 @@ ActivityLog.belongsTo(User, {
   as: 'user',
 });
 
+// User has many SavingsAllocations
+User.hasMany(SavingsAllocation, {
+  foreignKey: 'user_id',
+  as: 'savings_allocations',
+  onDelete: 'CASCADE',
+});
+
+// SavingsAllocation belongs to User
+SavingsAllocation.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
+// Account has many SavingsAllocations
+Account.hasMany(SavingsAllocation, {
+  foreignKey: 'account_id',
+  as: 'savings_allocations',
+  onDelete: 'CASCADE',
+});
+
+// SavingsAllocation belongs to Account
+SavingsAllocation.belongsTo(Account, {
+  foreignKey: 'account_id',
+  as: 'account',
+});
+
+// User has many SavingsGoals
+User.hasMany(SavingsGoal, {
+  foreignKey: 'user_id',
+  as: 'savings_goals',
+  onDelete: 'CASCADE',
+});
+
+// SavingsGoal belongs to User
+SavingsGoal.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
+// SavingsGoal has many SavingsAllocations
+SavingsGoal.hasMany(SavingsAllocation, {
+  foreignKey: 'savings_goal_id',
+  as: 'allocations',
+  onDelete: 'SET NULL',
+});
+
+// SavingsAllocation belongs to SavingsGoal (optional)
+SavingsAllocation.belongsTo(SavingsGoal, {
+  foreignKey: 'savings_goal_id',
+  as: 'savings_goal',
+});
+
+// User has one UserPin
+User.hasOne(UserPin, {
+  foreignKey: 'user_id',
+  as: 'pin',
+  onDelete: 'CASCADE',
+});
+
+// UserPin belongs to User
+UserPin.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
 // ================================================
 // Export all models
 // ================================================
@@ -125,6 +193,9 @@ export {
   Transaction,
   OTP,
   ActivityLog,
+  SavingsAllocation,
+  SavingsGoal,
+  UserPin,
 };
 
 // Default export as object for convenience
@@ -136,4 +207,7 @@ export default {
   Transaction,
   OTP,
   ActivityLog,
+  SavingsAllocation,
+  SavingsGoal,
+  UserPin,
 };

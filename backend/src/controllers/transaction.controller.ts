@@ -31,7 +31,7 @@ export const getAllTransactions = asyncHandler(async (req: Request, res: Respons
     where,
     include: [
       { model: Account, as: 'account', attributes: ['id', 'name', 'type', 'logo_url'] },
-      { model: Category, as: 'category', attributes: ['id', 'name', 'type', 'icon'] },
+      { model: Category, as: 'category', attributes: ['id', 'name', 'type'] },
     ],
     order: [['date', 'DESC'], ['created_at', 'DESC']],
     limit: Number(limit),
@@ -88,7 +88,7 @@ export const getTransactionById = asyncHandler(async (req: Request, res: Respons
  */
 export const createTransaction = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.id!;
-  const { account_id, category_id, type, amount, date, notes, receipt_url, is_recurring, recurring_frequency } = req.body;
+  const { account_id, category_id, type, amount, description, date, notes, receipt_url, recurring_frequency } = req.body;
 
   // Verify account belongs to user
   const account = await Account.findOne({
@@ -123,10 +123,11 @@ export const createTransaction = asyncHandler(async (req: Request, res: Response
     category_id,
     type,
     amount,
+    description,
     date,
     notes,
     receipt_url,
-    is_recurring,
+    status: 'completed',
     recurring_frequency,
   });
 

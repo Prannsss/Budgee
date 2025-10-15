@@ -90,12 +90,26 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
     }
 
     try {
-      // Create new transaction
+      // Find the selected category object to get its ID
+      const selectedCategory = categories.find(cat => cat.name === category);
+      
+      if (!selectedCategory) {
+        toast({
+          title: "Error",
+          description: "Selected category not found.",
+          variant: "destructive",
+        });
+        setIsAdding(false);
+        return;
+      }
+
+      // Create new transaction matching backend API
       const transactionData = {
-        description,
-        amount: type === "Income" ? parseFloat(amount) : -parseFloat(amount),
-        category: category,
-        accountId: selectedAccount,
+        account_id: parseInt(selectedAccount),
+        category_id: parseInt(selectedCategory.id),
+        type: type.toLowerCase() as 'income' | 'expense',
+        amount: parseFloat(amount),
+        description: description,
         date: date,
         notes: notes || undefined,
       };
