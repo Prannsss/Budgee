@@ -7,7 +7,6 @@ import Transaction from './Transaction';
 import OTP from './OTP';
 import ActivityLog from './ActivityLog';
 import SavingsAllocation from './SavingsAllocation';
-import SavingsGoal from './SavingsGoal';
 import UserPin from './UserPin';
 
 // ================================================
@@ -142,32 +141,6 @@ SavingsAllocation.belongsTo(Account, {
   as: 'account',
 });
 
-// User has many SavingsGoals
-User.hasMany(SavingsGoal, {
-  foreignKey: 'user_id',
-  as: 'savings_goals',
-  onDelete: 'CASCADE',
-});
-
-// SavingsGoal belongs to User
-SavingsGoal.belongsTo(User, {
-  foreignKey: 'user_id',
-  as: 'user',
-});
-
-// SavingsGoal has many SavingsAllocations
-SavingsGoal.hasMany(SavingsAllocation, {
-  foreignKey: 'savings_goal_id',
-  as: 'allocations',
-  onDelete: 'SET NULL',
-});
-
-// SavingsAllocation belongs to SavingsGoal (optional)
-SavingsAllocation.belongsTo(SavingsGoal, {
-  foreignKey: 'savings_goal_id',
-  as: 'savings_goal',
-});
-
 // User has one UserPin
 User.hasOne(UserPin, {
   foreignKey: 'user_id',
@@ -194,7 +167,6 @@ export {
   OTP,
   ActivityLog,
   SavingsAllocation,
-  SavingsGoal,
   UserPin,
 };
 
@@ -208,6 +180,5 @@ export default {
   OTP,
   ActivityLog,
   SavingsAllocation,
-  SavingsGoal,
   UserPin,
 };

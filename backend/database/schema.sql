@@ -7,7 +7,6 @@
 -- Drop existing tables if they exist (for clean setup)
 DROP TABLE IF EXISTS refresh_tokens CASCADE;
 DROP TABLE IF EXISTS user_pins CASCADE;
-DROP TABLE IF EXISTS savings_goals CASCADE;
 DROP TABLE IF EXISTS savings_allocations CASCADE;
 DROP TABLE IF EXISTS transaction_transfers CASCADE;
 DROP TABLE IF EXISTS activity_logs CASCADE;
@@ -165,33 +164,12 @@ CREATE TABLE transaction_transfers (
 );
 
 -- ================================================
--- Table: savings_goals
--- Description: User savings goals and targets
--- ================================================
-CREATE TABLE savings_goals (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    target_amount DECIMAL(15, 2) NOT NULL CHECK (target_amount > 0),
-    current_amount DECIMAL(15, 2) DEFAULT 0.00 CHECK (current_amount >= 0),
-    target_date DATE,
-    description TEXT,
-    icon VARCHAR(50),
-    color VARCHAR(7),
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
-);
-
--- ================================================
 -- Table: savings_allocations
 -- Description: Track savings deposits and withdrawals
 -- ================================================
 CREATE TABLE savings_allocations (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
-    savings_goal_id INTEGER, -- Optional: link to specific goal
     account_id INTEGER NOT NULL, -- Account money comes from/goes to
     amount DECIMAL(15, 2) NOT NULL CHECK (amount > 0),
     type VARCHAR(20) NOT NULL CHECK (type IN ('deposit', 'withdrawal')),
@@ -200,7 +178,6 @@ CREATE TABLE savings_allocations (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (savings_goal_id) REFERENCES savings_goals(id) ON DELETE SET NULL ON UPDATE CASCADE,
     FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -314,14 +291,8 @@ CREATE INDEX idx_categories_type ON categories(type);
 CREATE INDEX idx_categories_parent ON categories(parent_id);
 CREATE INDEX idx_categories_default ON categories(is_default);
 
--- Savings goals
-CREATE INDEX idx_savings_goals_user_id ON savings_goals(user_id);
-CREATE INDEX idx_savings_goals_active ON savings_goals(user_id, is_active);
-CREATE INDEX idx_savings_goals_target_date ON savings_goals(target_date);
-
 -- Savings allocations
 CREATE INDEX idx_savings_allocations_user_id ON savings_allocations(user_id);
-CREATE INDEX idx_savings_allocations_goal_id ON savings_allocations(savings_goal_id);
 CREATE INDEX idx_savings_allocations_account_id ON savings_allocations(account_id);
 CREATE INDEX idx_savings_allocations_date ON savings_allocations(user_id, date DESC);
 CREATE INDEX idx_savings_allocations_type ON savings_allocations(type);
@@ -388,7 +359,7 @@ INSERT INTO plans (name, price, max_wallets, max_accounts, ai_enabled, ads_enabl
 ),
 (
   'Premium', 
-  499.00, 
+  399.00, 
   10, 
   15, 
   TRUE, 
@@ -495,35 +466,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to update savings goal progress
-CREATE OR REPLACE FUNCTION update_savings_goal_progress()
-RETURNS TRIGGER AS $$
-DECLARE
-    goal_id INTEGER;
-BEGIN
-    goal_id := COALESCE(NEW.savings_goal_id, OLD.savings_goal_id);
-    
-    IF goal_id IS NOT NULL THEN
-        UPDATE savings_goals 
-        SET current_amount = (
-            SELECT COALESCE(SUM(
-                CASE 
-                    WHEN type = 'deposit' THEN amount
-                    WHEN type = 'withdrawal' THEN -amount
-                    ELSE 0
-                END
-            ), 0)
-            FROM savings_allocations 
-            WHERE savings_goal_id = goal_id
-        ),
-        updated_at = CURRENT_TIMESTAMP
-        WHERE id = goal_id;
-    END IF;
-
-    RETURN COALESCE(NEW, OLD);
-END;
-$$ LANGUAGE plpgsql;
-
 -- Apply trigger to all tables with updated_at
 CREATE TRIGGER update_plans_updated_at BEFORE UPDATE ON plans
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -540,9 +482,6 @@ CREATE TRIGGER update_categories_updated_at BEFORE UPDATE ON categories
 CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON transactions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_savings_goals_updated_at BEFORE UPDATE ON savings_goals
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
 CREATE TRIGGER update_savings_allocations_updated_at BEFORE UPDATE ON savings_allocations
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -553,11 +492,6 @@ CREATE TRIGGER update_user_pins_updated_at BEFORE UPDATE ON user_pins
 CREATE TRIGGER transaction_balance_trigger 
     AFTER INSERT OR UPDATE OR DELETE ON transactions
     FOR EACH ROW EXECUTE FUNCTION update_account_balance();
-
--- Apply savings goal progress trigger
-CREATE TRIGGER savings_goal_progress_trigger
-    AFTER INSERT OR UPDATE OR DELETE ON savings_allocations
-    FOR EACH ROW EXECUTE FUNCTION update_savings_goal_progress();
 
 -- ================================================
 -- Views for Common Queries
@@ -581,13 +515,11 @@ SELECT
         (SELECT SUM(CASE WHEN sa.type = 'deposit' THEN sa.amount ELSE -sa.amount END)
          FROM savings_allocations sa 
          WHERE sa.user_id = u.id), 0
-    ) as total_savings,
-    COUNT(DISTINCT sg.id) as active_savings_goals
+    ) as total_savings
 FROM users u
 LEFT JOIN plans p ON u.plan_id = p.id
 LEFT JOIN accounts a ON u.id = a.user_id AND a.is_active = TRUE
 LEFT JOIN transactions t ON u.id = t.user_id AND t.status = 'completed'
-LEFT JOIN savings_goals sg ON u.id = sg.user_id AND sg.is_active = TRUE
 WHERE u.is_active = TRUE
 GROUP BY u.id, u.name, u.email, p.name;
 
@@ -698,8 +630,7 @@ COMMENT ON TABLE accounts IS 'Financial accounts including cash, bank, and e-wal
 COMMENT ON TABLE categories IS 'User-defined transaction categories with hierarchical support';
 COMMENT ON TABLE transactions IS 'All financial transactions including income, expense, and transfers';
 COMMENT ON TABLE transaction_transfers IS 'Links transactions for account-to-account transfers';
-COMMENT ON TABLE savings_goals IS 'User-defined savings goals with targets and progress';
-COMMENT ON TABLE savings_allocations IS 'Tracks money moved to/from savings goals';
+COMMENT ON TABLE savings_allocations IS 'Tracks money moved to/from savings';
 COMMENT ON TABLE user_pins IS 'Secure PIN storage for app authentication';
 COMMENT ON TABLE refresh_tokens IS 'JWT refresh tokens for session management';
 COMMENT ON TABLE otps IS 'One-time passwords for various verification purposes';

@@ -7,7 +7,6 @@ import Account from './Account';
 export interface SavingsAllocationAttributes {
   id: number;
   user_id: number;
-  savings_goal_id?: number;
   account_id: number;
   amount: number;
   type: 'deposit' | 'withdrawal';
@@ -19,14 +18,13 @@ export interface SavingsAllocationAttributes {
 
 // Optional fields for creation
 interface SavingsAllocationCreationAttributes 
-  extends Optional<SavingsAllocationAttributes, 'id' | 'savings_goal_id' | 'created_at' | 'updated_at'> {}
+  extends Optional<SavingsAllocationAttributes, 'id' | 'created_at' | 'updated_at'> {}
 
 // SavingsAllocation Model
 class SavingsAllocation extends Model<SavingsAllocationAttributes, SavingsAllocationCreationAttributes> 
   implements SavingsAllocationAttributes {
   public id!: number;
   public user_id!: number;
-  public savings_goal_id?: number;
   public account_id!: number;
   public amount!: number;
   public type!: 'deposit' | 'withdrawal';
@@ -53,14 +51,6 @@ SavingsAllocation.init(
       allowNull: false,
       references: {
         model: 'users',
-        key: 'id',
-      },
-    },
-    savings_goal_id: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: 'savings_goals',
         key: 'id',
       },
     },

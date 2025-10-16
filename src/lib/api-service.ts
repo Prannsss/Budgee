@@ -803,91 +803,6 @@ export class DashboardAPI {
   }
 }
 
-// ==================== Savings Goals API ====================
-
-export interface SavingsGoal {
-  id: string;
-  userId: string;
-  name: string;
-  targetAmount: number;
-  currentAmount: number;
-  targetDate: string;
-  description?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface SavingsGoalInput {
-  name: string;
-  targetAmount: number;
-  targetDate: string;
-  description?: string;
-}
-
-export class SavingsGoalAPI {
-  /**
-   * Get all savings goals for the current user
-   */
-  static async getAll(): Promise<SavingsGoal[]> {
-    const response = await httpClient.get<ApiResponse<SavingsGoal[]>>('/api/savings-goals');
-    return response.data;
-  }
-
-  /**
-   * Get a single savings goal by ID
-   */
-  static async getById(id: string): Promise<SavingsGoal> {
-    const response = await httpClient.get<ApiResponse<SavingsGoal>>(`/api/savings-goals/${id}`);
-    return response.data;
-  }
-
-  /**
-   * Create a new savings goal
-   */
-  static async create(goal: SavingsGoalInput): Promise<SavingsGoal> {
-    const response = await httpClient.post<ApiResponse<SavingsGoal>>('/api/savings-goals', goal);
-    return response.data;
-  }
-
-  /**
-   * Update an existing savings goal
-   */
-  static async update(id: string, updates: Partial<SavingsGoalInput>): Promise<SavingsGoal> {
-    const response = await httpClient.put<ApiResponse<SavingsGoal>>(`/api/savings-goals/${id}`, updates);
-    return response.data;
-  }
-
-  /**
-   * Delete a savings goal
-   */
-  static async delete(id: string): Promise<void> {
-    await httpClient.delete(`/api/savings-goals/${id}`);
-  }
-
-  /**
-   * Allocate funds to a savings goal
-   */
-  static async allocate(goalId: string, amount: number, accountId: string): Promise<SavingsAllocation> {
-    const response = await httpClient.post<ApiResponse<SavingsAllocation>>(
-      `/api/savings-goals/${goalId}/allocate`,
-      { amount, accountId }
-    );
-    return response.data;
-  }
-
-  /**
-   * Withdraw funds from a savings goal
-   */
-  static async withdraw(goalId: string, amount: number, accountId: string): Promise<SavingsAllocation> {
-    const response = await httpClient.post<ApiResponse<SavingsAllocation>>(
-      `/api/savings-goals/${goalId}/withdraw`,
-      { amount, accountId }
-    );
-    return response.data;
-  }
-}
-
 // ==================== Savings Allocations API ====================
 
 export interface SavingsAllocationInput {
@@ -1158,7 +1073,6 @@ export const API = {
   categories: CategoryAPI,
   plans: PlanAPI,
   dashboard: DashboardAPI,
-  savingsGoals: SavingsGoalAPI,
   savingsAllocations: SavingsAllocationAPI,
   pin: PinAPI,
   health: HealthAPI,

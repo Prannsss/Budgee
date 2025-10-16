@@ -111,19 +111,6 @@ export type Plan = {
   features: string[];
 };
 
-export type SavingsGoal = {
-  id: string;
-  userId: string;
-  name: string;
-  targetAmount: number;
-  currentAmount: number;
-  targetDate: string;
-  description?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
-
 export type ActivityLog = {
   id: string;
   userId: string;
