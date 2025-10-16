@@ -8,6 +8,7 @@ import OTP from './OTP';
 import ActivityLog from './ActivityLog';
 import SavingsAllocation from './SavingsAllocation';
 import UserPin from './UserPin';
+import SpendingLimit from './SpendingLimit';
 
 // ================================================
 // Define Model Associations
@@ -154,6 +155,19 @@ UserPin.belongsTo(User, {
   as: 'user',
 });
 
+// User has many SpendingLimits
+User.hasMany(SpendingLimit, {
+  foreignKey: 'user_id',
+  as: 'spending_limits',
+  onDelete: 'CASCADE',
+});
+
+// SpendingLimit belongs to User
+SpendingLimit.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
 // ================================================
 // Export all models
 // ================================================
@@ -168,6 +182,7 @@ export {
   ActivityLog,
   SavingsAllocation,
   UserPin,
+  SpendingLimit,
 };
 
 // Default export as object for convenience
@@ -181,4 +196,5 @@ export default {
   ActivityLog,
   SavingsAllocation,
   UserPin,
+  SpendingLimit,
 };

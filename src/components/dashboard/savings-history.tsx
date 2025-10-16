@@ -18,6 +18,8 @@ export function SavingsHistory() {
   useEffect(() => {
     if (!user?.id) return;
 
+    let isMounted = true;
+
     const loadData = async () => {
       try {
         const [allocations, userAccounts] = await Promise.all([
@@ -25,18 +27,28 @@ export function SavingsHistory() {
           API.accounts.getAll(),
         ]);
         
-        // Sort by date descending (most recent first)
-        const sortedAllocations = allocations.sort((a, b) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
+        if (isMounted) {
+          // Sort by date descending (most recent first)
+          const sortedAllocations = allocations.sort((a, b) => 
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+          
+          setSavingsAllocations(sortedAllocations.slice(0, 5)); // Show last 5
+          // Ensure accounts is an array
+          setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
+        }
+      } catch (error: any) {
+        // Silently handle auth errors (user is being logged out)
+        if (error?.message?.includes('Unauthorized')) {
+          console.log('User session expired - logout in progress');
+          return;
+        }
         
-        setSavingsAllocations(sortedAllocations.slice(0, 5)); // Show last 5
-        // Ensure accounts is an array
-        setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
-      } catch (error) {
         console.error('Error loading savings data:', error);
-        setSavingsAllocations([]);
-        setAccounts([]);
+        if (isMounted) {
+          setSavingsAllocations([]);
+          setAccounts([]);
+        }
       }
     };
 
@@ -47,6 +59,7 @@ export function SavingsHistory() {
     window.addEventListener('budgee:dataUpdate', handleDataUpdate);
     
     return () => {
+      isMounted = false;
       window.removeEventListener('budgee:dataUpdate', handleDataUpdate);
     };
   }, [user?.id]);

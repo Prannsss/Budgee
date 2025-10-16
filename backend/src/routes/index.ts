@@ -7,6 +7,7 @@ import categoryRoutes from './category.routes';
 import dashboardRoutes from './dashboard.routes';
 import savingsRoutes from './savings.routes';
 import pinRoutes from './pin.routes';
+import spendingLimitRoutes from './spending-limit.routes';
 
 const router = Router(); // API Routes Configuration
 
@@ -36,5 +37,6 @@ router.use('/categories', categoryRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/savings', savingsRoutes);
 router.use('/pin', pinRoutes);
+router.use('/spending-limits', spendingLimitRoutes);
 
 export default router;

@@ -46,6 +46,8 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
   useEffect(() => {
     if (!user?.id || !isOpen) return;
     
+    let isMounted = true;
+    
     const loadData = async () => {
       try {
         const [userAccounts, userCategories] = await Promise.all([
@@ -53,25 +55,39 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
           API.categories.getAll()
         ]);
         
-        setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
-        setCategories(Array.isArray(userCategories) ? userCategories : []);
-        
-        // Set first account as default if none selected
-        if (Array.isArray(userAccounts) && userAccounts.length > 0 && !selectedAccount) {
-          setSelectedAccount(userAccounts[0].id);
+        if (isMounted) {
+          setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
+          setCategories(Array.isArray(userCategories) ? userCategories : []);
+          
+          // Set first account as default if none selected
+          if (Array.isArray(userAccounts) && userAccounts.length > 0 && !selectedAccount) {
+            setSelectedAccount(userAccounts[0].id);
+          }
         }
-      } catch (error) {
+      } catch (error: any) {
+        // Silently handle auth errors (user is being logged out)
+        if (error?.message?.includes('Unauthorized')) {
+          console.log('User session expired - logout in progress');
+          return;
+        }
+        
         console.error('Error loading transaction dialog data:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load accounts and categories.",
-          variant: "destructive",
-        });
+        if (isMounted) {
+          toast({
+            title: "Error",
+            description: "Failed to load accounts and categories.",
+            variant: "destructive",
+          });
+        }
       }
     };
     
     loadData();
-  }, [user?.id, isOpen, selectedAccount]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id, isOpen, selectedAccount, toast]);
 
   const handleAddTransaction = async () => {
     if (!user?.id) return;

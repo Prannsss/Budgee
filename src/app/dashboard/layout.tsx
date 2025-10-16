@@ -5,6 +5,7 @@ import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { SubscriptionProvider } from '@/contexts/subscription-context';
 import { ProtectedRoute } from '@/components/auth/protected-route';
+import { SpendingLimitNotifications } from '@/components/spending-limit-notifications';
 
 export default function DashboardLayout({
   children,
@@ -26,6 +27,9 @@ export default function DashboardLayout({
             <SidebarNav />
           </Sidebar>
     <div className="flex flex-col pl-0 md:pl-[var(--sidebar-width-icon)] group-data-[state=expanded]/sidebar-wrapper:md:pl-[var(--sidebar-width)] transition-[padding-left] duration-300 ease-in-out pb-20 md:pb-0">
+              {/* Spending Limit Notifications */}
+              <SpendingLimitNotifications />
+              
               <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
                 {children}
               </main>

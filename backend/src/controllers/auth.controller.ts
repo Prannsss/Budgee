@@ -6,6 +6,7 @@ import { asyncHandler } from '../middlewares/error.middleware';
 import { sendVerificationEmail, sendWelcomeEmail } from '../utils/email.service';
 import { createDefaultCashAccount } from '../utils/account.service';
 import { initializeDefaultCategories } from './category.controller';
+import sequelize from '../config/sequelize';
 
 /**
  * User signup/registration
@@ -506,6 +507,76 @@ export const resendVerification = asyncHandler(async (req: Request, res: Respons
     res.status(500).json({
       success: false,
       message: 'Failed to send verification email. Please try again later.',
+    });
+  }
+});
+
+/**
+ * Delete user account and all associated data
+ * DELETE /api/auth/account
+ */
+export const deleteAccount = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+
+  if (!userId) {
+    res.status(401).json({
+      success: false,
+      message: 'Unauthorized',
+    });
+    return;
+  }
+
+  // Verify user exists
+  const user = await UserModel.findByPk(userId);
+  
+  if (!user) {
+    res.status(404).json({
+      success: false,
+      message: 'User not found',
+    });
+    return;
+  }
+
+  // Use a transaction to ensure all deletions succeed or rollback
+  const transaction = await sequelize.transaction();
+
+  try {
+    // Log the account deletion before deleting
+    await ActivityLog.create({
+      user_id: userId,
+      action: 'account_deleted',
+      description: `User ${user.name} (${user.email}) deleted their account`,
+      ip_address: req.ip,
+      user_agent: req.get('user-agent'),
+    }, { transaction });
+
+    // Delete user - CASCADE will automatically delete all related data:
+    // - accounts (via ON DELETE CASCADE)
+    // - transactions (via account CASCADE)
+    // - categories (via ON DELETE CASCADE)
+    // - spending_limits (via ON DELETE CASCADE)
+    // - activity_logs (via ON DELETE CASCADE)
+    // - otps (via ON DELETE CASCADE)
+    // - user_pins (via ON DELETE CASCADE)
+    // - savings_allocations (via ON DELETE CASCADE)
+    // - refresh_tokens (via ON DELETE CASCADE)
+    await user.destroy({ transaction });
+
+    // Commit the transaction
+    await transaction.commit();
+
+    res.status(200).json({
+      success: true,
+      message: 'Account and all associated data have been permanently deleted',
+    });
+  } catch (error) {
+    // Rollback transaction on error
+    await transaction.rollback();
+    
+    console.error('Error deleting account:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete account. Please try again later.',
     });
   }
 });

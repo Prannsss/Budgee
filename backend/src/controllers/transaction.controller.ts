@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
-import { Transaction, Account, Category, ActivityLog } from '../models';
+import { Transaction, Account, Category, ActivityLog, SpendingLimit } from '../models';
 import { asyncHandler } from '../middlewares/error.middleware';
 import { Op } from 'sequelize';
+import { SpendingLimitService } from '../utils/spending-limit.service';
 
 /**
  * Get all transactions for authenticated user
@@ -116,6 +117,29 @@ export const createTransaction = asyncHandler(async (req: Request, res: Response
     return;
   }
 
+  // Check spending limits for expense transactions
+  let limitWarnings: any[] = [];
+  if (type === 'expense') {
+    const limits = await SpendingLimit.findAll({
+      where: { user_id: userId },
+    });
+
+    for (const limit of limits) {
+      const newSpending = parseFloat(limit.current_spending.toString()) + parseFloat(amount);
+      const limitAmount = parseFloat(limit.amount.toString());
+
+      if (limitAmount > 0 && newSpending > limitAmount) {
+        limitWarnings.push({
+          type: limit.type,
+          limit: limitAmount,
+          current: parseFloat(limit.current_spending.toString()),
+          after_transaction: newSpending,
+          exceeded_by: newSpending - limitAmount,
+        });
+      }
+    }
+  }
+
   // Create transaction
   const transaction = await Transaction.create({
     user_id: userId,
@@ -138,6 +162,11 @@ export const createTransaction = asyncHandler(async (req: Request, res: Response
   
   await account.update({ balance: newBalance });
 
+  // Update spending limits if this is an expense
+  if (type === 'expense') {
+    await SpendingLimitService.updateSpendingLimits(userId);
+  }
+
   // Log activity
   await ActivityLog.create({
     user_id: userId,
@@ -157,6 +186,8 @@ export const createTransaction = asyncHandler(async (req: Request, res: Response
     success: true,
     message: 'Transaction created successfully',
     data: { transaction: fullTransaction },
+    limit_warnings: limitWarnings.length > 0 ? limitWarnings : undefined,
+    limit_exceeded: limitWarnings.length > 0,
   });
 });
 
@@ -202,6 +233,11 @@ export const updateTransaction = asyncHandler(async (req: Request, res: Response
       : Number(account.balance) - amountDiff;
     
     await account.update({ balance: newBalance });
+  }
+
+  // Update spending limits if this is an expense
+  if (transaction.type === 'expense') {
+    await SpendingLimitService.updateSpendingLimits(userId);
   }
 
   // Log activity
@@ -250,6 +286,11 @@ export const deleteTransaction = asyncHandler(async (req: Request, res: Response
 
   // Delete transaction
   await transaction.destroy();
+
+  // Update spending limits if this was an expense
+  if (transaction.type === 'expense') {
+    await SpendingLimitService.updateSpendingLimits(userId);
+  }
 
   // Log activity
   await ActivityLog.create({

@@ -8,6 +8,7 @@ import {
   logout,
   verifyEmail,
   resendVerification,
+  deleteAccount,
 } from '../controllers/auth.controller';
 import { googleCallback, facebookCallback } from '../controllers/oauth.controller';
 import { authenticateToken } from '../middlewares/auth.middleware';
@@ -49,5 +50,6 @@ router.get('/me', authenticateToken, getProfile);
 router.put('/profile', authenticateToken, updateProfile);
 router.post('/change-password', authenticateToken, changePassword);
 router.post('/logout', authenticateToken, logout);
+router.delete('/account', authenticateToken, deleteAccount);
 
 export default router;

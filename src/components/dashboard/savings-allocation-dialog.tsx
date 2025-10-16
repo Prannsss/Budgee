@@ -40,23 +40,40 @@ export function SavingsAllocationDialog({ trigger }: { trigger?: React.ReactNode
   useEffect(() => {
     if (!user?.id || !isOpen) return;
     
+    let isMounted = true;
+    
     const loadAccounts = async () => {
       try {
         const userAccounts = await API.accounts.getAll();
-        // Ensure we have an array
-        setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
         
-        // Set first account as default
-        if (userAccounts.length > 0 && !selectedAccount) {
-          setSelectedAccount(userAccounts[0].id);
+        if (isMounted) {
+          // Ensure we have an array
+          setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
+          
+          // Set first account as default
+          if (userAccounts.length > 0 && !selectedAccount) {
+            setSelectedAccount(userAccounts[0].id);
+          }
         }
-      } catch (error) {
+      } catch (error: any) {
+        // Silently handle auth errors (user is being logged out)
+        if (error?.message?.includes('Unauthorized')) {
+          console.log('User session expired - logout in progress');
+          return;
+        }
+        
         console.error('Error loading accounts:', error);
-        setAccounts([]);
+        if (isMounted) {
+          setAccounts([]);
+        }
       }
     };
     
     loadAccounts();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [user?.id, isOpen, selectedAccount]);
 
   const handleSavingsAllocation = async () => {

@@ -5,6 +5,7 @@
 -- ================================================
 
 -- Drop existing tables if they exist (for clean setup)
+DROP TABLE IF EXISTS spending_limits CASCADE;
 DROP TABLE IF EXISTS refresh_tokens CASCADE;
 DROP TABLE IF EXISTS user_pins CASCADE;
 DROP TABLE IF EXISTS savings_allocations CASCADE;
@@ -251,6 +252,23 @@ CREATE TABLE activity_logs (
 );
 
 -- ================================================
+-- Table: spending_limits
+-- Description: User spending limits for Daily, Weekly, and Monthly budgets
+-- ================================================
+CREATE TABLE spending_limits (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    type VARCHAR(20) NOT NULL CHECK (type IN ('Daily', 'Weekly', 'Monthly')),
+    amount NUMERIC(12,2) DEFAULT 0.00 NOT NULL CHECK (amount >= 0),
+    current_spending NUMERIC(12,2) DEFAULT 0.00 NOT NULL CHECK (current_spending >= 0),
+    last_reset TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    UNIQUE(user_id, type)
+);
+
+-- ================================================
 -- Indexes for Performance Optimization
 -- ================================================
 
@@ -318,6 +336,11 @@ CREATE INDEX idx_activity_logs_user_id ON activity_logs(user_id);
 CREATE INDEX idx_activity_logs_created_at ON activity_logs(created_at DESC);
 CREATE INDEX idx_activity_logs_entity ON activity_logs(entity_type, entity_id);
 CREATE INDEX idx_activity_logs_action ON activity_logs(action);
+
+-- Spending limits
+CREATE INDEX idx_spending_limits_user_id ON spending_limits(user_id);
+CREATE INDEX idx_spending_limits_type ON spending_limits(type);
+CREATE INDEX idx_spending_limits_last_reset ON spending_limits(last_reset);
 
 -- ================================================
 -- Seed Data: Subscription Plans
@@ -466,6 +489,123 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to update current spending when transactions change
+CREATE OR REPLACE FUNCTION update_spending_limits_on_transaction()
+RETURNS TRIGGER AS $$
+DECLARE
+    transaction_date DATE;
+BEGIN
+    -- Handle INSERT
+    IF TG_OP = 'INSERT' AND NEW.type = 'expense' AND NEW.status = 'completed' THEN
+        transaction_date := NEW.date;
+        
+        -- Update Daily limit
+        UPDATE spending_limits
+        SET 
+            current_spending = current_spending + NEW.amount,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE 
+            user_id = NEW.user_id 
+            AND type = 'Daily'
+            AND last_reset >= CURRENT_TIMESTAMP - INTERVAL '1 day';
+        
+        -- Update Weekly limit
+        UPDATE spending_limits
+        SET 
+            current_spending = current_spending + NEW.amount,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE 
+            user_id = NEW.user_id 
+            AND type = 'Weekly'
+            AND last_reset >= CURRENT_TIMESTAMP - INTERVAL '7 days';
+        
+        -- Update Monthly limit
+        UPDATE spending_limits
+        SET 
+            current_spending = current_spending + NEW.amount,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE 
+            user_id = NEW.user_id 
+            AND type = 'Monthly'
+            AND DATE_TRUNC('month', last_reset) = DATE_TRUNC('month', CURRENT_TIMESTAMP);
+        
+        RETURN NEW;
+    END IF;
+
+    -- Handle UPDATE
+    IF TG_OP = 'UPDATE' AND NEW.type = 'expense' THEN
+        -- Reverse old transaction if it was completed
+        IF OLD.status = 'completed' THEN
+            UPDATE spending_limits
+            SET 
+                current_spending = GREATEST(current_spending - OLD.amount, 0),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = OLD.user_id;
+        END IF;
+        
+        -- Add new transaction if it's completed
+        IF NEW.status = 'completed' THEN
+            UPDATE spending_limits
+            SET 
+                current_spending = current_spending + NEW.amount,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = NEW.user_id;
+        END IF;
+        
+        RETURN NEW;
+    END IF;
+
+    -- Handle DELETE
+    IF TG_OP = 'DELETE' AND OLD.type = 'expense' AND OLD.status = 'completed' THEN
+        UPDATE spending_limits
+        SET 
+            current_spending = GREATEST(current_spending - OLD.amount, 0),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = OLD.user_id;
+        
+        RETURN OLD;
+    END IF;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to reset spending limits based on time elapsed
+CREATE OR REPLACE FUNCTION reset_spending_limits()
+RETURNS VOID AS $$
+BEGIN
+    -- Reset Daily limits (older than 24 hours)
+    UPDATE spending_limits
+    SET 
+        current_spending = 0.00,
+        last_reset = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE 
+        type = 'Daily' 
+        AND last_reset < CURRENT_TIMESTAMP - INTERVAL '1 day';
+    
+    -- Reset Weekly limits (older than 7 days)
+    UPDATE spending_limits
+    SET 
+        current_spending = 0.00,
+        last_reset = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE 
+        type = 'Weekly' 
+        AND last_reset < CURRENT_TIMESTAMP - INTERVAL '7 days';
+    
+    -- Reset Monthly limits (different month)
+    UPDATE spending_limits
+    SET 
+        current_spending = 0.00,
+        last_reset = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE 
+        type = 'Monthly' 
+        AND DATE_TRUNC('month', last_reset) < DATE_TRUNC('month', CURRENT_TIMESTAMP);
+END;
+$$ LANGUAGE plpgsql;
+
 -- Apply trigger to all tables with updated_at
 CREATE TRIGGER update_plans_updated_at BEFORE UPDATE ON plans
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -488,10 +628,19 @@ CREATE TRIGGER update_savings_allocations_updated_at BEFORE UPDATE ON savings_al
 CREATE TRIGGER update_user_pins_updated_at BEFORE UPDATE ON user_pins
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_spending_limits_updated_at BEFORE UPDATE ON spending_limits
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Apply balance update trigger to transactions
 CREATE TRIGGER transaction_balance_trigger 
     AFTER INSERT OR UPDATE OR DELETE ON transactions
     FOR EACH ROW EXECUTE FUNCTION update_account_balance();
+
+-- Apply spending limit update trigger to transactions
+CREATE TRIGGER transaction_spending_limit_trigger
+    AFTER INSERT OR UPDATE OR DELETE ON transactions
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_spending_limits_on_transaction();
 
 -- ================================================
 -- Views for Common Queries
@@ -578,6 +727,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to create default spending limits for new users
+CREATE OR REPLACE FUNCTION create_default_spending_limits_for_user(p_user_id INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    INSERT INTO spending_limits (user_id, type, amount, current_spending, last_reset) 
+    VALUES
+        (p_user_id, 'Daily', 0.00, 0.00, CURRENT_TIMESTAMP),
+        (p_user_id, 'Weekly', 0.00, 0.00, CURRENT_TIMESTAMP),
+        (p_user_id, 'Monthly', 0.00, 0.00, CURRENT_TIMESTAMP)
+    ON CONFLICT (user_id, type) DO NOTHING;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Function to ensure cash account exists for user
 CREATE OR REPLACE FUNCTION ensure_cash_account_for_user(p_user_id INTEGER)
 RETURNS INTEGER AS $$
@@ -614,6 +776,9 @@ BEGIN
         -- Create default categories
         PERFORM create_default_categories_for_user(user_record.id);
         
+        -- Create default spending limits
+        PERFORM create_default_spending_limits_for_user(user_record.id);
+        
         -- Ensure cash account exists
         PERFORM ensure_cash_account_for_user(user_record.id);
     END LOOP;
@@ -635,6 +800,7 @@ COMMENT ON TABLE user_pins IS 'Secure PIN storage for app authentication';
 COMMENT ON TABLE refresh_tokens IS 'JWT refresh tokens for session management';
 COMMENT ON TABLE otps IS 'One-time passwords for various verification purposes';
 COMMENT ON TABLE activity_logs IS 'Comprehensive audit trail of user actions';
+COMMENT ON TABLE spending_limits IS 'User spending limits for Daily, Weekly, and Monthly budgets with automatic reset tracking';
 
 -- ================================================
 -- SCHEMA CHANGE LOG

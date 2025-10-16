@@ -63,6 +63,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user?.id) return;
 
+    let isMounted = true;
+
     const loadData = async () => {
       setIsLoading(true);
       // Simulate loading delay for better UX
@@ -75,21 +77,33 @@ export default function DashboardPage() {
           API.dashboard.getSummary()
         ]);
 
-        setTransactions(Array.isArray(userTransactions) ? userTransactions : []);
-        setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
-        setTotals({
-          totalIncome: Number(dashboardStats?.totalIncome) || 0,
-          totalExpenses: Number(dashboardStats?.totalExpenses) || 0,
-          savings: Number(dashboardStats?.savings) || 0,
-        });
-      } catch (error) {
+        if (isMounted) {
+          setTransactions(Array.isArray(userTransactions) ? userTransactions : []);
+          setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
+          setTotals({
+            totalIncome: Number(dashboardStats?.totalIncome) || 0,
+            totalExpenses: Number(dashboardStats?.totalExpenses) || 0,
+            savings: Number(dashboardStats?.savings) || 0,
+          });
+        }
+      } catch (error: any) {
+        // Silently handle auth errors (user is being logged out)
+        if (error?.message?.includes('Unauthorized')) {
+          console.log('User session expired - logout in progress');
+          return;
+        }
+        
         console.error('Error loading dashboard data:', error);
         // Set empty defaults on error
-        setTransactions([]);
-        setAccounts([]);
-        setTotals({ totalIncome: 0, totalExpenses: 0, savings: 0 });
+        if (isMounted) {
+          setTransactions([]);
+          setAccounts([]);
+          setTotals({ totalIncome: 0, totalExpenses: 0, savings: 0 });
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -100,6 +114,7 @@ export default function DashboardPage() {
     window.addEventListener('budgee:dataUpdate', handleDataUpdate);
     
     return () => {
+      isMounted = false;
       window.removeEventListener('budgee:dataUpdate', handleDataUpdate);
     };
   }, [user?.id]);

@@ -350,6 +350,20 @@ export class AuthAPI {
       TokenManager.clearTokens();
     }
   }
+
+  /**
+   * Delete user account and all associated data
+   */
+  static async deleteAccount(): Promise<void> {
+    const response = await httpClient.delete<{ success: boolean; message: string }>(
+      '/api/auth/account'
+    );
+    
+    // Clear all tokens after successful deletion
+    TokenManager.clearTokens();
+    
+    return;
+  }
 }
 
 // ==================== Transaction API ====================
@@ -1063,6 +1077,125 @@ export class HealthAPI {
   }
 }
 
+// ==================== Spending Limits API ====================
+
+export interface SpendingLimit {
+  id: number;
+  user_id: number;
+  type: 'Daily' | 'Weekly' | 'Monthly';
+  amount: number;
+  current_spending: number;
+  last_reset: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SpendingLimitStatus {
+  type: 'Daily' | 'Weekly' | 'Monthly';
+  amount: number;
+  current_spending: number;
+  remaining: number;
+  percentage: number;
+  is_exceeded: boolean;
+  is_near_limit: boolean;
+  last_reset: string;
+  status: 'normal' | 'warning' | 'exceeded';
+}
+
+export interface SpendingLimitStatusResponse {
+  limits: SpendingLimitStatus[];
+  has_exceeded: boolean;
+  has_warning: boolean;
+  overall_status: 'normal' | 'warning' | 'exceeded';
+}
+
+export class SpendingLimitAPI {
+  /**
+   * Get all spending limits
+   */
+  static async getSpendingLimits(): Promise<SpendingLimit[]> {
+    const response = await httpClient.get<{ success: boolean; data: SpendingLimit[] }>(
+      '/api/spending-limits'
+    );
+    return response.data;
+  }
+
+  /**
+   * Get spending limit status with warnings
+   */
+  static async getSpendingLimitStatus(): Promise<SpendingLimitStatusResponse> {
+    const response = await httpClient.get<{ success: boolean; data: SpendingLimitStatusResponse }>(
+      '/api/spending-limits/status'
+    );
+    return response.data;
+  }
+
+  /**
+   * Update a specific spending limit
+   */
+  static async updateSpendingLimit(
+    type: 'Daily' | 'Weekly' | 'Monthly',
+    amount: number
+  ): Promise<SpendingLimit> {
+    const response = await httpClient.put<{ success: boolean; data: SpendingLimit; message: string }>(
+      `/api/spending-limits/${type}`,
+      { amount }
+    );
+    return response.data;
+  }
+
+  /**
+   * Reset spending limits
+   */
+  static async resetSpendingLimits(type?: 'Daily' | 'Weekly' | 'Monthly'): Promise<{ success: boolean; message: string }> {
+    const response = await httpClient.post<{ success: boolean; message: string }>(
+      '/api/spending-limits/reset',
+      { type }
+    );
+    return response;
+  }
+
+  /**
+   * Check if a transaction would exceed spending limits
+   */
+  static async checkSpendingLimit(amount: number, type: string): Promise<{
+    can_proceed: boolean;
+    violations: any[];
+    message: string;
+  }> {
+    const response = await httpClient.post<{
+      success: boolean;
+      can_proceed: boolean;
+      violations: any[];
+      message: string;
+    }>(
+      '/api/spending-limits/check',
+      { amount, type }
+    );
+    return {
+      can_proceed: response.can_proceed,
+      violations: response.violations,
+      message: response.message,
+    };
+  }
+
+  /**
+   * Get spending trends
+   */
+  static async getSpendingTrends(period: 'daily' | 'weekly' | 'monthly' = 'monthly'): Promise<{
+    period: string;
+    trends: any[];
+  }> {
+    const response = await httpClient.get<{
+      success: boolean;
+      data: { period: string; trends: any[] };
+    }>(
+      `/api/spending-limits/trends?period=${period}`
+    );
+    return response.data;
+  }
+}
+
 // ==================== Export All APIs ====================
 
 export const API = {
@@ -1076,6 +1209,7 @@ export const API = {
   savingsAllocations: SavingsAllocationAPI,
   pin: PinAPI,
   health: HealthAPI,
+  spendingLimits: SpendingLimitAPI,
   tokens: TokenManager,
 };
 

@@ -35,6 +35,8 @@ export function RecentTransactions() {
   useEffect(() => {
     if (!user?.id) return;
 
+    let isMounted = true;
+
     const loadData = async () => {
       setIsLoading(true);
       
@@ -44,14 +46,26 @@ export function RecentTransactions() {
           API.accounts.getAll()
         ]);
         
-        setTransactions(Array.isArray(userTransactions) ? userTransactions : []);
-        setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
-      } catch (error) {
+        if (isMounted) {
+          setTransactions(Array.isArray(userTransactions) ? userTransactions : []);
+          setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
+        }
+      } catch (error: any) {
+        // Silently handle auth errors (user is being logged out)
+        if (error?.message?.includes('Unauthorized')) {
+          console.log('User session expired - logout in progress');
+          return;
+        }
+        
         console.error('Error loading recent transactions:', error);
-        setTransactions([]);
-        setAccounts([]);
+        if (isMounted) {
+          setTransactions([]);
+          setAccounts([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -60,8 +74,10 @@ export function RecentTransactions() {
     // Listen for data updates
     const handleDataUpdate = () => loadData();
     window.addEventListener('budgee:dataUpdate', handleDataUpdate);
-    
+
+    // Cleanup function
     return () => {
+      isMounted = false;
       window.removeEventListener('budgee:dataUpdate', handleDataUpdate);
     };
   }, [user?.id]);

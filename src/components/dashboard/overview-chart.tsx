@@ -36,6 +36,8 @@ export function OverviewChart() {
   useEffect(() => {
     if (!user?.id) return;
 
+    let isMounted = true;
+
     const generateChartData = async () => {
       setIsLoading(true);
       
@@ -65,12 +67,24 @@ export function OverviewChart() {
           });
         }
 
-        setChartData(data);
-      } catch (error) {
+        if (isMounted) {
+          setChartData(data);
+        }
+      } catch (error: any) {
+        // Silently handle auth errors (user is being logged out)
+        if (error?.message?.includes('Unauthorized')) {
+          console.log('User session expired - logout in progress');
+          return;
+        }
+        
         console.error('Error generating chart data:', error);
-        setChartData([]);
+        if (isMounted) {
+          setChartData([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -81,6 +95,7 @@ export function OverviewChart() {
     window.addEventListener('budgee:dataUpdate', handleDataUpdate);
     
     return () => {
+      isMounted = false;
       window.removeEventListener('budgee:dataUpdate', handleDataUpdate);
     };
   }, [user?.id]);
