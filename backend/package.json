@@ -65,7 +65,7 @@
     "@types/node": "^20.10.5",
     "@types/nodemailer": "^6.4.20",
     "@types/passport": "^1.0.17",
-    "@types/passport-facebo{ok": "^3.0.3",
+    "@types/passport-facebook": "^3.0.3",
     "@types/passport-google-oauth20": "^2.0.16",
     "@types/uuid": "^9.0.7",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
