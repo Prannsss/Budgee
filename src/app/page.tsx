@@ -64,9 +64,9 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="features" className="w-full py-8 md:py-16 lg:py-20 bg-background">
-          <div className="container px-4 md:px-6">
-            <FadeIn className="flex flex-col items-center justify-center space-y-4 text-center mb-8" distance={32}>
+        <section id="features" className="w-full py-8 md:py-16 lg:py-20 bg-background min-h-screen md:min-h-0">
+          <div className="container px-2 sm:px-4 md:px-6 h-full">
+            <FadeIn className="flex flex-col items-center justify-center space-y-4 text-center mb-4 md:mb-8" distance={32}>
               <div className="space-y-2">
                 <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm text-muted-foreground">Key Features</div>
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline text-foreground">We Got Everything You Need!</h2>
@@ -77,54 +77,54 @@ export default function Home() {
                 </FadeIn>
               </div>
             </FadeIn>
-            <FadeIn className="py-8" delay={0.15} distance={40}>
+            <FadeIn className="py-4 md:py-8 h-full" delay={0.15} distance={40}>
               <ScrollStack
-                className="bg-background max-w-4xl mx-auto"
-                itemStackDistance={0}
-                baseScale={1}
-                itemScale={0}
-                itemDistance={0}
+                className="bg-background max-w-4xl mx-auto w-full h-full min-h-[60vh] md:min-h-0"
+                itemStackDistance={20}
+                baseScale={0.92}
+                itemScale={0.02}
+                itemDistance={80}
               >
-                <ScrollStackItem itemClassName="bg-card border border-border">
+                <ScrollStackItem itemClassName="bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700">
                   <div className="flex flex-col items-center text-center h-full justify-center">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-6">
-                      <Landmark className="h-8 w-8 text-foreground" />
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 dark:bg-white/80 mb-6 shadow-lg">
+                      <Landmark className="h-8 w-8 text-blue-600 dark:text-blue-700" />
                     </div>
-                    <h3 className="text-2xl font-bold text-foreground mb-4">Account Connections</h3>
-                    <p className="text-muted-foreground text-lg max-w-md">
+                    <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-sm">Account Connections</h3>
+                    <p className="text-blue-50 dark:text-blue-100 text-lg max-w-md font-medium">
                       Securely link your bank accounts and e-wallets to get a complete financial picture.
                     </p>
                   </div>
                 </ScrollStackItem>
-                <ScrollStackItem itemClassName="bg-card border border-border">
+                <ScrollStackItem itemClassName="bg-gradient-to-br from-purple-400 to-pink-500 dark:from-purple-500 dark:to-pink-600">
                   <div className="flex flex-col items-center text-center h-full justify-center">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-6">
-                      <Bot className="h-8 w-8 text-foreground" />
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 dark:bg-white/80 mb-6 shadow-lg">
+                      <Bot className="h-8 w-8 text-purple-600 dark:text-purple-700" />
                     </div>
-                    <h3 className="text-2xl font-bold text-foreground mb-4">AI Assistant</h3>
-                    <p className="text-muted-foreground text-lg max-w-md">
+                    <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-sm">AI Assistant</h3>
+                    <p className="text-purple-50 dark:text-purple-100 text-lg max-w-md font-medium">
                       Ask Budgee anything about your finances and get smart, personalized insights in seconds.
                     </p>
                   </div>
                 </ScrollStackItem>
-                <ScrollStackItem itemClassName="bg-card border border-border">
+                <ScrollStackItem itemClassName="bg-gradient-to-br from-emerald-400 to-teal-500 dark:from-emerald-500 dark:to-teal-600">
                   <div className="flex flex-col items-center text-center h-full justify-center">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-6">
-                      <Wallet className="h-8 w-8 text-foreground" />
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 dark:bg-white/80 mb-6 shadow-lg">
+                      <Wallet className="h-8 w-8 text-emerald-600 dark:text-emerald-700" />
                     </div>
-                    <h3 className="text-2xl font-bold text-foreground mb-4">Transaction Management</h3>
-                    <p className="text-muted-foreground text-lg max-w-md">
+                    <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-sm">Transaction Management</h3>
+                    <p className="text-emerald-50 dark:text-emerald-100 text-lg max-w-md font-medium">
                       Easily categorize, search, and filter your transactions to understand your spending habits.
                     </p>
                   </div>
                 </ScrollStackItem>
-                <ScrollStackItem itemClassName="bg-card border border-border">
+                <ScrollStackItem itemClassName="bg-gradient-to-br from-orange-400 to-amber-500 dark:from-orange-500 dark:to-amber-600">
                   <div className="flex flex-col items-center text-center h-full justify-center">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-6">
-                      <Banknote className="h-8 w-8 text-foreground" />
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 dark:bg-white/80 mb-6 shadow-lg">
+                      <Banknote className="h-8 w-8 text-orange-600 dark:text-orange-700" />
                     </div>
-                    <h3 className="text-2xl font-bold text-foreground mb-4">Net Worth Tracking</h3>
-                    <p className="text-muted-foreground text-lg max-w-md">
+                    <h3 className="text-2xl font-bold text-white mb-4 drop-shadow-sm">Net Worth Tracking</h3>
+                    <p className="text-orange-50 dark:text-orange-100 text-lg max-w-md font-medium">
                       Watch your net worth grow with a clear overview of your assets and liabilities.
                     </p>
                   </div>

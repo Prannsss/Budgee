@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
-import { UserPin, ActivityLog } from '../models';
+import { supabase } from '../config/supabase';
 import { asyncHandler } from '../middlewares/error.middleware';
+import { ActivityLogInsert } from '../types/database.types';
 import bcrypt from 'bcrypt';
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -11,11 +12,13 @@ const LOCK_DURATION_MINUTES = 15;
  * GET /api/pin/status
  */
 export const getPinStatus = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user?.id;
+  const userId = req.user?.id!;
 
-  const userPin = await UserPin.findOne({
-    where: { user_id: userId },
-  });
+  const { data: userPin } = await supabase
+    .from('user_pins')
+    .select('is_enabled')
+    .eq('user_id', userId)
+    .single();
 
   res.json({
     success: true,
@@ -44,9 +47,11 @@ export const setupPin = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Check if user already has a PIN
-  const existingPin = await UserPin.findOne({
-    where: { user_id: userId },
-  });
+  const { data: existingPin } = await supabase
+    .from('user_pins')
+    .select('id')
+    .eq('user_id', userId)
+    .single();
 
   if (existingPin) {
     res.status(400).json({
@@ -60,19 +65,27 @@ export const setupPin = asyncHandler(async (req: Request, res: Response) => {
   const pinHash = await bcrypt.hash(pin, 10);
 
   // Create PIN record
-  await UserPin.create({
+  const { error } = await supabase.from('user_pins').insert({
     user_id: userId,
     pin_hash: pinHash,
     is_enabled: true,
     failed_attempts: 0,
   });
 
+  if (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to setup PIN',
+    });
+    return;
+  }
+
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: userId,
     action: 'pin_setup',
     description: 'User set up PIN security',
-  });
+  } as ActivityLogInsert);
 
   res.status(201).json({
     success: true,
@@ -100,9 +113,11 @@ export const verifyPin = asyncHandler(async (req: Request, res: Response) => {
     return;
   }
 
-  const userPin = await UserPin.findOne({
-    where: { user_id: userId },
-  });
+  const { data: userPin } = await supabase
+    .from('user_pins')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
 
   if (!userPin) {
     res.status(404).json({
@@ -122,7 +137,9 @@ export const verifyPin = asyncHandler(async (req: Request, res: Response) => {
 
   // Check if account is locked
   if (userPin.locked_until && new Date(userPin.locked_until) > new Date()) {
-    const minutesRemaining = Math.ceil((new Date(userPin.locked_until).getTime() - Date.now()) / 60000);
+    const minutesRemaining = Math.ceil(
+      (new Date(userPin.locked_until).getTime() - Date.now()) / 60000
+    );
     res.status(403).json({
       success: false,
       message: `Account locked. Try again in ${minutesRemaining} minute(s)`,
@@ -138,14 +155,17 @@ export const verifyPin = asyncHandler(async (req: Request, res: Response) => {
   if (!isValid) {
     // Increment failed attempts
     const failedAttempts = userPin.failed_attempts + 1;
-    
+
     if (failedAttempts >= MAX_FAILED_ATTEMPTS) {
       // Lock account
-      const lockUntil = new Date(Date.now() + LOCK_DURATION_MINUTES * 60000);
-      await userPin.update({
-        failed_attempts: failedAttempts,
-        locked_until: lockUntil,
-      });
+      const lockUntil = new Date(Date.now() + LOCK_DURATION_MINUTES * 60000).toISOString();
+      await supabase
+        .from('user_pins')
+        .update({
+          failed_attempts: failedAttempts,
+          locked_until: lockUntil,
+        })
+        .eq('id', userPin.id);
 
       res.status(403).json({
         success: false,
@@ -156,9 +176,12 @@ export const verifyPin = asyncHandler(async (req: Request, res: Response) => {
       return;
     }
 
-    await userPin.update({
-      failed_attempts: failedAttempts,
-    });
+    await supabase
+      .from('user_pins')
+      .update({
+        failed_attempts: failedAttempts,
+      })
+      .eq('id', userPin.id);
 
     res.status(400).json({
       success: false,
@@ -169,18 +192,21 @@ export const verifyPin = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // PIN is valid - reset failed attempts and update last used
-  await userPin.update({
-    failed_attempts: 0,
-    locked_until: null,
-    last_used: new Date(),
-  });
+  await supabase
+    .from('user_pins')
+    .update({
+      failed_attempts: 0,
+      locked_until: null,
+      last_used: new Date().toISOString(),
+    })
+    .eq('id', userPin.id);
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: userId,
     action: 'pin_verified',
     description: 'User verified PIN',
-  });
+  } as ActivityLogInsert);
 
   res.json({
     success: true,
@@ -213,9 +239,11 @@ export const changePin = asyncHandler(async (req: Request, res: Response) => {
     return;
   }
 
-  const userPin = await UserPin.findOne({
-    where: { user_id: userId },
-  });
+  const { data: userPin } = await supabase
+    .from('user_pins')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
 
   if (!userPin) {
     res.status(404).json({
@@ -240,18 +268,21 @@ export const changePin = asyncHandler(async (req: Request, res: Response) => {
   const newPinHash = await bcrypt.hash(newPin, 10);
 
   // Update PIN
-  await userPin.update({
-    pin_hash: newPinHash,
-    failed_attempts: 0,
-    locked_until: null,
-  });
+  await supabase
+    .from('user_pins')
+    .update({
+      pin_hash: newPinHash,
+      failed_attempts: 0,
+      locked_until: null,
+    })
+    .eq('id', userPin.id);
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: userId,
     action: 'pin_changed',
     description: 'User changed PIN',
-  });
+  } as ActivityLogInsert);
 
   res.json({
     success: true,
@@ -276,9 +307,11 @@ export const disablePin = asyncHandler(async (req: Request, res: Response) => {
     return;
   }
 
-  const userPin = await UserPin.findOne({
-    where: { user_id: userId },
-  });
+  const { data: userPin } = await supabase
+    .from('user_pins')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
 
   if (!userPin) {
     res.status(404).json({
@@ -300,16 +333,19 @@ export const disablePin = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Disable PIN
-  await userPin.update({
-    is_enabled: false,
-  });
+  await supabase
+    .from('user_pins')
+    .update({
+      is_enabled: false,
+    })
+    .eq('id', userPin.id);
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: userId,
     action: 'pin_disabled',
     description: 'User disabled PIN security',
-  });
+  } as ActivityLogInsert);
 
   res.json({
     success: true,
@@ -324,9 +360,11 @@ export const disablePin = asyncHandler(async (req: Request, res: Response) => {
 export const enablePin = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.id!;
 
-  const userPin = await UserPin.findOne({
-    where: { user_id: userId },
-  });
+  const { data: userPin } = await supabase
+    .from('user_pins')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
 
   if (!userPin) {
     res.status(404).json({
@@ -345,18 +383,21 @@ export const enablePin = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Enable PIN
-  await userPin.update({
-    is_enabled: true,
-    failed_attempts: 0,
-    locked_until: null,
-  });
+  await supabase
+    .from('user_pins')
+    .update({
+      is_enabled: true,
+      failed_attempts: 0,
+      locked_until: null,
+    })
+    .eq('id', userPin.id);
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: userId,
     action: 'pin_enabled',
     description: 'User enabled PIN security',
-  });
+  } as ActivityLogInsert);
 
   res.json({
     success: true,
@@ -381,9 +422,11 @@ export const removePin = asyncHandler(async (req: Request, res: Response) => {
     return;
   }
 
-  const userPin = await UserPin.findOne({
-    where: { user_id: userId },
-  });
+  const { data: userPin } = await supabase
+    .from('user_pins')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
 
   if (!userPin) {
     res.status(404).json({
@@ -405,14 +448,14 @@ export const removePin = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Delete PIN record
-  await userPin.destroy();
+  await supabase.from('user_pins').delete().eq('id', userPin.id);
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: userId,
     action: 'pin_removed',
     description: 'User removed PIN security',
-  });
+  } as ActivityLogInsert);
 
   res.json({
     success: true,

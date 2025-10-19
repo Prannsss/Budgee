@@ -1,8 +1,6 @@
 import { Request, Response } from 'express';
-import { Transaction, Account, Category, SavingsAllocation } from '../models';
+import { supabase } from '../config/supabase';
 import { asyncHandler } from '../middlewares/error.middleware';
-import { Op } from 'sequelize';
-import sequelize from '../config/sequelize';
 
 /**
  * Get dashboard summary
@@ -30,53 +28,60 @@ export const getDashboardSummary = asyncHandler(async (req: Request, res: Respon
       startDate.setMonth(startDate.getMonth() - 1);
   }
 
-  // Get all transactions in period
-  const transactions = await Transaction.findAll({
-    where: {
-      user_id: userId,
-      date: {
-        [Op.gte]: startDate,
-        [Op.lte]: endDate,
-      },
-    },
-    include: [
-      { model: Category, as: 'category' },
-      { model: Account, as: 'account' },
-    ],
-  });
+  // Get all transactions in period with related data
+  const { data: transactions, error: txError } = await supabase
+    .from('transactions')
+    .select(`
+      *,
+      category:categories(*),
+      account:accounts(*)
+    `)
+    .eq('user_id', userId)
+    .gte('date', startDate.toISOString())
+    .lte('date', endDate.toISOString());
+
+  if (txError) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch transactions',
+    });
+    return;
+  }
 
   // Calculate totals
-  const totalIncome = transactions
+  const totalIncome = (transactions || [])
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-  const totalExpense = transactions
+  const totalExpense = (transactions || [])
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-  const netBalance = (Number(totalIncome) || 0) - (Number(totalExpense) || 0);
+  const netBalance = totalIncome - totalExpense;
 
   // Get account balances
-  const accounts = await Account.findAll({
-    where: { user_id: userId, is_active: true },
-  });
+  const { data: accounts } = await supabase
+    .from('accounts')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_active', true);
 
-  const totalBalance = accounts.reduce((sum, acc) => sum + (Number(acc.balance) || 0), 0);
+  const totalBalance = (accounts || []).reduce((sum, acc) => sum + (Number(acc.balance) || 0), 0);
 
   // Calculate total savings from savings allocations
-  const savingsAllocations = await SavingsAllocation.findAll({
-    where: { user_id: userId },
-    attributes: ['type', 'amount'],
-  });
+  const { data: savingsAllocations } = await supabase
+    .from('savings_allocations')
+    .select('type, amount')
+    .eq('user_id', userId);
 
-  const totalSavings = savingsAllocations.reduce((total, alloc) => {
-    return alloc.type === 'deposit' 
+  const totalSavings = (savingsAllocations || []).reduce((total, alloc) => {
+    return alloc.type === 'deposit'
       ? total + Number(alloc.amount)
       : total - Number(alloc.amount);
   }, 0);
 
   // Group by category
-  const expensesByCategory = transactions
+  const expensesByCategory = (transactions || [])
     .filter(t => t.type === 'expense')
     .reduce((acc: any, t) => {
       const categoryName = t.category?.name || 'Uncategorized';
@@ -84,7 +89,7 @@ export const getDashboardSummary = asyncHandler(async (req: Request, res: Respon
       return acc;
     }, {});
 
-  const incomeByCategory = transactions
+  const incomeByCategory = (transactions || [])
     .filter(t => t.type === 'income')
     .reduce((acc: any, t) => {
       const categoryName = t.category?.name || 'Uncategorized';
@@ -92,8 +97,8 @@ export const getDashboardSummary = asyncHandler(async (req: Request, res: Respon
       return acc;
     }, {});
 
-  // Recent transactions
-  const recentTransactions = transactions
+  // Recent transactions (sort and take top 10)
+  const recentTransactions = (transactions || [])
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 10);
 
@@ -108,9 +113,9 @@ export const getDashboardSummary = asyncHandler(async (req: Request, res: Respon
         totalExpense,
         netBalance,
         totalBalance,
-        savings: totalSavings, // Add savings to response
-        transactionCount: transactions.length,
-        accountCount: accounts.length,
+        savings: totalSavings,
+        transactionCount: (transactions || []).length,
+        accountCount: (accounts || []).length,
       },
       categoryBreakdown: {
         expenses: expensesByCategory,
@@ -130,24 +135,41 @@ const getMonthlyTrend = async (userId: number) => {
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-  const transactions = await Transaction.findAll({
-    where: {
-      user_id: userId,
-      date: {
-        [Op.gte]: sixMonthsAgo,
-      },
-    },
-    attributes: [
-      [sequelize.fn('DATE_TRUNC', 'month', sequelize.col('date')), 'month'],
-      'type',
-      [sequelize.fn('SUM', sequelize.col('amount')), 'total'],
-    ],
-    group: ['month', 'type'],
-    order: [[sequelize.fn('DATE_TRUNC', 'month', sequelize.col('date')), 'ASC']],
-    raw: true,
+  // Get all transactions from last 6 months
+  const { data: transactions } = await supabase
+    .from('transactions')
+    .select('date, type, amount')
+    .eq('user_id', userId)
+    .gte('date', sixMonthsAgo.toISOString());
+
+  if (!transactions || transactions.length === 0) {
+    return [];
+  }
+
+  // Group by month and type manually
+  const monthlyMap = new Map<string, { month: string; type: string; total: number }>();
+
+  transactions.forEach(tx => {
+    const date = new Date(tx.date);
+    // Format: "YYYY-MM-01T00:00:00.000Z" (first day of month)
+    const monthKey = new Date(date.getFullYear(), date.getMonth(), 1).toISOString();
+    const mapKey = `${monthKey}-${tx.type}`;
+
+    if (!monthlyMap.has(mapKey)) {
+      monthlyMap.set(mapKey, {
+        month: monthKey,
+        type: tx.type,
+        total: 0,
+      });
+    }
+
+    const entry = monthlyMap.get(mapKey)!;
+    entry.total += Number(tx.amount) || 0;
   });
 
-  return transactions;
+  // Convert map to array and sort by month
+  return Array.from(monthlyMap.values())
+    .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
 };
 
 /**
@@ -174,25 +196,40 @@ export const getSpendingByCategory = asyncHandler(async (req: Request, res: Resp
       break;
   }
 
-  const spending = await Transaction.findAll({
-    where: {
-      user_id: userId,
-      type: 'expense',
-      date: {
-        [Op.gte]: startDate,
-        [Op.lte]: endDate,
-      },
-    },
-    include: [{ model: Category, as: 'category' }],
-    attributes: [
-      'category_id',
-      [sequelize.fn('SUM', sequelize.col('amount')), 'total'],
-      [sequelize.fn('COUNT', sequelize.col('Transaction.id')), 'count'],
-    ],
-    group: ['category_id', 'category.id', 'category.name', 'category.icon'],
-    order: [[sequelize.fn('SUM', sequelize.col('amount')), 'DESC']],
-    raw: false,
+  // Get all expense transactions in period
+  const { data: transactions } = await supabase
+    .from('transactions')
+    .select(`
+      category_id,
+      amount,
+      category:categories(id, name, icon)
+    `)
+    .eq('user_id', userId)
+    .eq('type', 'expense')
+    .gte('date', startDate.toISOString())
+    .lte('date', endDate.toISOString());
+
+  // Group by category
+  const spendingMap = new Map<number, { category: any; total: number; count: number }>();
+
+  (transactions || []).forEach(tx => {
+    const categoryId = tx.category_id;
+    if (!spendingMap.has(categoryId)) {
+      spendingMap.set(categoryId, {
+        category: tx.category,
+        total: 0,
+        count: 0,
+      });
+    }
+
+    const entry = spendingMap.get(categoryId)!;
+    entry.total += Number(tx.amount) || 0;
+    entry.count += 1;
   });
+
+  // Convert to array and sort by total descending
+  const spending = Array.from(spendingMap.values())
+    .sort((a, b) => b.total - a.total);
 
   res.json({
     success: true,
@@ -224,25 +261,40 @@ export const getIncomeBySource = asyncHandler(async (req: Request, res: Response
       break;
   }
 
-  const income = await Transaction.findAll({
-    where: {
-      user_id: userId,
-      type: 'income',
-      date: {
-        [Op.gte]: startDate,
-        [Op.lte]: endDate,
-      },
-    },
-    include: [{ model: Category, as: 'category' }],
-    attributes: [
-      'category_id',
-      [sequelize.fn('SUM', sequelize.col('amount')), 'total'],
-      [sequelize.fn('COUNT', sequelize.col('Transaction.id')), 'count'],
-    ],
-    group: ['category_id', 'category.id', 'category.name', 'category.icon'],
-    order: [[sequelize.fn('SUM', sequelize.col('amount')), 'DESC']],
-    raw: false,
+  // Get all income transactions in period
+  const { data: transactions } = await supabase
+    .from('transactions')
+    .select(`
+      category_id,
+      amount,
+      category:categories(id, name, icon)
+    `)
+    .eq('user_id', userId)
+    .eq('type', 'income')
+    .gte('date', startDate.toISOString())
+    .lte('date', endDate.toISOString());
+
+  // Group by category
+  const incomeMap = new Map<number, { category: any; total: number; count: number }>();
+
+  (transactions || []).forEach(tx => {
+    const categoryId = tx.category_id;
+    if (!incomeMap.has(categoryId)) {
+      incomeMap.set(categoryId, {
+        category: tx.category,
+        total: 0,
+        count: 0,
+      });
+    }
+
+    const entry = incomeMap.get(categoryId)!;
+    entry.total += Number(tx.amount) || 0;
+    entry.count += 1;
   });
+
+  // Convert to array and sort by total descending
+  const income = Array.from(incomeMap.values())
+    .sort((a, b) => b.total - a.total);
 
   res.json({
     success: true,

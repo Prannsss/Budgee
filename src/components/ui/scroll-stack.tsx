@@ -316,7 +316,7 @@ const ScrollStack: React.FC<ScrollStackProps> = ({
       ref={scrollerRef}
     >
       {isMobile ? (
-        <div className="space-y-4">
+        <div className="scroll-stack-mobile-wrapper">
           {children}
         </div>
       ) : (

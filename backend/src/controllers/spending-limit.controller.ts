@@ -1,8 +1,6 @@
 import { Request, Response } from 'express';
-import { SpendingLimit, Transaction } from '../models';
+import { supabase } from '../config/supabase';
 import { asyncHandler } from '../middlewares/error.middleware';
-import { Op } from 'sequelize';
-import sequelize from '../config/sequelize';
 import { SpendingLimitService } from '../utils/spending-limit.service';
 
 /**
@@ -10,29 +8,37 @@ import { SpendingLimitService } from '../utils/spending-limit.service';
  * GET /api/spending-limits
  */
 export const getSpendingLimits = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user?.id;
+  const userId = req.user?.id!;
 
   // Check and reset any limits that need resetting
-  await SpendingLimitService.checkAndResetAllUserLimits(userId!);
+  await SpendingLimitService.checkAndResetAllUserLimits(userId);
 
-  const limits = await SpendingLimit.findAll({
-    where: { user_id: userId },
-    order: [
-      [sequelize.literal("CASE WHEN type = 'Daily' THEN 1 WHEN type = 'Weekly' THEN 2 WHEN type = 'Monthly' THEN 3 END"), 'ASC']
-    ],
-  });
+  const { data: limits, error } = await supabase
+    .from('spending_limits')
+    .select('*')
+    .eq('user_id', userId)
+    .order('type', { ascending: true }); // Daily, Monthly, Weekly alphabetically
+
+  if (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch spending limits',
+    });
+    return;
+  }
 
   // If no limits exist, create default ones
-  if (limits.length === 0) {
-    const defaultLimits = await SpendingLimitService.initializeDefaultLimits(userId!);
+  if (!limits || limits.length === 0) {
+    const defaultLimits = await SpendingLimitService.initializeDefaultLimits(userId);
 
-    return res.json({
+    res.json({
       success: true,
       data: defaultLimits,
     });
+    return;
   }
 
-  return res.json({
+  res.json({
     success: true,
     data: limits,
   });
@@ -44,25 +50,39 @@ export const getSpendingLimits = asyncHandler(async (req: Request, res: Response
  * GET /api/spending-limits/status
  */
 export const getSpendingLimitStatus = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user?.id;
+  const userId = req.user?.id!;
 
   // First, check and reset any limits that need resetting
-  await SpendingLimitService.checkAndResetAllUserLimits(userId!);
+  await SpendingLimitService.checkAndResetAllUserLimits(userId);
 
-  const limits = await SpendingLimit.findAll({
-    where: { user_id: userId },
-  });
+  const { data: limits } = await supabase
+    .from('spending_limits')
+    .select('*')
+    .eq('user_id', userId);
+
+  if (!limits || limits.length === 0) {
+    res.json({
+      success: true,
+      data: {
+        limits: [],
+        has_exceeded: false,
+        has_warning: false,
+        overall_status: 'normal',
+      },
+    });
+    return;
+  }
 
   const status = limits.map(limit => {
-    const percentage = limit.getPercentageUsed();
-    const isExceeded = limit.isExceeded();
-    const isNearLimit = limit.isNearLimit();
+    const percentage = SpendingLimitService.getPercentageUsed(limit);
+    const isExceeded = SpendingLimitService.isExceeded(limit);
+    const isNearLimit = SpendingLimitService.isNearLimit(limit);
 
     return {
       type: limit.type,
       amount: parseFloat(limit.amount.toString()),
       current_spending: parseFloat(limit.current_spending.toString()),
-      remaining: parseFloat(limit.getRemainingAmount().toString()),
+      remaining: parseFloat(SpendingLimitService.getRemainingAmount(limit).toString()),
       percentage: Math.round(percentage * 10) / 10, // Round to 1 decimal
       is_exceeded: isExceeded,
       is_near_limit: isNearLimit && !isExceeded,
@@ -91,51 +111,85 @@ export const getSpendingLimitStatus = asyncHandler(async (req: Request, res: Res
  * PUT /api/spending-limits/:type
  */
 export const updateSpendingLimit = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user?.id;
+  const userId = req.user?.id!;
   const { type } = req.params;
   const { amount } = req.body;
 
   // Validate type
   if (!['Daily', 'Weekly', 'Monthly'].includes(type)) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       message: 'Invalid limit type. Must be Daily, Weekly, or Monthly.',
     });
+    return;
   }
 
   // Validate amount
   if (amount === undefined || amount < 0) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       message: 'Amount must be a non-negative number.',
     });
+    return;
   }
 
-  // Find or create the limit
-  let [limit, created] = await SpendingLimit.findOrCreate({
-    where: { 
-      user_id: userId!,
-      type: type as 'Daily' | 'Weekly' | 'Monthly',
-    },
-    defaults: {
-      user_id: userId!,
-      type: type as 'Daily' | 'Weekly' | 'Monthly',
-      amount,
-      current_spending: 0,
-    },
-  });
+  // Check if limit exists
+  const { data: existingLimit } = await supabase
+    .from('spending_limits')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('type', type)
+    .single();
 
-  if (!created) {
+  if (existingLimit) {
     // Update existing limit
-    limit.amount = amount;
-    await limit.save();
-  }
+    const { data: limit, error } = await supabase
+      .from('spending_limits')
+      .update({ amount })
+      .eq('id', existingLimit.id)
+      .select()
+      .single();
 
-  return res.json({
-    success: true,
-    message: `${type} spending limit ${created ? 'created' : 'updated'} successfully.`,
-    data: limit,
-  });
+    if (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update spending limit',
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: `${type} spending limit updated successfully.`,
+      data: limit,
+    });
+  } else {
+    // Create new limit
+    const { data: limit, error } = await supabase
+      .from('spending_limits')
+      .insert({
+        user_id: userId,
+        type: type as 'Daily' | 'Weekly' | 'Monthly',
+        amount,
+        current_spending: 0,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create spending limit',
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      message: `${type} spending limit created successfully.`,
+      data: limit,
+    });
+  }
 });
 
 /**
@@ -143,25 +197,44 @@ export const updateSpendingLimit = asyncHandler(async (req: Request, res: Respon
  * POST /api/spending-limits/reset
  */
 export const resetSpendingLimits = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user?.id;
+  const userId = req.user?.id!;
   const { type } = req.body; // Optional: reset specific type or all
 
-  const where: any = { user_id: userId };
-  if (type && ['Daily', 'Weekly', 'Monthly'].includes(type)) {
-    where.type = type;
+  if (type && !['Daily', 'Weekly', 'Monthly'].includes(type)) {
+    res.status(400).json({
+      success: false,
+      message: 'Invalid limit type. Must be Daily, Weekly, or Monthly.',
+    });
+    return;
   }
 
-  await SpendingLimit.update(
-    {
+  let query = supabase
+    .from('spending_limits')
+    .update({
       current_spending: 0,
-      last_reset: new Date(),
-    },
-    { where }
-  );
+      last_reset: new Date().toISOString(),
+    })
+    .eq('user_id', userId);
+
+  if (type) {
+    query = query.eq('type', type);
+  }
+
+  const { error } = await query;
+
+  if (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reset spending limits',
+    });
+    return;
+  }
 
   res.json({
     success: true,
-    message: type ? `${type} spending limit reset successfully.` : 'All spending limits reset successfully.',
+    message: type
+      ? `${type} spending limit reset successfully.`
+      : 'All spending limits reset successfully.',
   });
 });
 
@@ -170,28 +243,40 @@ export const resetSpendingLimits = asyncHandler(async (req: Request, res: Respon
  * POST /api/spending-limits/check
  */
 export const checkSpendingLimit = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user?.id;
+  const userId = req.user?.id!;
   const { amount, type } = req.body;
 
   // Only check for expense transactions
   if (type !== 'expense') {
-    return res.json({
+    res.json({
       success: true,
       can_proceed: true,
       message: 'Transaction type does not affect spending limits.',
     });
+    return;
   }
 
   if (!amount || amount <= 0) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       message: 'Invalid transaction amount.',
     });
+    return;
   }
 
-  const limits = await SpendingLimit.findAll({
-    where: { user_id: userId },
-  });
+  const { data: limits } = await supabase
+    .from('spending_limits')
+    .select('*')
+    .eq('user_id', userId);
+
+  if (!limits || limits.length === 0) {
+    res.json({
+      success: true,
+      can_proceed: true,
+      message: 'No spending limits configured.',
+    });
+    return;
+  }
 
   const violations: any[] = [];
 
@@ -212,12 +297,12 @@ export const checkSpendingLimit = asyncHandler(async (req: Request, res: Respons
 
   const canProceed = violations.length === 0;
 
-  return res.json({
+  res.json({
     success: true,
     can_proceed: canProceed,
     violations,
-    message: canProceed 
-      ? 'Transaction within all spending limits.' 
+    message: canProceed
+      ? 'Transaction within all spending limits.'
       : `Transaction would exceed ${violations.length} spending limit(s).`,
   });
 });
@@ -227,7 +312,7 @@ export const checkSpendingLimit = asyncHandler(async (req: Request, res: Respons
  * GET /api/spending-limits/trends
  */
 export const getSpendingTrends = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user?.id;
+  const userId = req.user?.id!;
   const { period = 'monthly' } = req.query; // daily, weekly, monthly
 
   let dateRange: Date;
@@ -246,29 +331,40 @@ export const getSpendingTrends = asyncHandler(async (req: Request, res: Response
       break;
   }
 
-  const expenses = await Transaction.findAll({
-    where: {
-      user_id: userId,
-      type: 'expense',
-      status: 'completed',
-      date: {
-        [Op.gte]: dateRange,
-      },
-    },
-    attributes: [
-      [sequelize.fn('DATE', sequelize.col('date')), 'date'],
-      [sequelize.fn('SUM', sequelize.col('amount')), 'total'],
-    ],
-    group: [sequelize.fn('DATE', sequelize.col('date'))],
-    order: [[sequelize.fn('DATE', sequelize.col('date')), 'ASC']],
-    raw: true,
+  // Get all expense transactions in period
+  const { data: transactions } = await supabase
+    .from('transactions')
+    .select('date, amount')
+    .eq('user_id', userId)
+    .eq('type', 'expense')
+    .eq('status', 'completed')
+    .gte('date', dateRange.toISOString())
+    .order('date', { ascending: true });
+
+  // Group by date
+  const trendsMap = new Map<string, number>();
+
+  (transactions || []).forEach(tx => {
+    const date = tx.date.split('T')[0]; // Get just the date part (YYYY-MM-DD)
+
+    if (!trendsMap.has(date)) {
+      trendsMap.set(date, 0);
+    }
+
+    trendsMap.set(date, trendsMap.get(date)! + Number(tx.amount));
   });
+
+  // Convert to array format
+  const trends = Array.from(trendsMap.entries()).map(([date, total]) => ({
+    date,
+    total,
+  }));
 
   res.json({
     success: true,
     data: {
       period,
-      trends: expenses,
+      trends,
     },
   });
 });

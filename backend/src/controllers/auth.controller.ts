@@ -1,22 +1,27 @@
 import { Request, Response } from 'express';
-import { User as UserModel, Plan, ActivityLog, OTP } from '../models';
+import { supabase } from '../config/supabase';
 import { hashPassword, comparePassword, sanitizeUser, generateOTP, getOTPExpiration } from '../utils/helpers';
 import { generateToken, generateRefreshToken } from '../middlewares/auth.middleware';
 import { asyncHandler } from '../middlewares/error.middleware';
 import { sendVerificationEmail, sendWelcomeEmail } from '../utils/email.service';
 import { createDefaultCashAccount } from '../utils/account.service';
 import { initializeDefaultCategories } from './category.controller';
-import sequelize from '../config/sequelize';
+import { User, UserInsert, OTPInsert, ActivityLogInsert } from '../types/database.types';
 
 /**
- * User signup/registration
+ * User signup/registration with Supabase
  * POST /api/auth/signup
  */
 export const signup = asyncHandler(async (req: Request, res: Response) => {
   const { name, email, phone, password } = req.body;
 
   // Check if user already exists
-  const existingUser = await UserModel.findOne({ where: { email } });
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('id, email')
+    .eq('email', email)
+    .single();
+
   if (existingUser) {
     res.status(409).json({
       success: false,
@@ -29,28 +34,49 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
   const password_hash = await hashPassword(password);
 
   // Create user with free plan (plan_id = 1)
-  const user = await UserModel.create({
-    name,
-    email,
-    phone,
-    password_hash,
-    plan_id: 1, // Free plan by default
-    email_verified: false,
-  });
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .insert({
+      name,
+      email,
+      phone,
+      password_hash,
+      plan_id: 1, // Free plan by default
+      email_verified: false,
+    } as UserInsert)
+    .select()
+    .single();
+
+  if (userError || !user) {
+    console.error('Error creating user:', userError);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create user account',
+    });
+    return;
+  }
 
   // Generate verification OTP (6-digit code)
   const verification_code = generateOTP();
   const otp_expires = getOTPExpiration(10); // 10 minutes
 
   // Store OTP in otps table
-  await OTP.create({
-    user_id: user.id,
-    code: verification_code,
-    purpose: 'email_verify',
-    expires_at: otp_expires,
-  });
+  const { error: otpError } = await supabase
+    .from('otps')
+    .insert({
+      user_id: user.id,
+      code: verification_code,
+      purpose: 'email_verify',
+      expires_at: otp_expires.toISOString(),
+      is_verified: false,
+      attempts: 0,
+      max_attempts: 3,
+    } as OTPInsert);
 
-  // Default accounts will be created after email verification
+  if (otpError) {
+    console.error('Error creating OTP:', otpError);
+    // Continue even if OTP creation fails
+  }
 
   // Send verification email
   try {
@@ -61,16 +87,14 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: user.id,
     action: 'user_signup',
     description: 'User account created - awaiting email verification',
     ip_address: req.ip,
     user_agent: req.get('user-agent'),
-  });
+  } as ActivityLogInsert);
 
-  // Return user data without password and tokens
-  // User must verify email before logging in
   res.status(201).json({
     success: true,
     message: 'Registration successful! Please check your email to verify your account.',
@@ -86,19 +110,24 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * User login
+ * User login with Supabase
  * POST /api/auth/login
  */
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
-  // Find user
-  const user = await UserModel.findOne({
-    where: { email, is_active: true },
-    include: [{ model: Plan, as: 'plan' }],
-  });
+  // Find user with plan
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select(`
+      *,
+      plan:plans(*)
+    `)
+    .eq('email', email)
+    .eq('is_active', true)
+    .single();
 
-  if (!user) {
+  if (userError || !user) {
     res.status(401).json({
       success: false,
       message: 'Invalid email or password',
@@ -136,16 +165,19 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Update last login
-  await user.update({ last_login: new Date() });
+  await supabase
+    .from('users')
+    .update({ last_login: new Date().toISOString() })
+    .eq('id', user.id);
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: user.id,
     action: 'user_login',
     description: 'User logged in',
     ip_address: req.ip,
     user_agent: req.get('user-agent'),
-  });
+  } as ActivityLogInsert);
 
   // Generate tokens
   const token = generateToken({
@@ -155,7 +187,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   });
   const refreshToken = generateRefreshToken(user.id);
 
-  // Return user data
+  // Return user data (sanitizeUser helper should work with Supabase data)
   const userData = sanitizeUser(user);
 
   res.json({
@@ -176,11 +208,16 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 export const getProfile = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.id;
 
-  const user = await UserModel.findByPk(userId, {
-    include: [{ model: Plan, as: 'plan' }],
-  });
+  const { data: user, error } = await supabase
+    .from('users')
+    .select(`
+      *,
+      plan:plans(*)
+    `)
+    .eq('id', userId)
+    .single();
 
-  if (!user) {
+  if (error || !user) {
     res.status(404).json({
       success: false,
       message: 'User not found',
@@ -204,24 +241,13 @@ export const updateProfile = asyncHandler(async (req: Request, res: Response) =>
   const userId = req.user?.id;
   const { name, firstName, lastName, phone, avatar_url } = req.body;
 
-  const user = await UserModel.findByPk(userId);
-
-  if (!user) {
-    res.status(404).json({
-      success: false,
-      message: 'User not found',
-    });
-    return;
-  }
-
-  // Update allowed fields
-  const updateData: any = {};
+  // Build update data
+  const updateData: Partial<User> = {};
   
   // Handle name field - can come as 'name' or 'firstName' + 'lastName'
   if (name) {
     updateData.name = name;
   } else if (firstName || lastName) {
-    // Combine firstName and lastName if provided separately
     const combinedName = `${firstName || ''} ${lastName || ''}`.trim();
     if (combinedName) updateData.name = combinedName;
   }
@@ -229,14 +255,27 @@ export const updateProfile = asyncHandler(async (req: Request, res: Response) =>
   if (phone) updateData.phone = phone;
   if (avatar_url) updateData.avatar_url = avatar_url;
 
-  await user.update(updateData);
+  const { data: user, error } = await supabase
+    .from('users')
+    .update(updateData)
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error || !user) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update profile',
+    });
+    return;
+  }
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: user.id,
     action: 'profile_updated',
     description: 'User profile updated',
-  });
+  } as ActivityLogInsert);
 
   const userData = sanitizeUser(user);
 
@@ -255,9 +294,13 @@ export const changePassword = asyncHandler(async (req: Request, res: Response) =
   const userId = req.user?.id;
   const { currentPassword, newPassword } = req.body;
 
-  const user = await UserModel.findByPk(userId);
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('id, password_hash')
+    .eq('id', userId)
+    .single();
 
-  if (!user) {
+  if (error || !user) {
     res.status(404).json({
       success: false,
       message: 'User not found',
@@ -277,14 +320,17 @@ export const changePassword = asyncHandler(async (req: Request, res: Response) =
 
   // Hash and update new password
   const password_hash = await hashPassword(newPassword);
-  await user.update({ password_hash });
+  await supabase
+    .from('users')
+    .update({ password_hash })
+    .eq('id', user.id);
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: user.id,
     action: 'password_changed',
     description: 'User password changed',
-  });
+  } as ActivityLogInsert);
 
   res.json({
     success: true,
@@ -301,11 +347,11 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
 
   // Log activity
   if (userId) {
-    await ActivityLog.create({
+    await supabase.from('activity_logs').insert({
       user_id: userId,
       action: 'user_logout',
       description: 'User logged out',
-    });
+    } as ActivityLogInsert);
   }
 
   res.json({
@@ -330,9 +376,13 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Find user
-  const user = await UserModel.findOne({ where: { email } });
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email)
+    .single();
 
-  if (!user) {
+  if (userError || !user) {
     res.status(404).json({
       success: false,
       message: 'User not found',
@@ -350,17 +400,16 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Find valid OTP for this user
-  const otp = await OTP.findOne({
-    where: {
-      user_id: user.id,
-      code: code,
-      purpose: 'email_verify',
-      is_verified: false,
-    },
-    order: [['created_at', 'DESC']],
-  });
+  const { data: otps, error: otpError } = await supabase
+    .from('otps')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('code', code)
+    .eq('purpose', 'email_verify')
+    .eq('is_verified', false)
+    .order('created_at', { ascending: false });
 
-  if (!otp) {
+  if (otpError || !otps || otps.length === 0) {
     res.status(400).json({
       success: false,
       message: 'Invalid verification code',
@@ -368,9 +417,12 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     return;
   }
 
+  const otp = otps[0];
+
   // Check if OTP is expired
   const now = new Date();
-  if (now.getTime() > otp.expires_at.getTime()) {
+  const expiresAt = new Date(otp.expires_at);
+  if (now.getTime() > expiresAt.getTime()) {
     res.status(400).json({
       success: false,
       message: 'Verification code has expired. Please request a new one.',
@@ -380,19 +432,22 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Mark OTP as verified
-  await otp.update({ is_verified: true });
+  await supabase
+    .from('otps')
+    .update({ is_verified: true })
+    .eq('id', otp.id);
 
   // Verify email
-  await user.update({
-    email_verified: true,
-  });
+  await supabase
+    .from('users')
+    .update({ email_verified: true })
+    .eq('id', user.id);
 
   // Create default Cash account for the newly verified user
   try {
     await createDefaultCashAccount(user.id);
   } catch (error) {
     console.error('Failed to create default Cash account:', error);
-    // Continue even if account creation fails
   }
 
   // Initialize default categories for the newly verified user
@@ -400,7 +455,6 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     await initializeDefaultCategories(user.id);
   } catch (error) {
     console.error('Failed to initialize default categories:', error);
-    // Continue even if category initialization fails
   }
 
   // Send welcome email
@@ -411,11 +465,11 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: user.id,
     action: 'email_verified',
     description: 'User email verified successfully',
-  });
+  } as ActivityLogInsert);
 
   res.json({
     success: true,
@@ -439,9 +493,13 @@ export const resendVerification = asyncHandler(async (req: Request, res: Respons
   }
 
   // Find user
-  const user = await UserModel.findOne({ where: { email } });
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email)
+    .single();
 
-  if (!user) {
+  if (userError || !user) {
     res.status(404).json({
       success: false,
       message: 'User not found',
@@ -459,17 +517,18 @@ export const resendVerification = asyncHandler(async (req: Request, res: Respons
   }
 
   // Check if user is trying to resend too quickly (30 seconds cooldown)
-  const lastOTP = await OTP.findOne({
-    where: {
-      user_id: user.id,
-      purpose: 'email_verify',
-    },
-    order: [['created_at', 'DESC']],
-  });
+  const { data: lastOTPs } = await supabase
+    .from('otps')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('purpose', 'email_verify')
+    .order('created_at', { ascending: false })
+    .limit(1);
 
-  if (lastOTP) {
-    const timeSinceLastSent = Date.now() - lastOTP.created_at.getTime();
-    const cooldownPeriod = 30 * 1000; // 30 seconds in milliseconds
+  if (lastOTPs && lastOTPs.length > 0) {
+    const lastOTP = lastOTPs[0];
+    const timeSinceLastSent = Date.now() - new Date(lastOTP.created_at).getTime();
+    const cooldownPeriod = 30 * 1000; // 30 seconds
     
     if (timeSinceLastSent < cooldownPeriod) {
       const remainingTime = Math.ceil((cooldownPeriod - timeSinceLastSent) / 1000);
@@ -487,12 +546,15 @@ export const resendVerification = asyncHandler(async (req: Request, res: Respons
   const otp_expires = getOTPExpiration(10); // 10 minutes
 
   // Create new OTP
-  await OTP.create({
+  await supabase.from('otps').insert({
     user_id: user.id,
     code: verification_code,
     purpose: 'email_verify',
-    expires_at: otp_expires,
-  });
+    expires_at: otp_expires.toISOString(),
+    is_verified: false,
+    attempts: 0,
+    max_attempts: 3,
+  } as OTPInsert);
 
   // Send verification email
   try {
@@ -527,9 +589,13 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response) =>
   }
 
   // Verify user exists
-  const user = await UserModel.findByPk(userId);
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('id, name, email')
+    .eq('id', userId)
+    .single();
   
-  if (!user) {
+  if (userError || !user) {
     res.status(404).json({
       success: false,
       message: 'User not found',
@@ -537,20 +603,17 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response) =>
     return;
   }
 
-  // Use a transaction to ensure all deletions succeed or rollback
-  const transaction = await sequelize.transaction();
-
   try {
     // Log the account deletion before deleting
-    await ActivityLog.create({
+    await supabase.from('activity_logs').insert({
       user_id: userId,
       action: 'account_deleted',
       description: `User ${user.name} (${user.email}) deleted their account`,
       ip_address: req.ip,
       user_agent: req.get('user-agent'),
-    }, { transaction });
+    } as ActivityLogInsert);
 
-    // Delete user - CASCADE will automatically delete all related data:
+    // Delete user - CASCADE in database will automatically delete all related data:
     // - accounts (via ON DELETE CASCADE)
     // - transactions (via account CASCADE)
     // - categories (via ON DELETE CASCADE)
@@ -559,20 +622,20 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response) =>
     // - otps (via ON DELETE CASCADE)
     // - user_pins (via ON DELETE CASCADE)
     // - savings_allocations (via ON DELETE CASCADE)
-    // - refresh_tokens (via ON DELETE CASCADE)
-    await user.destroy({ transaction });
+    const { error: deleteError } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', userId);
 
-    // Commit the transaction
-    await transaction.commit();
+    if (deleteError) {
+      throw deleteError;
+    }
 
     res.status(200).json({
       success: true,
       message: 'Account and all associated data have been permanently deleted',
     });
   } catch (error) {
-    // Rollback transaction on error
-    await transaction.rollback();
-    
     console.error('Error deleting account:', error);
     res.status(500).json({
       success: false,
@@ -580,4 +643,3 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response) =>
     });
   }
 });
-

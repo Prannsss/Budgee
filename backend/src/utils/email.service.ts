@@ -5,7 +5,10 @@ config();
 
 /**
  * Email Service
- * Handles sending emails via SMTP (Nodemailer)
+ * Handles sending emails via SMTP (Nodemailer) or Supabase Auth
+ * 
+ * Note: Supabase Auth has built-in email verification, but we use custom SMTP
+ * for more control over email templates and branding.
  */
 
 // Create reusable transporter using SMTP credentials from .env
@@ -29,10 +32,11 @@ const transporter = nodemailer.createTransport({
 export const verifyEmailConnection = async (): Promise<boolean> => {
   try {
     await transporter.verify();
-    console.log('✅ Email service is ready to send emails');
+    console.log('✅ Email service (SMTP) is ready to send emails');
     return true;
   } catch (error) {
     console.error('❌ Email service connection failed:', error);
+    console.log('💡 You can also use Supabase Auth email as fallback');
     return false;
   }
 };

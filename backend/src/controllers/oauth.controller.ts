@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
+import { supabase } from '../config/supabase';
 import { generateToken, generateRefreshToken } from '../middlewares/auth.middleware';
-import { ActivityLog } from '../models';
+import { ActivityLogInsert } from '../types/database.types';
 
 /**
  * Google OAuth callback
@@ -16,16 +17,19 @@ export const googleCallback = async (req: Request, res: Response) => {
     }
 
     // Update last login
-    await user.update({ last_login: new Date() });
+    await supabase
+      .from('users')
+      .update({ last_login: new Date().toISOString() })
+      .eq('id', user.id);
 
     // Log activity
-    await ActivityLog.create({
+    await supabase.from('activity_logs').insert({
       user_id: user.id,
       action: 'oauth_login',
       description: `User logged in via Google`,
       ip_address: req.ip,
       user_agent: req.get('user-agent'),
-    });
+    } as ActivityLogInsert);
 
     // Generate tokens
     const token = generateToken({
@@ -58,16 +62,19 @@ export const facebookCallback = async (req: Request, res: Response) => {
     }
 
     // Update last login
-    await user.update({ last_login: new Date() });
+    await supabase
+      .from('users')
+      .update({ last_login: new Date().toISOString() })
+      .eq('id', user.id);
 
     // Log activity
-    await ActivityLog.create({
+    await supabase.from('activity_logs').insert({
       user_id: user.id,
       action: 'oauth_login',
       description: `User logged in via Facebook`,
       ip_address: req.ip,
       user_agent: req.get('user-agent'),
-    });
+    } as ActivityLogInsert);
 
     // Generate tokens
     const token = generateToken({

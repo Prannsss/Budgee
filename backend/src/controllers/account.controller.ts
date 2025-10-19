@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
-import { Account, User, Plan, ActivityLog } from '../models';
+import { supabase } from '../config/supabase';
 import { asyncHandler } from '../middlewares/error.middleware';
+import { AccountInsert, ActivityLogInsert } from '../types/database.types';
 
 /**
  * Get all accounts for authenticated user
@@ -9,14 +10,24 @@ import { asyncHandler } from '../middlewares/error.middleware';
 export const getAllAccounts = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.id;
 
-  const accounts = await Account.findAll({
-    where: { user_id: userId, is_active: true },
-    order: [['created_at', 'DESC']],
-  });
+  const { data: accounts, error } = await supabase
+    .from('accounts')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch accounts',
+    });
+    return;
+  }
 
   res.json({
     success: true,
-    data: accounts, // Return array directly, not wrapped in object
+    data: accounts || [], // Return array directly, not wrapped in object
   });
 });
 
@@ -28,11 +39,15 @@ export const getAccountById = asyncHandler(async (req: Request, res: Response) =
   const userId = req.user?.id;
   const { id } = req.params;
 
-  const account = await Account.findOne({
-    where: { id, user_id: userId, is_active: true },
-  });
+  const { data: account, error } = await supabase
+    .from('accounts')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .single();
 
-  if (!account) {
+  if (error || !account) {
     res.status(404).json({
       success: false,
       message: 'Account not found',
@@ -55,11 +70,16 @@ export const createAccount = asyncHandler(async (req: Request, res: Response) =>
   const { name, type, account_number, logo_url, balance } = req.body;
 
   // Get user with plan details
-  const user = await User.findByPk(userId, {
-    include: [{ model: Plan, as: 'plan' }],
-  });
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select(`
+      *,
+      plan:plans(*)
+    `)
+    .eq('id', userId)
+    .single();
 
-  if (!user) {
+  if (userError || !user) {
     res.status(404).json({
       success: false,
       message: 'User not found',
@@ -68,15 +88,15 @@ export const createAccount = asyncHandler(async (req: Request, res: Response) =>
   }
 
   // Check plan limits
-  const accountCount = await Account.count({
-    where: { 
-      user_id: userId, 
-      is_active: true,
-      type: type === 'e-wallet' ? 'e-wallet' : 'bank'
-    },
-  });
+  const accountType = type === 'E-Wallet' ? 'E-Wallet' : 'Bank';
+  const { count: accountCount } = await supabase
+    .from('accounts')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .eq('type', accountType);
 
-  const plan = user.plan;
+  const plan = (user as any).plan;
   
   if (!plan) {
     res.status(500).json({
@@ -86,33 +106,47 @@ export const createAccount = asyncHandler(async (req: Request, res: Response) =>
     return;
   }
 
-  const limit = type === 'e-wallet' ? plan.max_wallets : plan.max_accounts;
+  const limit = type === 'E-Wallet' ? plan.max_wallets : plan.max_accounts;
 
-  if (accountCount >= limit) {
+  if ((accountCount || 0) >= limit) {
     res.status(403).json({
       success: false,
-      message: `You have reached the ${type === 'e-wallet' ? 'e-wallet' : 'bank account'} limit for your plan. Please upgrade to add more.`,
+      message: `You have reached the ${type === 'E-Wallet' ? 'e-wallet' : 'bank account'} limit for your plan. Please upgrade to add more.`,
     });
     return;
   }
 
   // Create account
-  const account = await Account.create({
-    user_id: userId,
-    name,
-    type,
-    account_number,
-    logo_url,
-    balance: balance || 0,
-    is_manual: true, // Default to manual unless API-connected
-  });
+  const { data: account, error: createError } = await supabase
+    .from('accounts')
+    .insert({
+      user_id: userId,
+      name,
+      type,
+      account_number,
+      logo_url,
+      balance: balance || 0,
+      is_manual: true, // Default to manual unless API-connected
+      is_active: true,
+      verified: false,
+    } as AccountInsert)
+    .select()
+    .single();
+
+  if (createError || !account) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create account',
+    });
+    return;
+  }
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: userId,
     action: 'account_created',
     description: `Created ${type}: ${name}`,
-  });
+  } as ActivityLogInsert);
 
   res.status(201).json({
     success: true,
@@ -130,11 +164,16 @@ export const updateAccount = asyncHandler(async (req: Request, res: Response) =>
   const { id } = req.params;
   const { name, balance, logo_url } = req.body;
 
-  const account = await Account.findOne({
-    where: { id, user_id: userId, is_active: true },
-  });
+  // Verify account exists and belongs to user
+  const { data: existingAccount } = await supabase
+    .from('accounts')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .single();
 
-  if (!account) {
+  if (!existingAccount) {
     res.status(404).json({
       success: false,
       message: 'Account not found',
@@ -142,20 +181,34 @@ export const updateAccount = asyncHandler(async (req: Request, res: Response) =>
     return;
   }
 
-  // Update fields
+  // Build update data
   const updateData: any = {};
   if (name) updateData.name = name;
   if (balance !== undefined) updateData.balance = balance;
   if (logo_url) updateData.logo_url = logo_url;
 
-  await account.update(updateData);
+  // Update account
+  const { data: account, error } = await supabase
+    .from('accounts')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error || !account) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update account',
+    });
+    return;
+  }
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: userId!,
     action: 'account_updated',
     description: `Updated account: ${account.name}`,
-  });
+  } as ActivityLogInsert);
 
   res.json({
     success: true,
@@ -172,11 +225,15 @@ export const verifyAccount = asyncHandler(async (req: Request, res: Response) =>
   const userId = req.user?.id;
   const { id } = req.params;
 
-  const account = await Account.findOne({
-    where: { id, user_id: userId },
-  });
+  // Get account
+  const { data: existingAccount } = await supabase
+    .from('accounts')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
 
-  if (!account) {
+  if (!existingAccount) {
     res.status(404).json({
       success: false,
       message: 'Account not found',
@@ -185,14 +242,27 @@ export const verifyAccount = asyncHandler(async (req: Request, res: Response) =>
   }
 
   // Mark as verified
-  await account.update({ verified: true });
+  const { data: account, error } = await supabase
+    .from('accounts')
+    .update({ verified: true })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error || !account) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to verify account',
+    });
+    return;
+  }
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: userId!,
     action: 'account_verified',
     description: `Verified account: ${account.name}`,
-  });
+  } as ActivityLogInsert);
 
   res.json({
     success: true,
@@ -209,11 +279,16 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response) =>
   const userId = req.user?.id;
   const { id } = req.params;
 
-  const account = await Account.findOne({
-    where: { id, user_id: userId, is_active: true },
-  });
+  // Get account
+  const { data: existingAccount } = await supabase
+    .from('accounts')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .single();
 
-  if (!account) {
+  if (!existingAccount) {
     res.status(404).json({
       success: false,
       message: 'Account not found',
@@ -222,14 +297,25 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response) =>
   }
 
   // Soft delete
-  await account.update({ is_active: false });
+  const { error } = await supabase
+    .from('accounts')
+    .update({ is_active: false })
+    .eq('id', id);
+
+  if (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete account',
+    });
+    return;
+  }
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: userId!,
     action: 'account_deleted',
-    description: `Deleted account: ${account.name}`,
-  });
+    description: `Deleted account: ${existingAccount.name}`,
+  } as ActivityLogInsert);
 
   res.json({
     success: true,

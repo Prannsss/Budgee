@@ -646,31 +646,68 @@ CREATE TRIGGER transaction_spending_limit_trigger
 -- Views for Common Queries
 -- ================================================
 
--- User Dashboard Summary View
+-- User Dashboard Summary View (FIXED: No JOIN multiplication)
+-- This view calculates financial metrics accurately by using separate subqueries
+-- to avoid the JOIN multiplication problem that inflates totals.
 CREATE OR REPLACE VIEW user_dashboard_summary AS
 SELECT 
     u.id as user_id,
     u.name,
     u.email,
     p.name as plan_name,
-    COUNT(DISTINCT a.id) as total_accounts,
-    COUNT(DISTINCT CASE WHEN a.type = 'E-Wallet' THEN a.id END) as total_wallets,
-    COUNT(DISTINCT CASE WHEN a.type = 'Bank' THEN a.id END) as total_banks,
-    COUNT(DISTINCT CASE WHEN a.type = 'Cash' THEN a.id END) as total_cash,
-    COALESCE(SUM(a.balance), 0) as total_balance,
-    COALESCE(SUM(CASE WHEN t.type = 'income' THEN t.amount ELSE 0 END), 0) as total_income,
-    COALESCE(SUM(CASE WHEN t.type = 'expense' THEN t.amount ELSE 0 END), 0) as total_expenses,
-    COALESCE(
-        (SELECT SUM(CASE WHEN sa.type = 'deposit' THEN sa.amount ELSE -sa.amount END)
-         FROM savings_allocations sa 
-         WHERE sa.user_id = u.id), 0
-    ) as total_savings
+    
+    -- Account statistics (calculated separately to avoid JOIN multiplication)
+    COALESCE(acc_stats.total_accounts, 0) as total_accounts,
+    COALESCE(acc_stats.total_wallets, 0) as total_wallets,
+    COALESCE(acc_stats.total_banks, 0) as total_banks,
+    COALESCE(acc_stats.total_cash, 0) as total_cash,
+    COALESCE(acc_stats.total_balance, 0) as total_balance,
+    
+    -- Transaction statistics (calculated separately)
+    COALESCE(txn_stats.total_income, 0) as total_income,
+    COALESCE(txn_stats.total_expenses, 0) as total_expenses,
+    
+    -- Savings statistics (calculated separately)
+    COALESCE(sav_stats.total_savings, 0) as total_savings
+    
 FROM users u
 LEFT JOIN plans p ON u.plan_id = p.id
-LEFT JOIN accounts a ON u.id = a.user_id AND a.is_active = TRUE
-LEFT JOIN transactions t ON u.id = t.user_id AND t.status = 'completed'
-WHERE u.is_active = TRUE
-GROUP BY u.id, u.name, u.email, p.name;
+
+-- Subquery for account statistics
+LEFT JOIN (
+    SELECT 
+        user_id,
+        COUNT(*) as total_accounts,
+        COUNT(CASE WHEN type = 'E-Wallet' THEN 1 END) as total_wallets,
+        COUNT(CASE WHEN type = 'Bank' THEN 1 END) as total_banks,
+        COUNT(CASE WHEN type = 'Cash' THEN 1 END) as total_cash,
+        SUM(balance) as total_balance
+    FROM accounts
+    WHERE is_active = TRUE
+    GROUP BY user_id
+) acc_stats ON u.id = acc_stats.user_id
+
+-- Subquery for transaction statistics
+LEFT JOIN (
+    SELECT 
+        user_id,
+        SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income,
+        SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as total_expenses
+    FROM transactions
+    WHERE status = 'completed'
+    GROUP BY user_id
+) txn_stats ON u.id = txn_stats.user_id
+
+-- Subquery for savings statistics
+LEFT JOIN (
+    SELECT 
+        user_id,
+        SUM(CASE WHEN type = 'deposit' THEN amount ELSE -amount END) as total_savings
+    FROM savings_allocations
+    GROUP BY user_id
+) sav_stats ON u.id = sav_stats.user_id
+
+WHERE u.is_active = TRUE;
 
 -- Monthly Transaction Summary View
 CREATE OR REPLACE VIEW monthly_transaction_summary AS

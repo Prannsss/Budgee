@@ -130,10 +130,12 @@ export default function DashboardPage() {
   }, [totals]);
 
   const netWorth = useMemo(() => {
+    // Net Worth is simply the total of all account balances
+    // Savings allocations are already deducted from account balances,
+    // so we should not add them again (that would double-count)
     const assetsValue = Number(assets) || 0;
-    const savingsValue = Number(savings) || 0;
-    return assetsValue + savingsValue;
-  }, [assets, savings]);
+    return assetsValue;
+  }, [assets]);
   
   // For now, we don't have liabilities in our simple model
   const liabilities = 0;

@@ -27,6 +27,7 @@ const ScrollStack = ({
   const cardsRef = useRef([]);
   const lastTransformsRef = useRef(new Map());
   const isUpdatingRef = useRef(false);
+  const isMobileRef = useRef(false);
 
   const calculateProgress = useCallback((scrollTop, start, end) => {
     if (scrollTop < start) return 0;
@@ -152,22 +153,25 @@ const ScrollStack = ({
     const scroller = scrollerRef.current;
     if (!scroller) return;
 
+    // Check if mobile
+    isMobileRef.current = window.innerWidth <= 768;
+
     const lenis = new Lenis({
       wrapper: scroller,
       content: scroller.querySelector('.scroll-stack-inner'),
-      duration: 1.2,
+      duration: isMobileRef.current ? 1.0 : 1.2,
       easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-      touchMultiplier: 2,
+      smoothWheel: !isMobileRef.current,
+      touchMultiplier: isMobileRef.current ? 1.5 : 2,
       infinite: false,
       gestureOrientationHandler: true,
       normalizeWheel: true,
       wheelMultiplier: 1,
-      touchInertiaMultiplier: 35,
-      lerp: 0.1,
+      touchInertiaMultiplier: isMobileRef.current ? 25 : 35,
+      lerp: isMobileRef.current ? 0.15 : 0.1,
       syncTouch: true,
-      syncTouchLerp: 0.075,
-      touchInertia: 0.6
+      syncTouchLerp: isMobileRef.current ? 0.1 : 0.075,
+      touchInertia: isMobileRef.current ? 0.5 : 0.6
     });
 
     lenis.on('scroll', handleScroll);
@@ -190,6 +194,9 @@ const ScrollStack = ({
     cardsRef.current = cards;
     const transformsCache = lastTransformsRef.current;
 
+    // Check if mobile on mount
+    isMobileRef.current = window.innerWidth <= 768;
+
     cards.forEach((card, i) => {
       if (i < cards.length - 1) {
         card.style.marginBottom = `${itemDistance}px`;
@@ -207,7 +214,25 @@ const ScrollStack = ({
 
     updateCardTransforms();
 
+    // Handle window resize for mobile/desktop transitions
+    const handleResize = () => {
+      const wasMobile = isMobileRef.current;
+      isMobileRef.current = window.innerWidth <= 768;
+      
+      // Reinitialize Lenis if switching between mobile/desktop
+      if (wasMobile !== isMobileRef.current) {
+        if (lenisRef.current) {
+          lenisRef.current.destroy();
+        }
+        setupLenis();
+        updateCardTransforms();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+
     return () => {
+      window.removeEventListener('resize', handleResize);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
