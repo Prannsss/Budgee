@@ -1,7 +1,7 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as FacebookStrategy } from 'passport-facebook';
-import { User } from '../models';
+import { supabase } from './supabase';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -17,44 +17,62 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       },
       async (_accessToken, _refreshToken, profile, done) => {
         try {
-          // Check if user already exists
-          let user = await User.findOne({
-            where: {
-              oauth_provider: 'google',
-              oauth_id: profile.id,
-            },
-          });
+          // Check if user already exists with Google OAuth
+          const { data: existingOauthUser } = await supabase
+            .from('users')
+            .select('*')
+            .eq('oauth_provider', 'google')
+            .eq('oauth_id', profile.id)
+            .single();
 
-          if (!user) {
-            // Check if email already exists
-            const existingUser = await User.findOne({
-              where: { email: profile.emails?.[0]?.value },
-            });
+          if (existingOauthUser) {
+            return done(null, existingOauthUser);
+          }
 
-            if (existingUser) {
-              // Link Google account to existing user
-              await existingUser.update({
+          // Check if email already exists
+          const { data: existingEmailUser } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', profile.emails?.[0]?.value)
+            .single();
+
+          if (existingEmailUser) {
+            // Link Google account to existing user
+            const { data: updatedUser } = await supabase
+              .from('users')
+              .update({
                 oauth_provider: 'google',
                 oauth_id: profile.id,
                 email_verified: true, // Email is verified by Google
-              });
-              user = existingUser;
-            } else {
-              // Create new user
-              user = await User.create({
-                name: profile.displayName || profile.emails?.[0]?.value.split('@')[0] || 'User',
-                email: profile.emails?.[0]?.value!,
-                password_hash: '', // No password for OAuth users
-                plan_id: 1, // Free plan
-                oauth_provider: 'google',
-                oauth_id: profile.id,
-                email_verified: true,
-                avatar_url: profile.photos?.[0]?.value,
-              });
-            }
+              })
+              .eq('id', existingEmailUser.id)
+              .select()
+              .single();
+
+            return done(null, updatedUser || existingEmailUser);
           }
 
-          return done(null, user);
+          // Create new user
+          const { data: newUser, error } = await supabase
+            .from('users')
+            .insert({
+              name: profile.displayName || profile.emails?.[0]?.value.split('@')[0] || 'User',
+              email: profile.emails?.[0]?.value!,
+              password_hash: '', // No password for OAuth users
+              plan_id: 1, // Free plan
+              oauth_provider: 'google',
+              oauth_id: profile.id,
+              email_verified: true,
+              avatar_url: profile.photos?.[0]?.value,
+            })
+            .select()
+            .single();
+
+          if (error) {
+            throw error;
+          }
+
+          return done(null, newUser);
         } catch (error) {
           return done(error as Error, undefined);
         }
@@ -75,44 +93,62 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
       },
       async (_accessToken, _refreshToken, profile, done) => {
         try {
-          // Check if user already exists
-          let user = await User.findOne({
-            where: {
-              oauth_provider: 'facebook',
-              oauth_id: profile.id,
-            },
-          });
+          // Check if user already exists with Facebook OAuth
+          const { data: existingOauthUser } = await supabase
+            .from('users')
+            .select('*')
+            .eq('oauth_provider', 'facebook')
+            .eq('oauth_id', profile.id)
+            .single();
 
-          if (!user) {
-            // Check if email already exists
-            const existingUser = await User.findOne({
-              where: { email: profile.emails?.[0]?.value },
-            });
+          if (existingOauthUser) {
+            return done(null, existingOauthUser);
+          }
 
-            if (existingUser) {
-              // Link Facebook account to existing user
-              await existingUser.update({
+          // Check if email already exists
+          const { data: existingEmailUser } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', profile.emails?.[0]?.value)
+            .single();
+
+          if (existingEmailUser) {
+            // Link Facebook account to existing user
+            const { data: updatedUser } = await supabase
+              .from('users')
+              .update({
                 oauth_provider: 'facebook',
                 oauth_id: profile.id,
                 email_verified: true, // Email is verified by Facebook
-              });
-              user = existingUser;
-            } else {
-              // Create new user
-              user = await User.create({
-                name: profile.displayName || profile.emails?.[0]?.value?.split('@')[0] || 'User',
-                email: profile.emails?.[0]?.value!,
-                password_hash: '', // No password for OAuth users
-                plan_id: 1, // Free plan
-                oauth_provider: 'facebook',
-                oauth_id: profile.id,
-                email_verified: true,
-                avatar_url: profile.photos?.[0]?.value,
-              });
-            }
+              })
+              .eq('id', existingEmailUser.id)
+              .select()
+              .single();
+
+            return done(null, updatedUser || existingEmailUser);
           }
 
-          return done(null, user);
+          // Create new user
+          const { data: newUser, error } = await supabase
+            .from('users')
+            .insert({
+              name: profile.displayName || profile.emails?.[0]?.value?.split('@')[0] || 'User',
+              email: profile.emails?.[0]?.value!,
+              password_hash: '', // No password for OAuth users
+              plan_id: 1, // Free plan
+              oauth_provider: 'facebook',
+              oauth_id: profile.id,
+              email_verified: true,
+              avatar_url: profile.photos?.[0]?.value,
+            })
+            .select()
+            .single();
+
+          if (error) {
+            throw error;
+          }
+
+          return done(null, newUser);
         } catch (error) {
           return done(error as Error, undefined);
         }
@@ -128,7 +164,11 @@ passport.serializeUser((user: any, done) => {
 
 passport.deserializeUser(async (id: number, done) => {
   try {
-    const user = await User.findByPk(id);
+    const { data: user } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', id)
+      .single();
     done(null, user);
   } catch (error) {
     done(error, null);

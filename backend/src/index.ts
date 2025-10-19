@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import createApp from './app';
-import { testConnection } from './config/sequelize';
+import { testSupabaseConnection } from './config/supabase';
 import { verifyEmailConnection } from './utils/email.service';
 
 // Load environment variables
@@ -14,8 +14,11 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
  */
 const startServer = async () => {
   try {
-    // Test database connection
-    await testConnection();
+    // Test Supabase database connection
+    const supabaseConnected = await testSupabaseConnection();
+    if (!supabaseConnected) {
+      console.warn('⚠️  Supabase connection failed, but continuing...');
+    }
 
     // Verify email service connection
     await verifyEmailConnection();
@@ -26,12 +29,13 @@ const startServer = async () => {
     // Start listening
     app.listen(PORT, () => {
       console.log('='.repeat(50));
-      console.log('🚀 Budgee Backend Server Started');
+      console.log('🚀 Budgee Backend Server Started (Supabase)');
       console.log('='.repeat(50));
       console.log(`📍 Environment: ${NODE_ENV}`);
       console.log(`🌐 Server URL: http://localhost:${PORT}`);
       console.log(`📡 API Endpoint: http://localhost:${PORT}/api`);
       console.log(`❤️  Health Check: http://localhost:${PORT}/api/health`);
+      console.log(`🗄️  Database: Supabase (${process.env.SUPABASE_URL})`);
       console.log('='.repeat(50));
     });
   } catch (error) {

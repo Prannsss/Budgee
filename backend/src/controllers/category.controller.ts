@@ -1,6 +1,12 @@
+/**
+ * Category Controller with Supabase
+ * Complete CRUD operations for transaction categories
+ */
+
 import { Request, Response } from 'express';
-import { Category, ActivityLog, Transaction } from '../models';
+import { supabase } from '../config/supabase';
 import { asyncHandler } from '../middlewares/error.middleware';
+import { CategoryInsert, ActivityLogInsert } from '../types/database.types';
 
 /**
  * Get all categories for authenticated user
@@ -10,17 +16,29 @@ export const getAllCategories = asyncHandler(async (req: Request, res: Response)
   const userId = req.user?.id;
   const { type } = req.query;
 
-  const where: any = { user_id: userId };
-  if (type) where.type = type;
+  let query = supabase
+    .from('categories')
+    .select('*')
+    .eq('user_id', userId)
+    .order('name', { ascending: true });
 
-  const categories = await Category.findAll({
-    where,
-    order: [['name', 'ASC']],
-  });
+  if (type) {
+    query = query.eq('type', type);
+  }
+
+  const { data: categories, error } = await query;
+
+  if (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch categories',
+    });
+    return;
+  }
 
   res.json({
     success: true,
-    data: categories,
+    data: categories || [],
   });
 });
 
@@ -32,11 +50,14 @@ export const getCategoryById = asyncHandler(async (req: Request, res: Response) 
   const userId = req.user?.id;
   const { id } = req.params;
 
-  const category = await Category.findOne({
-    where: { id, user_id: userId },
-  });
+  const { data: category, error } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
 
-  if (!category) {
+  if (error || !category) {
     res.status(404).json({
       success: false,
       message: 'Category not found',
@@ -59,9 +80,13 @@ export const createCategory = asyncHandler(async (req: Request, res: Response) =
   const { name, type } = req.body;
 
   // Check if category already exists for this user
-  const existingCategory = await Category.findOne({
-    where: { user_id: userId, name, type },
-  });
+  const { data: existingCategory } = await supabase
+    .from('categories')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('name', name)
+    .eq('type', type)
+    .single();
 
   if (existingCategory) {
     res.status(409).json({
@@ -71,20 +96,32 @@ export const createCategory = asyncHandler(async (req: Request, res: Response) =
     return;
   }
 
-  // Create category (is_default will be false by default for user-created categories)
-  const category = await Category.create({
-    user_id: userId,
-    name,
-    type,
-    is_default: false, // User-created categories are not default
-  });
+  // Create category
+  const { data: category, error } = await supabase
+    .from('categories')
+    .insert({
+      user_id: userId,
+      name,
+      type,
+      is_default: false,
+    } as CategoryInsert)
+    .select()
+    .single();
+
+  if (error || !category) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create category',
+    });
+    return;
+  }
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: userId,
     action: 'category_created',
     description: `Created ${type} category: ${name}`,
-  });
+  } as ActivityLogInsert);
 
   res.status(201).json({
     success: true,
@@ -102,11 +139,15 @@ export const updateCategory = asyncHandler(async (req: Request, res: Response) =
   const { id } = req.params;
   const { name } = req.body;
 
-  const category = await Category.findOne({
-    where: { id, user_id: userId },
-  });
+  // Get category
+  const { data: existingCategory } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
 
-  if (!category) {
+  if (!existingCategory) {
     res.status(404).json({
       success: false,
       message: 'Category not found',
@@ -115,7 +156,7 @@ export const updateCategory = asyncHandler(async (req: Request, res: Response) =
   }
 
   // Prevent updating default categories
-  if (category.is_default) {
+  if (existingCategory.is_default) {
     res.status(403).json({
       success: false,
       message: 'Cannot modify default categories',
@@ -123,17 +164,28 @@ export const updateCategory = asyncHandler(async (req: Request, res: Response) =
     return;
   }
 
-  // Update name if provided
-  if (name) {
-    await category.update({ name });
+  // Update category
+  const { data: category, error } = await supabase
+    .from('categories')
+    .update({ name })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error || !category) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update category',
+    });
+    return;
   }
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: userId,
     action: 'category_updated',
     description: `Updated category: ${category.name}`,
-  });
+  } as ActivityLogInsert);
 
   res.json({
     success: true,
@@ -150,9 +202,13 @@ export const deleteCategory = asyncHandler(async (req: Request, res: Response) =
   const userId = req.user?.id!;
   const { id } = req.params;
 
-  const category = await Category.findOne({
-    where: { id, user_id: userId },
-  });
+  // Get category
+  const { data: category } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
 
   if (!category) {
     res.status(404).json({
@@ -163,11 +219,12 @@ export const deleteCategory = asyncHandler(async (req: Request, res: Response) =
   }
 
   // Check if category has transactions
-  const transactionCount = await Transaction.count({
-    where: { category_id: id },
-  });
+  const { count: transactionCount } = await supabase
+    .from('transactions')
+    .select('*', { count: 'exact', head: true })
+    .eq('category_id', id);
 
-  if (transactionCount > 0) {
+  if (transactionCount && transactionCount > 0) {
     res.status(400).json({
       success: false,
       message: `Cannot delete category. It has ${transactionCount} transaction(s) associated with it.`,
@@ -175,14 +232,26 @@ export const deleteCategory = asyncHandler(async (req: Request, res: Response) =
     return;
   }
 
-  await category.destroy();
+  // Delete category
+  const { error } = await supabase
+    .from('categories')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete category',
+    });
+    return;
+  }
 
   // Log activity
-  await ActivityLog.create({
+  await supabase.from('activity_logs').insert({
     user_id: userId,
     action: 'category_deleted',
     description: `Deleted category: ${category.name}`,
-  });
+  } as ActivityLogInsert);
 
   res.json({
     success: true,
@@ -213,7 +282,13 @@ export const initializeDefaultCategories = async (userId: number): Promise<void>
     ];
 
     // Bulk create all default categories
-    await Category.bulkCreate([...incomeCategories, ...expenseCategories]);
+    const { error } = await supabase
+      .from('categories')
+      .insert([...incomeCategories, ...expenseCategories]);
+
+    if (error) {
+      throw error;
+    }
     
     console.log(`✓ Default categories initialized for user ${userId}`);
   } catch (error) {

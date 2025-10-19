@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Plan, User } from '../models';
+import { supabase } from '../config/supabase';
 import { asyncHandler } from '../middlewares/error.middleware';
 
 /**
@@ -7,13 +7,22 @@ import { asyncHandler } from '../middlewares/error.middleware';
  * GET /api/plans
  */
 export const getAllPlans = asyncHandler(async (_req: Request, res: Response) => {
-  const plans = await Plan.findAll({
-    order: [['price', 'ASC']],
-  });
+  const { data: plans, error } = await supabase
+    .from('plans')
+    .select('*')
+    .order('price', { ascending: true });
+
+  if (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch plans',
+    });
+    return;
+  }
 
   res.json({
     success: true,
-    data: { plans },
+    data: { plans: plans || [] },
   });
 });
 
@@ -24,9 +33,13 @@ export const getAllPlans = asyncHandler(async (_req: Request, res: Response) => 
 export const getPlanById = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const plan = await Plan.findByPk(id);
+  const { data: plan, error } = await supabase
+    .from('plans')
+    .select('*')
+    .eq('id', id)
+    .single();
 
-  if (!plan) {
+  if (error || !plan) {
     res.status(404).json({
       success: false,
       message: 'Plan not found',
@@ -45,12 +58,17 @@ export const getPlanById = asyncHandler(async (req: Request, res: Response) => {
  * POST /api/plans/upgrade
  */
 export const upgradePlan = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user?.id;
+  const userId = req.user?.id!;
   const { plan_id } = req.body;
 
   // Validate plan exists
-  const plan = await Plan.findByPk(plan_id);
-  if (!plan) {
+  const { data: plan, error: planError } = await supabase
+    .from('plans')
+    .select('*')
+    .eq('id', plan_id)
+    .single();
+
+  if (planError || !plan) {
     res.status(404).json({
       success: false,
       message: 'Plan not found',
@@ -59,8 +77,13 @@ export const upgradePlan = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Get user
-  const user = await User.findByPk(userId);
-  if (!user) {
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (userError || !user) {
     res.status(404).json({
       success: false,
       message: 'User not found',
@@ -78,12 +101,28 @@ export const upgradePlan = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Update user plan
-  await user.update({ plan_id });
+  const { error: updateError } = await supabase
+    .from('users')
+    .update({ plan_id })
+    .eq('id', userId);
+
+  if (updateError) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upgrade plan',
+    });
+    return;
+  }
 
   // Get updated user with plan details
-  const updatedUser = await User.findByPk(userId, {
-    include: [{ model: Plan, as: 'plan' }],
-  });
+  const { data: updatedUser } = await supabase
+    .from('users')
+    .select(`
+      *,
+      plan:plans(*)
+    `)
+    .eq('id', userId)
+    .single();
 
   res.json({
     success: true,
