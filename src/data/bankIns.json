@@ -1,0 +1,137 @@
+[
+  {
+    "id": 1,
+    "name": "Bank of the Philippine Islands",
+    "short_name": "BPI",
+    "type": "bank",
+    "country": "Philippines",
+    "logo": "/institutions/bpi.svg",
+    "is_supported": true
+  },
+  {
+    "id": 2,
+    "name": "Banco de Oro",
+    "short_name": "BDO",
+    "type": "bank",
+    "country": "Philippines",
+    "logo": "/institutions/bdo.svg",
+    "is_supported": true
+  },
+  {
+    "id": 3,
+    "name": "Metropolitan Bank & Trust Company",
+    "short_name": "Metrobank",
+    "type": "bank",
+    "country": "Philippines",
+    "logo": "/institutions/metrobank.svg",   
+    "is_supported": true
+  },
+  {
+    "id": 4,
+    "name": "Land Bank of the Philippines",
+    "short_name": "Landbank",
+    "type": "bank",
+    "country": "Philippines",
+    "logo": "/institutions/landbank.svg",                
+    "is_supported": true
+  },
+  {
+    "id": 5,
+    "name": "Union Bank of the Philippines",
+    "short_name": "UnionBank",
+    "type": "bank",
+    "country": "Philippines",
+    "logo": "/institutions/unionbank.svg",
+    "is_supported": true
+  },
+  {
+    "id": 6,
+    "name": "Philippine National Bank",
+    "short_name": "PNB",
+    "type": "bank",
+    "country": "Philippines",
+    "logo": "/institutions/pnb.svg",
+    "is_supported": true
+  },
+  {
+    "id": 7,
+    "name": "Rizal Commercial Banking Corporation",
+    "short_name": "RCBC",
+    "type": "bank",
+    "country": "Philippines",
+    "logo": "/institutions/rcbc.svg",
+    "is_supported": true
+  },
+  {
+    "id": 8,
+    "name": "Security Bank Corporation",
+    "short_name": "Security Bank",
+    "type": "bank",
+    "country": "Philippines",
+    "logo": "/institutions/security-bank.svg",
+    "is_supported": true
+  },
+  {
+    "id": 9,
+    "name": "China Banking Corporation",
+    "short_name": "Chinabank",
+    "type": "bank",
+    "country": "Philippines",
+    "logo": "/institutions/chinabank.svg",
+    "is_supported": true
+  },
+  {
+    "id": 10,
+    "name": "EastWest Banking Corporation",
+    "short_name": "EastWest Bank",
+    "type": "bank",
+    "country": "Philippines",
+    "logo": "/institutions/eastwest.svg",
+    "is_supported": true
+  },
+  {
+    "id": 11,
+    "name": "MariBank Philippines",
+    "short_name": "MariBank(SeaBank)",
+    "type": "bank",
+    "country": "Philippines",
+    "logo": "/institutions/maribank.svg",
+    "is_supported": true
+  },
+  {
+    "id": 12,
+    "name": "GCash",
+    "short_name": "GCash",
+    "type": "e-wallet",
+    "country": "Philippines",
+    "logo": "/institutions/gcash.svg",       
+    "is_supported": true
+  },
+  {
+    "id": 13,
+    "name": "Maya",
+    "short_name": "Maya",
+    "type": "e-wallet",
+    "country": "Philippines",
+    "logo": "/institutions/maya.svg",
+    "is_supported": true
+  },
+  {
+    "id": 14,
+    "name": "PayPal",
+    "short_name": "PayPal",
+    "type": "e-wallet",
+    "country": "Global",
+    "logo": "/institutions/paypal.svg",
+    "is_supported": true
+  },
+  {
+    "id": 15,
+    "name": "Wise",
+    "short_name": "Wise",
+    "type": "e-wallet",
+    "country": "Global",
+    "logo": "/institutions/wise.svg",
+    "is_supported": true
+  }
+]

@@ -19,7 +19,7 @@ import {
 import { Button } from "../ui/button"
 import Link from "next/link"
 import { ArrowUpRight } from "lucide-react"
-import { TransactionService } from "@/lib/storage-service"
+import { API } from "@/lib/api-service"
 import { useAuth } from "@/contexts/auth-context"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
@@ -35,16 +35,38 @@ export function RecentTransactions() {
   useEffect(() => {
     if (!user?.id) return;
 
+    let isMounted = true;
+
     const loadData = async () => {
       setIsLoading(true);
-      // Simulate loading delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 200));
       
-      const userTransactions = TransactionService.getTransactions(user.id).slice(0, 5);
-      const userAccounts = TransactionService.getAccounts(user.id);
-      setTransactions(userTransactions);
-      setAccounts(userAccounts);
-      setIsLoading(false);
+      try {
+        const [userTransactions, userAccounts] = await Promise.all([
+          API.transactions.getAll({ limit: 5 }),
+          API.accounts.getAll()
+        ]);
+        
+        if (isMounted) {
+          setTransactions(Array.isArray(userTransactions) ? userTransactions : []);
+          setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
+        }
+      } catch (error: any) {
+        // Silently handle auth errors (user is being logged out)
+        if (error?.message?.includes('Unauthorized')) {
+          console.log('User session expired - logout in progress');
+          return;
+        }
+        
+        console.error('Error loading recent transactions:', error);
+        if (isMounted) {
+          setTransactions([]);
+          setAccounts([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
     };
 
     loadData();
@@ -52,8 +74,10 @@ export function RecentTransactions() {
     // Listen for data updates
     const handleDataUpdate = () => loadData();
     window.addEventListener('budgee:dataUpdate', handleDataUpdate);
-    
+
+    // Cleanup function
     return () => {
+      isMounted = false;
       window.removeEventListener('budgee:dataUpdate', handleDataUpdate);
     };
   }, [user?.id]);
@@ -118,10 +142,10 @@ export function RecentTransactions() {
                     })()}
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">{transaction.category}</TableCell>
-                  <TableCell className={cn("text-right", transaction.amount > 0 ? "text-green-600" : "text-destructive")}>
-                    {transaction.amount > 0 ? 
+                  <TableCell className={cn("text-right", transaction.type === 'income' ? "text-green-600" : "text-destructive")}>
+                    {transaction.type === 'income' ? 
                       `+${new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(transaction.amount)}` :
-                      new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(transaction.amount)
+                      `-${new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(transaction.amount)}`
                     }
                   </TableCell>
                 </TableRow>

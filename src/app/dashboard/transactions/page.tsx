@@ -36,7 +36,7 @@ async function getJsPDF() {
   _jsPDF = mod.default || mod;
   return _jsPDF;
 }
-import { TransactionService } from "@/lib/storage-service";
+import { API } from "@/lib/api-service";
 import { useAuth } from "@/contexts/auth-context";
 import type { Transaction, Account } from "@/lib/types";
 import { SkeletonTable } from "@/components/ui/skeleton-components";
@@ -64,12 +64,21 @@ export default function TransactionsPage() {
       // Simulate loading delay for better UX
       await new Promise(resolve => setTimeout(resolve, 400));
       
-      const userTransactions = TransactionService.getTransactions(user.id);
-      setTransactions(userTransactions);
-      
-      const userAccounts = TransactionService.getAccounts(user.id);
-      setAccounts(userAccounts);
-      setIsLoading(false);
+      try {
+        const [userTransactions, userAccounts] = await Promise.all([
+          API.transactions.getAll(),
+          API.accounts.getAll()
+        ]);
+        
+        setTransactions(Array.isArray(userTransactions) ? userTransactions : []);
+        setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
+      } catch (error) {
+        console.error('Error loading transactions:', error);
+        setTransactions([]);
+        setAccounts([]);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadData();
@@ -174,7 +183,7 @@ export default function TransactionsPage() {
       pdf.text(`Total Transactions: ${exportData.length}`, margin, yPosition);
       
       // Calculate totals
-      const totalIncome = exportData.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
+      const totalIncome = exportData.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
       const totalExpenses = exportData.filter(t => t.amount < 0).reduce((sum, t) => sum + Math.abs(t.amount), 0);
       
       yPosition += 8;
@@ -244,7 +253,7 @@ export default function TransactionsPage() {
         const absAmount = Math.abs(transaction.amount);
         const amount = 'Php ' + absAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 });
         
-        if (transaction.amount > 0) {
+        if (transaction.type === 'income') {
           pdf.setTextColor(5, 150, 105);
         } else {
           pdf.setTextColor(220, 38, 38);
@@ -283,8 +292,8 @@ export default function TransactionsPage() {
 
   const filtered = useMemo(() => {
     let base = transactions;
-    if (tab === "income") base = base.filter((t) => t.amount > 0);
-    if (tab === "expenses") base = base.filter((t) => t.amount < 0);
+    if (tab === "income") base = base.filter((t) => t.type === 'income');
+    if (tab === "expenses") base = base.filter((t) => t.type === 'expense');
     return base;
   }, [tab, transactions]);
 
@@ -507,10 +516,10 @@ function MobileTransactionList({ items }: { items: Txn[] }) {
                 <div
                   className={
                     "text-sm font-semibold tabular-nums " +
-                    (t.amount > 0 ? "text-emerald-600" : "text-red-600")
+                    (t.type === 'income' ? "text-emerald-600" : "text-red-600")
                   }
                 >
-                  {t.amount > 0 ? "+" : ""}
+                  {t.type === 'income' ? "+" : ""}
                   {formatAmount(t.amount)}
                 </div>
                 <DropdownMenu>
@@ -563,7 +572,7 @@ function MobileTransactionList({ items }: { items: Txn[] }) {
               <DetailRow
                 label="Amount"
                 value={formatAmount(active.amount)}
-                emphasize={active.amount > 0 ? "pos" : "neg"}
+                emphasize={active.type === 'income' ? "pos" : "neg"}
               />
               <DetailRow
                 label="Date"

@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Plus, Landmark } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { TransactionService } from "@/lib/storage-service";
+import { API } from "@/lib/api-service";
 import { Account } from "@/lib/types";
 import { SkeletonAccountCard } from "@/components/ui/skeleton-components";
 
@@ -27,9 +27,15 @@ export default function AccountsPage() {
             // Simulate loading delay for better UX
             await new Promise(resolve => setTimeout(resolve, 300));
             
-            const userAccounts = TransactionService.getAccounts(user.id);
-            setAccounts(userAccounts);
-            setIsLoading(false);
+            try {
+                const userAccounts = await API.accounts.getAll();
+                setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+                setAccounts([]);
+            } finally {
+                setIsLoading(false);
+            }
         };
 
         loadAccounts();

@@ -17,7 +17,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { PiggyBank, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { TransactionService } from "@/lib/storage-service";
+import { API } from "@/lib/api-service";
 import { useAuth } from "@/contexts/auth-context";
 import type { Account } from "@/lib/types";
 
@@ -40,13 +40,40 @@ export function SavingsAllocationDialog({ trigger }: { trigger?: React.ReactNode
   useEffect(() => {
     if (!user?.id || !isOpen) return;
     
-    const userAccounts = TransactionService.getAccounts(user.id);
-    setAccounts(userAccounts);
+    let isMounted = true;
     
-    // Set first account as default
-    if (userAccounts.length > 0 && !selectedAccount) {
-      setSelectedAccount(userAccounts[0].id);
-    }
+    const loadAccounts = async () => {
+      try {
+        const userAccounts = await API.accounts.getAll();
+        
+        if (isMounted) {
+          // Ensure we have an array
+          setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
+          
+          // Set first account as default
+          if (userAccounts.length > 0 && !selectedAccount) {
+            setSelectedAccount(userAccounts[0].id);
+          }
+        }
+      } catch (error: any) {
+        // Silently handle auth errors (user is being logged out)
+        if (error?.message?.includes('Unauthorized')) {
+          console.log('User session expired - logout in progress');
+          return;
+        }
+        
+        console.error('Error loading accounts:', error);
+        if (isMounted) {
+          setAccounts([]);
+        }
+      }
+    };
+    
+    loadAccounts();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [user?.id, isOpen, selectedAccount]);
 
   const handleSavingsAllocation = async () => {
@@ -79,10 +106,11 @@ export function SavingsAllocationDialog({ trigger }: { trigger?: React.ReactNode
     // Check if account has sufficient balance for deposits
     if (type === "deposit") {
       const account = accounts.find(a => a.id === selectedAccount);
-      if (account && account.balance < amountValue) {
+      const accountBalance = Number(account?.balance || 0);
+      if (account && accountBalance < amountValue) {
         toast({
           title: "Insufficient Balance",
-          description: `Account balance (₱${account.balance.toFixed(2)}) is insufficient for this deposit.`,
+          description: `Account balance (₱${accountBalance.toFixed(2)}) is insufficient for this deposit.`,
           variant: "destructive",
         });
         setIsProcessing(false);
@@ -92,11 +120,22 @@ export function SavingsAllocationDialog({ trigger }: { trigger?: React.ReactNode
 
     // Check if there are sufficient savings for withdrawals
     if (type === "withdrawal") {
-      const currentSavings = TransactionService.getTotalSavings(user.id);
-      if (currentSavings < amountValue) {
+      try {
+        const currentSavings = await API.savingsAllocations.getTotalSavings();
+        if (currentSavings < amountValue) {
+          toast({
+            title: "Insufficient Savings",
+            description: `Current savings (₱${currentSavings.toFixed(2)}) is insufficient for this withdrawal.`,
+            variant: "destructive",
+          });
+          setIsProcessing(false);
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking savings balance:', error);
         toast({
-          title: "Insufficient Savings",
-          description: `Current savings (₱${currentSavings.toFixed(2)}) is insufficient for this withdrawal.`,
+          title: "Error",
+          description: "Failed to verify savings balance. Please try again.",
           variant: "destructive",
         });
         setIsProcessing(false);
@@ -105,13 +144,13 @@ export function SavingsAllocationDialog({ trigger }: { trigger?: React.ReactNode
     }
 
     try {
-      // Create savings allocation
-      TransactionService.addSavingsAllocation(user.id, {
+      // Create savings allocation via API
+      await API.savingsAllocations.create({
+        account_id: parseInt(selectedAccount),
         amount: amountValue,
         description,
-        fromAccountId: selectedAccount,
         type,
-        date,
+        date: date || new Date().toISOString().split('T')[0],
       });
       
       // Reset form
@@ -123,16 +162,21 @@ export function SavingsAllocationDialog({ trigger }: { trigger?: React.ReactNode
       // Close dialog
       setIsOpen(false);
       
+      // Dispatch event for UI updates
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('budgee:dataUpdate'));
+      }
+      
       toast({
         title: "Success!",
         description: `Savings ${type} of ₱${amountValue.toFixed(2)} has been recorded.`,
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing savings allocation:', error);
       toast({
         title: "Error",
-        description: "Failed to process savings allocation. Please try again.",
+        description: error?.message || "Failed to process savings allocation. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -221,7 +265,7 @@ export function SavingsAllocationDialog({ trigger }: { trigger?: React.ReactNode
               <SelectContent>
                 {accounts.map((account) => (
                   <SelectItem key={account.id} value={account.id}>
-                    {account.name} ({account.type}) - ₱{account.balance.toFixed(2)}
+                    {account.name} ({account.type}) - ₱{Number(account.balance || 0).toFixed(2)}
                   </SelectItem>
                 ))}
               </SelectContent>

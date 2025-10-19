@@ -4,7 +4,7 @@
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { TransactionService } from "@/lib/storage-service"
+import { API } from "@/lib/api-service"
 import type { Transaction } from "@/lib/types"
 
 import {
@@ -36,38 +36,56 @@ export function OverviewChart() {
   useEffect(() => {
     if (!user?.id) return;
 
+    let isMounted = true;
+
     const generateChartData = async () => {
       setIsLoading(true);
-      // Simulate loading delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 600));
       
-      const transactions = TransactionService.getTransactions(user.id);
-      const currentDate = new Date();
-      const data = [];
+      try {
+        const transactions = await API.transactions.getAll();
+        const currentDate = new Date();
+        const data = [];
 
-      // Generate data for the last 6 months
-      for (let i = 5; i >= 0; i--) {
-        const monthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-        const monthStr = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
-        const monthName = monthDate.toLocaleDateString('en-US', { month: 'short' });
+        // Generate data for the last 6 months
+        for (let i = 5; i >= 0; i--) {
+          const monthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+          const monthStr = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+          const monthName = monthDate.toLocaleDateString('en-US', { month: 'short' });
 
-        const monthTransactions = transactions.filter((t: Transaction) => t.date.startsWith(monthStr));
-        const income = monthTransactions
-          .filter((t: Transaction) => t.amount > 0)
-          .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
-        const expenses = Math.abs(monthTransactions
-          .filter((t: Transaction) => t.amount < 0)
-          .reduce((sum: number, t: Transaction) => sum + t.amount, 0));
+          const monthTransactions = transactions.filter((t: Transaction) => t.date.startsWith(monthStr));
+          const income = monthTransactions
+            .filter((t: Transaction) => t.type === 'income')
+            .reduce((sum: number, t: Transaction) => sum + (Number(t.amount) || 0), 0);
+          const expenses = monthTransactions
+            .filter((t: Transaction) => t.type === 'expense')
+            .reduce((sum: number, t: Transaction) => sum + (Number(t.amount) || 0), 0);
 
-        data.push({
-          name: monthName,
-          income: Math.round(income),
-          expenses: Math.round(expenses)
-        });
+          data.push({
+            name: monthName,
+            income: Math.round(Number(income) || 0),
+            expenses: Math.round(Number(expenses) || 0)
+          });
+        }
+
+        if (isMounted) {
+          setChartData(data);
+        }
+      } catch (error: any) {
+        // Silently handle auth errors (user is being logged out)
+        if (error?.message?.includes('Unauthorized')) {
+          console.log('User session expired - logout in progress');
+          return;
+        }
+        
+        console.error('Error generating chart data:', error);
+        if (isMounted) {
+          setChartData([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
-
-      setChartData(data);
-      setIsLoading(false);
     };
 
     generateChartData();
@@ -77,6 +95,7 @@ export function OverviewChart() {
     window.addEventListener('budgee:dataUpdate', handleDataUpdate);
     
     return () => {
+      isMounted = false;
       window.removeEventListener('budgee:dataUpdate', handleDataUpdate);
     };
   }, [user?.id]);

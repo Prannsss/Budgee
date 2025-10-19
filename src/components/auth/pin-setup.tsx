@@ -8,17 +8,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Shield, Eye, EyeOff } from "lucide-react";
 import { PinUtils } from "@/lib/utils";
-import { TransactionService } from "@/lib/storage-service";
+import { API } from "@/lib/api-service";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 
 interface PinSetupProps {
   onSuccess?: () => void;
   onCancel?: () => void;
+  mode?: 'setup' | 'change'; // Add mode prop
 }
 
-export function PinSetup({ onSuccess, onCancel }: PinSetupProps) {
-  const [step, setStep] = useState<'enter' | 'confirm'>('enter');
+export function PinSetup({ onSuccess, onCancel, mode = 'setup' }: PinSetupProps) {
+  const [step, setStep] = useState<'current' | 'enter' | 'confirm'>(mode === 'change' ? 'current' : 'enter');
+  const [currentPin, setCurrentPin] = useState('');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,6 +30,35 @@ export function PinSetup({ onSuccess, onCancel }: PinSetupProps) {
   
   const { user } = useAuth();
   const { toast } = useToast();
+
+  const handleCurrentPinChange = (value: string) => {
+    setCurrentPin(value);
+    setError('');
+  };
+
+  const handleVerifyCurrentPin = async () => {
+    if (currentPin.length !== 6) {
+      setError('PIN must be 6 digits');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { success } = await API.pin.verifyPin(currentPin);
+      
+      if (success) {
+        setStep('enter');
+        setError('');
+      } else {
+        setError('Incorrect PIN. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('PIN verification error:', error);
+      setError(error?.response?.data?.message || 'Incorrect PIN. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handlePinChange = (value: string) => {
     setPin(value);
@@ -96,17 +127,30 @@ export function PinSetup({ onSuccess, onCancel }: PinSetupProps) {
 
     setIsLoading(true);
     try {
-      const hashedPin = await PinUtils.hashPin(pin);
-      TransactionService.setPinData(user.id, hashedPin);
-      
-      toast({
-        title: "PIN Set Successfully",
-        description: "Your PIN has been set up. Your account is now protected with PIN security.",
-      });
+      if (mode === 'change') {
+        // Use change PIN endpoint
+        await API.pin.changePin(currentPin, pin);
+        
+        toast({
+          title: "PIN Changed Successfully",
+          description: "Your PIN has been updated.",
+        });
+      } else {
+        // Use setup PIN endpoint
+        await API.pin.setupPin(pin);
+        
+        toast({
+          title: "PIN Set Successfully",
+          description: "Your PIN has been set up. Your account is now protected with PIN security.",
+        });
+      }
       
       onSuccess?.();
-    } catch (error) {
-      setError('Failed to set up PIN. Please try again.');
+    } catch (error: any) {
+      console.error('PIN setup/change error:', error);
+      const errorMessage = error?.response?.data?.message || 
+        (mode === 'change' ? 'Failed to change PIN. Please try again.' : 'Failed to set up PIN. Please try again.');
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -119,10 +163,14 @@ export function PinSetup({ onSuccess, onCancel }: PinSetupProps) {
           <Shield className="h-6 w-6 text-primary" />
         </div>
         <CardTitle>
-          {step === 'enter' ? 'Set Up PIN' : 'Confirm PIN'}
+          {step === 'current' ? 'Verify Current PIN' : 
+           step === 'enter' ? (mode === 'change' ? 'Enter New PIN' : 'Set Up PIN') : 
+           'Confirm PIN'}
         </CardTitle>
         <CardDescription>
-          {step === 'enter' 
+          {step === 'current' 
+            ? 'Enter your current PIN to continue'
+            : step === 'enter' 
             ? 'Create a 6-digit PIN to secure your account'
             : 'Please confirm your PIN by entering it again'
           }
@@ -130,7 +178,64 @@ export function PinSetup({ onSuccess, onCancel }: PinSetupProps) {
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {step === 'enter' ? (
+        {step === 'current' ? (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="currentPin">Current PIN</Label>
+              <div className="relative">
+                <Input
+                  id="currentPin"
+                  type={showPin ? "text" : "password"}
+                  value={currentPin}
+                  onChange={(e) => handleCurrentPinChange(e.target.value)}
+                  placeholder="Enter your current PIN"
+                  maxLength={6}
+                  className="pr-10"
+                  autoFocus
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPin(!showPin)}
+                >
+                  {showPin ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            
+            <div className="space-y-2">
+              <Button 
+                onClick={handleVerifyCurrentPin}
+                disabled={currentPin.length !== 6 || isLoading}
+                className="w-full"
+              >
+                {isLoading ? 'Verifying...' : 'Continue'}
+              </Button>
+              {onCancel && (
+                <Button 
+                  variant="outline" 
+                  onClick={onCancel}
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
+          </>
+        ) : step === 'enter' ? (
           <>
             <div className="space-y-2">
               <Label htmlFor="pin">Enter PIN</Label>
@@ -233,7 +338,8 @@ export function PinSetup({ onSuccess, onCancel }: PinSetupProps) {
                 disabled={confirmPin.length !== 6 || !!error || isLoading}
                 className="w-full"
               >
-                {isLoading ? 'Setting up...' : 'Set PIN'}
+                {isLoading ? (mode === 'change' ? 'Changing...' : 'Setting up...') : 
+                            (mode === 'change' ? 'Change PIN' : 'Set PIN')}
               </Button>
               <Button 
                 variant="outline" 

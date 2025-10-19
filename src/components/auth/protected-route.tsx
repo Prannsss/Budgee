@@ -40,16 +40,16 @@ export function ProtectedRoute({
       }
     }
 
-    // If user is on pin-verify page but PIN is not required
-    if (pathname === '/pin-verify' && isAuthenticated) {
-      // Only redirect if we're certain PIN is not set (avoid race conditions)
-      const hasPinEnabled = user?.id ? TransactionService.hasPinEnabled(user.id) : false;
-      if (!hasPinEnabled) {
-        router.push('/dashboard');
+    // If user is on pin-verify page but session is already verified
+    if (pathname === '/pin-verify' && isAuthenticated && !isAppLocked) {
+      // Check session verification flag
+      const isSessionVerified = sessionStorage.getItem('budgee_pin_verified_session') === 'true';
+      if (isSessionVerified) {
+        router.replace('/dashboard');
         return;
       }
     }
-  }, [isAuthenticated, isLoading, isAppLocked, pinStatus, requireAuth, allowedWithoutPin, router, pathname]);
+  }, [isAuthenticated, isLoading, isAppLocked, requireAuth, allowedWithoutPin, router, pathname]);
 
   // Show loading state
   if (isLoading) {

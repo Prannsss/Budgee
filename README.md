@@ -16,4 +16,3 @@ Transaction History – Filter and view transactions by account, category, or da
 Budgeting Tools – Set saving goals and track spending patterns.
 
 # TODO
-==========

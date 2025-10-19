@@ -1,7 +1,6 @@
 export type Category = {
   id: string;
   name: string;
-  color: string;
   type: 'Income' | 'Expense';
   userId: string;
   isDefault: boolean;
@@ -12,18 +11,32 @@ export type Transaction = {
   date: string;
   description: string;
   amount: number;
+  type: 'income' | 'expense'; // Transaction type
   category: string; // Now stores category name dynamically
   status: 'pending' | 'completed' | 'failed';
   accountId: string; // references Account.id
   notes?: string; // Optional notes field
 };
 
+export type Institution = {
+  id: number;
+  name: string;
+  short_name: string;
+  type: 'bank' | 'e-wallet';
+  country: string;
+  logo: string;
+  is_supported: boolean;
+};
+
 export type Account = {
   id: string;
   name: string;
-  type: 'Bank' | 'E-Wallet' | 'Crypto' | 'Cash';
+  type: 'Bank' | 'E-Wallet' | 'Cash';
   balance: number;
   lastFour: string;
+  institutionId?: number; // Optional: links to institutions table
+  institutionName?: string; // Display name of the institution
+  institutionLogo?: string; // Logo URL from institutions
 };
 
 export type SavingsAllocation = {
@@ -70,4 +83,50 @@ export type AppLockState = {
   isLocked: boolean;
   lockTriggeredAt?: string;
   shouldRequirePin: boolean;
+};
+
+// Additional types for backend integration
+export type User = {
+  id: string;
+  email: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  isEmailVerified: boolean;
+  planId: string;
+  plan?: Plan;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Plan = {
+  id: string;
+  name: string;
+  price: number;
+  maxWallets: number;
+  maxAccounts: number;
+  aiEnabled: boolean;
+  adsEnabled: boolean;
+  description?: string;
+  features: string[];
+};
+
+export type ActivityLog = {
+  id: string;
+  userId: string;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  metadata?: Record<string, any>;
+  createdAt: string;
+};
+
+export type OTP = {
+  id: string;
+  userId: string;
+  code: string;
+  purpose: 'email-verification' | 'password-reset' | 'login';
+  expiresAt: string;
+  isUsed: boolean;
+  createdAt: string;
 };

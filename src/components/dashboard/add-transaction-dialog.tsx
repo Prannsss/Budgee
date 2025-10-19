@@ -17,7 +17,7 @@ import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Textarea } from "../ui/textarea";
 import { Plus, DollarSign, Landmark } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { TransactionService } from "@/lib/storage-service";
+import { API } from "@/lib/api-service";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import type { Transaction, Account, Category } from "@/lib/types";
@@ -46,24 +46,48 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
   useEffect(() => {
     if (!user?.id || !isOpen) return;
     
-    // Ensure user has a cash account for manual transactions
-    TransactionService.ensureCashAccount(user.id);
+    let isMounted = true;
     
-    // Initialize default categories if none exist
-    TransactionService.initializeDefaultCategories(user.id);
+    const loadData = async () => {
+      try {
+        const [userAccounts, userCategories] = await Promise.all([
+          API.accounts.getAll(),
+          API.categories.getAll()
+        ]);
+        
+        if (isMounted) {
+          setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
+          setCategories(Array.isArray(userCategories) ? userCategories : []);
+          
+          // Set first account as default if none selected
+          if (Array.isArray(userAccounts) && userAccounts.length > 0 && !selectedAccount) {
+            setSelectedAccount(userAccounts[0].id);
+          }
+        }
+      } catch (error: any) {
+        // Silently handle auth errors (user is being logged out)
+        if (error?.message?.includes('Unauthorized')) {
+          console.log('User session expired - logout in progress');
+          return;
+        }
+        
+        console.error('Error loading transaction dialog data:', error);
+        if (isMounted) {
+          toast({
+            title: "Error",
+            description: "Failed to load accounts and categories.",
+            variant: "destructive",
+          });
+        }
+      }
+    };
     
-    const userAccounts = TransactionService.getAccounts(user.id);
-    setAccounts(userAccounts);
+    loadData();
     
-    const userCategories = TransactionService.getCategories(user.id);
-    setCategories(userCategories);
-    
-    // Set cash account as default for manual transactions
-    const cashAccount = userAccounts.find(account => account.type === 'Cash');
-    if (cashAccount && !selectedAccount) {
-      setSelectedAccount(cashAccount.id);
-    }
-  }, [user?.id, isOpen, selectedAccount]);
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id, isOpen, selectedAccount, toast]);
 
   const handleAddTransaction = async () => {
     if (!user?.id) return;
@@ -82,26 +106,32 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
     }
 
     try {
-      // Create new transaction
+      // Find the selected category object to get its ID
+      const selectedCategory = categories.find(cat => cat.name === category);
+      
+      if (!selectedCategory) {
+        toast({
+          title: "Error",
+          description: "Selected category not found.",
+          variant: "destructive",
+        });
+        setIsAdding(false);
+        return;
+      }
+
+      // Create new transaction matching backend API
       const transactionData = {
-        description,
-        amount: type === "Income" ? parseFloat(amount) : -parseFloat(amount),
-        category: category,
-        accountId: selectedAccount,
+        account_id: parseInt(selectedAccount),
+        category_id: parseInt(selectedCategory.id),
+        type: type.toLowerCase() as 'income' | 'expense',
+        amount: parseFloat(amount),
+        description: description,
         date: date,
         notes: notes || undefined,
       };
       
-      // Add to localStorage
-      TransactionService.addTransaction(user.id, transactionData);
-      
-      // Update account balance for all account types including Cash
-      const account = accounts.find(a => a.id === selectedAccount);
-      if (account) {
-        TransactionService.updateAccount(user.id, selectedAccount, {
-          balance: account.balance + transactionData.amount
-        });
-      }
+      // Add transaction via API
+      await API.transactions.create(transactionData);
       
       // Reset form
       setAmount("");

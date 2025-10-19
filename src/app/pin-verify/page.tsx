@@ -7,7 +7,7 @@ import { Shield, Lock, Delete } from "lucide-react";
 import { Logo } from "@/components/icons/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { PinUtils } from "@/lib/utils";
-import { TransactionService } from "@/lib/storage-service";
+import { API } from "@/lib/api-service";
 import { useAuth } from "@/contexts/auth-context";
 import { usePin } from "@/contexts/pin-context";
 import { useRouter } from "next/navigation";
@@ -45,9 +45,13 @@ function PinVerificationContent() {
       return;
     }
 
-    // Don't auto-redirect based on PIN status here - let ProtectedRoute handle it
-    // The PIN verification page should stay open until user completes verification
-  }, [user, router]);
+    // Check if session is already verified and redirect to dashboard
+    const isSessionVerified = sessionStorage.getItem('budgee_pin_verified_session') === 'true';
+    if (isSessionVerified && !isRedirecting) {
+      setIsRedirecting(true);
+      router.replace('/dashboard');
+    }
+  }, [user, router, isRedirecting]);
 
   const handlePinSubmit = async () => {
     if (!user?.id || isBlocked || pin.length !== 6 || isRedirecting) return;
@@ -56,29 +60,27 @@ function PinVerificationContent() {
     setError('');
 
     try {
-      const pinData = TransactionService.getPinData(user.id);
+      const { success } = await API.pin.verifyPin(pin);
       
-      if (!pinData || !pinData.isEnabled) {
-        setError('PIN not found. Please contact support.');
-        setIsLoading(false);
-        return;
-      }
-
-      const isValid = await PinUtils.verifyPin(pin, pinData.hashedPin);
-      
-      if (isValid) {
-        // Update last used timestamp
-        TransactionService.updatePinLastUsed(user.id);
+      if (success) {
+        // Clear any existing block state on successful verification
+        localStorage.removeItem(BLOCK_UNTIL_KEY);
+        setAttempts(0);
+        setIsBlocked(false);
         
-        // Unlock the app using PIN context
-        unlockApp();
-        
-        // Set redirecting state to prevent multiple submissions
+        // Set redirecting state FIRST to prevent re-renders
         setIsRedirecting(true);
         
-        // Navigate immediately after unlocking
+        // Unlock the app using PIN context (this sets session flag)
+        await unlockApp();
+        
+        // Small delay to ensure state is synchronized
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Navigate to dashboard
         router.replace('/dashboard');
       } else {
+        // This shouldn't happen if backend returns proper status codes
         const newAttempts = attempts + 1;
         setAttempts(newAttempts);
         
@@ -94,8 +96,55 @@ function PinVerificationContent() {
         
         setPin('');
       }
-    } catch (error) {
-      setError('Failed to verify PIN. Please try again.');
+    } catch (error: any) {
+      console.error('PIN verification error:', error);
+      
+      // Check if the error response contains attempt information from backend
+      const errorData = error?.response?.data;
+      
+      if (errorData?.locked) {
+        // Backend says account is locked
+        const lockedUntil = errorData.lockedUntil ? new Date(errorData.lockedUntil).getTime() : Date.now() + BLOCK_DURATION;
+        const remaining = lockedUntil - Date.now();
+        
+        if (remaining > 0) {
+          localStorage.setItem(BLOCK_UNTIL_KEY, String(lockedUntil));
+          setIsBlocked(true);
+          setBlockRemaining(remaining);
+          setError(errorData.message || 'Too many failed attempts. Please wait before trying again.');
+        }
+      } else if (errorData?.attemptsRemaining !== undefined) {
+        // Backend provided attempts remaining info
+        const backendAttemptsUsed = MAX_ATTEMPTS - errorData.attemptsRemaining;
+        setAttempts(backendAttemptsUsed);
+        
+        if (errorData.attemptsRemaining === 0) {
+          const unblockAt = Date.now() + BLOCK_DURATION;
+          localStorage.setItem(BLOCK_UNTIL_KEY, String(unblockAt));
+          setIsBlocked(true);
+          setBlockRemaining(BLOCK_DURATION);
+          setError('Too many failed attempts. Please wait 30 seconds before trying again.');
+        } else {
+          setError(`Incorrect PIN. ${errorData.attemptsRemaining} attempts remaining.`);
+        }
+      } else {
+        // Generic error (network, etc.) - increment local attempts
+        const newAttempts = attempts + 1;
+        setAttempts(newAttempts);
+        
+        if (newAttempts >= MAX_ATTEMPTS) {
+          const unblockAt = Date.now() + BLOCK_DURATION;
+          localStorage.setItem(BLOCK_UNTIL_KEY, String(unblockAt));
+          setIsBlocked(true);
+          setBlockRemaining(BLOCK_DURATION);
+          setError('Too many failed attempts. Please wait 30 seconds before trying again.');
+        } else {
+          setError(errorData?.message || 'Incorrect PIN. Please try again.');
+        }
+      }
+      
+      setPin('');
+      setIsRedirecting(false); // Reset on error
     } finally {
       setIsLoading(false);
     }
@@ -125,7 +174,8 @@ function PinVerificationContent() {
     if (pin.length === 6 && !isLoading && !isBlocked && !isRedirecting) {
       handlePinSubmit();
     }
-  }, [pin.length, isLoading, isBlocked, isRedirecting]); // Only depend on pin.length, not the whole pin
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin.length]); // Only depend on pin.length to avoid re-triggering
 
   // Initialize block state from storage
   useEffect(() => {

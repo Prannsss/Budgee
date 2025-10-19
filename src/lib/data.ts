@@ -7,9 +7,9 @@ export const mockAccounts: Account[] = [];
 // Generate mock data for a provider connection
 export function getMockProviderData(type: Account['type'], provider: string): { account: Account; transactions: Transaction[] } {
   const id = `${Date.now()}`;
-  const balanceBase = type === 'Bank' ? 20000 : type === 'E-Wallet' ? 2000 : 8000;
+  const balanceBase = type === 'Bank' ? 20000 : type === 'E-Wallet' ? 2000 : 1000;
   const balance = parseFloat((balanceBase + Math.random() * balanceBase).toFixed(2));
-  const lastFour = type === 'Crypto' ? '...C' + Math.floor(Math.random() * 10) : ('' + Math.floor(1000 + Math.random() * 9000));
+  const lastFour = ('' + Math.floor(1000 + Math.random() * 9000));
 
   const account: Account = {
     id,
@@ -21,13 +21,15 @@ export function getMockProviderData(type: Account['type'], provider: string): { 
 
   const sampleCats: Transaction['category'][] = ['Food','Transportation','Utilities','Entertainment','Other','Income'];
   const transactions: Transaction[] = Array.from({ length: 5 }).map((_, i) => {
-    const amount = (i % 4 === 0) ? parseFloat((500 + Math.random() * 2500).toFixed(2)) : -parseFloat((50 + Math.random() * 800).toFixed(2));
-    const category = amount > 0 ? 'Income' : sampleCats[(i + 1) % (sampleCats.length - 1)];
+    const isIncome = i % 4 === 0;
+    const amount = isIncome ? parseFloat((500 + Math.random() * 2500).toFixed(2)) : parseFloat((50 + Math.random() * 800).toFixed(2));
+    const category = isIncome ? 'Income' : sampleCats[(i + 1) % (sampleCats.length - 1)];
     return {
       id: `${id}-${i+1}`,
       date: new Date(Date.now() - i * 86400000).toISOString().slice(0,10),
-      description: `${provider} ${amount > 0 ? 'Deposit' : 'Payment'}`,
+      description: `${provider} ${isIncome ? 'Deposit' : 'Payment'}`,
       amount,
+      type: isIncome ? 'income' : 'expense',
       category,
       status: 'completed',
       accountId: id,
