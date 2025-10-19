@@ -16,3 +16,6 @@ Transaction History – Filter and view transactions by account, category, or da
 Budgeting Tools – Set saving goals and track spending patterns.
 
 # TODO
+- [] Enhance API endpoints for better error handling and response formats.
+- [] Test API endpoints thoroughly to ensure they handle edge cases and errors gracefully.
+- [] Deploy the application to a production environment. 
