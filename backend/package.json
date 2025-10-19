@@ -30,6 +30,7 @@
   "author": "Prannsss",
   "license": "MIT",
   "dependencies": {
+    "@supabase/supabase-js": "^2.75.1",
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
