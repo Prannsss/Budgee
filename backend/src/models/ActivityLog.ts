@@ -1,4 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/sequelize';
 import User from './User';
 
@@ -16,7 +16,10 @@ export interface ActivityLogAttributes {
 
 // Optional fields for creation
 interface ActivityLogCreationAttributes 
-  extends Optional<ActivityLogAttributes, 'id' | 'created_at'> {}
+  extends Omit<ActivityLogAttributes, 'id' | 'created_at'> {
+    id?: number;
+    created_at?: Date;
+  }
 
 // ActivityLog Model
 class ActivityLog extends Model<ActivityLogAttributes, ActivityLogCreationAttributes> implements ActivityLogAttributes {

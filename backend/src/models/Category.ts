@@ -1,4 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/sequelize';
 import User from './User';
 
@@ -15,7 +15,12 @@ export interface CategoryAttributes {
 
 // Optional fields for creation
 interface CategoryCreationAttributes 
-  extends Optional<CategoryAttributes, 'id' | 'is_default' | 'created_at' | 'updated_at'> {}
+  extends Omit<CategoryAttributes, 'id' | 'is_default' | 'created_at' | 'updated_at'> {
+    id?: number;
+    is_default?: boolean;
+    created_at?: Date;
+    updated_at?: Date;
+  }
 
 // Category Model
 class Category extends Model<CategoryAttributes, CategoryCreationAttributes> implements CategoryAttributes {

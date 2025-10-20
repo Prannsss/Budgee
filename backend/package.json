@@ -44,6 +44,9 @@
     "passport": "^0.7.0",
     "passport-facebook": "^3.0.0",
     "passport-google-oauth20": "^2.0.0",
+    "pg": "^8.16.3",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.7",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
@@ -55,7 +58,7 @@
     "@types/jest": "^29.5.11",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
-    "@types/node": "^20.10.5",
+    "@types/node": "^20.19.22",
     "@types/nodemailer": "^6.4.20",
     "@types/passport": "^1.0.17",
     "@types/passport-facebook": "^3.0.3",

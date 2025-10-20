@@ -1,4 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/sequelize';
 import User from './User';
 
@@ -17,7 +17,13 @@ export interface OTPAttributes {
 
 // Optional fields for creation
 interface OTPCreationAttributes 
-  extends Optional<OTPAttributes, 'id' | 'is_verified' | 'attempts' | 'max_attempts' | 'created_at'> {}
+  extends Omit<OTPAttributes, 'id' | 'is_verified' | 'attempts' | 'max_attempts' | 'created_at'> {
+    id?: number;
+    is_verified?: boolean;
+    attempts?: number;
+    max_attempts?: number;
+    created_at?: Date;
+  }
 
 // OTP Model
 class OTP extends Model<OTPAttributes, OTPCreationAttributes> implements OTPAttributes {

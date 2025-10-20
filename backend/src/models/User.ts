@@ -1,4 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/sequelize';
 import Plan from './Plan';
 
@@ -23,7 +23,15 @@ export interface UserAttributes {
 
 // Optional fields for creation
 interface UserCreationAttributes 
-  extends Optional<UserAttributes, 'id' | 'plan_id' | 'email_verified' | 'phone_verified' | 'is_active' | 'created_at' | 'updated_at'> {}
+  extends Omit<UserAttributes, 'id' | 'plan_id' | 'email_verified' | 'phone_verified' | 'is_active' | 'created_at' | 'updated_at'> {
+    id?: number;
+    plan_id?: number;
+    email_verified?: boolean;
+    phone_verified?: boolean;
+    is_active?: boolean;
+    created_at?: Date;
+    updated_at?: Date;
+  }
 
 // User Model
 class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {

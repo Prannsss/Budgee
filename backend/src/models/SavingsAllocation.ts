@@ -1,4 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/sequelize';
 import User from './User';
 import Account from './Account';
@@ -18,7 +18,11 @@ export interface SavingsAllocationAttributes {
 
 // Optional fields for creation
 interface SavingsAllocationCreationAttributes 
-  extends Optional<SavingsAllocationAttributes, 'id' | 'created_at' | 'updated_at'> {}
+  extends Omit<SavingsAllocationAttributes, 'id' | 'created_at' | 'updated_at'> {
+    id?: number;
+    created_at?: Date;
+    updated_at?: Date;
+  }
 
 // SavingsAllocation Model
 class SavingsAllocation extends Model<SavingsAllocationAttributes, SavingsAllocationCreationAttributes> 

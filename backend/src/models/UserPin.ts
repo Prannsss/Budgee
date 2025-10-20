@@ -1,4 +1,4 @@
-import { DataTypes, Model, Optional } from 'sequelize';
+import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/sequelize';
 
 interface UserPinAttributes {
@@ -13,7 +13,15 @@ interface UserPinAttributes {
   updated_at: Date;
 }
 
-interface UserPinCreationAttributes extends Optional<UserPinAttributes, 'id' | 'is_enabled' | 'failed_attempts' | 'locked_until' | 'last_used' | 'created_at' | 'updated_at'> {}
+interface UserPinCreationAttributes extends Omit<UserPinAttributes, 'id' | 'is_enabled' | 'failed_attempts' | 'locked_until' | 'last_used' | 'created_at' | 'updated_at'> {
+  id?: number;
+  is_enabled?: boolean;
+  failed_attempts?: number;
+  locked_until?: Date | null;
+  last_used?: Date | null;
+  created_at?: Date;
+  updated_at?: Date;
+}
 
 class UserPin extends Model<UserPinAttributes, UserPinCreationAttributes> implements UserPinAttributes {
   public id!: number;

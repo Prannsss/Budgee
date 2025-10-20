@@ -1,4 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/sequelize';
 
 // Plan attributes interface
@@ -16,7 +16,11 @@ export interface PlanAttributes {
 }
 
 // Optional fields for creation
-interface PlanCreationAttributes extends Optional<PlanAttributes, 'id' | 'created_at' | 'updated_at'> {}
+interface PlanCreationAttributes extends Omit<PlanAttributes, 'id' | 'created_at' | 'updated_at'> {
+  id?: number;
+  created_at?: Date;
+  updated_at?: Date;
+}
 
 // Plan Model
 class Plan extends Model<PlanAttributes, PlanCreationAttributes> implements PlanAttributes {

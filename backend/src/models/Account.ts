@@ -1,4 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/sequelize';
 import User from './User';
 
@@ -21,7 +21,15 @@ export interface AccountAttributes {
 
 // Optional fields for creation
 interface AccountCreationAttributes 
-  extends Optional<AccountAttributes, 'id' | 'balance' | 'verified' | 'is_manual' | 'is_active' | 'created_at' | 'updated_at'> {}
+  extends Omit<AccountAttributes, 'id' | 'balance' | 'verified' | 'is_manual' | 'is_active' | 'created_at' | 'updated_at'> {
+    id?: number;
+    balance?: number;
+    verified?: boolean;
+    is_manual?: boolean;
+    is_active?: boolean;
+    created_at?: Date;
+    updated_at?: Date;
+  }
 
 // Account Model
 class Account extends Model<AccountAttributes, AccountCreationAttributes> implements AccountAttributes {

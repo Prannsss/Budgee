@@ -1,4 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/sequelize';
 import User from './User';
 import Account from './Account';
@@ -25,7 +25,11 @@ export interface TransactionAttributes {
 
 // Optional fields for creation
 interface TransactionCreationAttributes 
-  extends Optional<TransactionAttributes, 'id' | 'created_at' | 'updated_at'> {}
+  extends Omit<TransactionAttributes, 'id' | 'created_at' | 'updated_at'> {
+    id?: number;
+    created_at?: Date;
+    updated_at?: Date;
+  }
 
 // Transaction Model
 class Transaction extends Model<TransactionAttributes, TransactionCreationAttributes> implements TransactionAttributes {

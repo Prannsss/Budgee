@@ -1,4 +1,4 @@
-import { Model, DataTypes, Optional } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 import sequelize from '../config/sequelize';
 
 // SpendingLimit attributes interface
@@ -15,7 +15,14 @@ export interface SpendingLimitAttributes {
 
 // Optional fields for creation
 interface SpendingLimitCreationAttributes
-  extends Optional<SpendingLimitAttributes, 'id' | 'amount' | 'current_spending' | 'last_reset' | 'created_at' | 'updated_at'> {}
+  extends Omit<SpendingLimitAttributes, 'id' | 'amount' | 'current_spending' | 'last_reset' | 'created_at' | 'updated_at'> {
+    id?: number;
+    amount?: number;
+    current_spending?: number;
+    last_reset?: Date;
+    created_at?: Date;
+    updated_at?: Date;
+  }
 
 // SpendingLimit Model
 class SpendingLimit extends Model<SpendingLimitAttributes, SpendingLimitCreationAttributes> implements SpendingLimitAttributes {
