@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node", "express", "cors", "morgan", "compression", "passport", "passport-google-oauth20", "passport-facebook", "jsonwebtoken", "nodemailer", "bcryptjs"]
   },
   "exclude": ["**/*.test.ts", "**/*.spec.ts", "jest.config.ts"]
 }

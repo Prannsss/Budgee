@@ -1,4 +1,4 @@
-import express, { Application } from 'express';
+import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -64,7 +64,7 @@ const createApp = (): Application => {
   // ================================================
 
   // Root endpoint
-  app.get('/', (_, res) => {
+  app.get('/', (_req: Request, res: Response) => {
     res.json({
       success: true,
       message: 'Welcome to Budgee API - Your Finance Buddy',

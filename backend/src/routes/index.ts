@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import authRoutes from './auth.routes';
 import planRoutes from './plan.routes';
 import accountRoutes from './account.routes';
@@ -12,7 +12,7 @@ import spendingLimitRoutes from './spending-limit.routes';
 const router = Router(); // API Routes Configuration
 
 // Base API route
-router.get('/', (_, res) => {
+router.get('/', (_req: Request, res: Response) => {
   res.json({
     success: true,
     message: 'API base route active',
@@ -20,7 +20,7 @@ router.get('/', (_, res) => {
 });
 
 // Health check
-router.get('/health', (_, res) => {
+router.get('/health', (_req: Request, res: Response) => {
   res.json({
     success: true,
     message: 'Budgee API is running',

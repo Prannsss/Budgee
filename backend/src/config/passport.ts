@@ -1,6 +1,6 @@
 import passport from 'passport';
-import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import { Strategy as FacebookStrategy } from 'passport-facebook';
+import { Strategy as GoogleStrategy, Profile as GoogleProfile, VerifyCallback } from 'passport-google-oauth20';
+import { Strategy as FacebookStrategy, Profile as FacebookProfile } from 'passport-facebook';
 import { supabase } from './supabase';
 import dotenv from 'dotenv';
 
@@ -15,7 +15,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
         callbackURL: process.env.GOOGLE_CALLBACK_URL || '/api/auth/google/callback',
       },
-      async (_accessToken, _refreshToken, profile, done) => {
+      async (_accessToken: string, _refreshToken: string, profile: GoogleProfile, done: VerifyCallback) => {
         try {
           // Check if user already exists with Google OAuth
           const { data: existingOauthUser } = await supabase
@@ -91,7 +91,7 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
         callbackURL: process.env.FACEBOOK_CALLBACK_URL || '/api/auth/facebook/callback',
         profileFields: ['id', 'displayName', 'emails', 'photos'],
       },
-      async (_accessToken, _refreshToken, profile, done) => {
+      async (_accessToken: string, _refreshToken: string, profile: FacebookProfile, done: VerifyCallback) => {
         try {
           // Check if user already exists with Facebook OAuth
           const { data: existingOauthUser } = await supabase
@@ -158,11 +158,11 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
 }
 
 // Serialize and deserialize user for session support (optional)
-passport.serializeUser((user: Express.User, done) => {
-  done(null, user.id);
+passport.serializeUser((user: Express.User, done: (err: any, id?: any) => void) => {
+  done(null, (user as any).id);
 });
 
-passport.deserializeUser(async (id: number, done) => {
+passport.deserializeUser(async (id: number, done: (err: any, user?: any) => void) => {
   try {
     const { data: user } = await supabase
       .from('users')
