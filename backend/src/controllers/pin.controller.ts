@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
 import { asyncHandler } from '../middlewares/error.middleware';
 import { ActivityLogInsert } from '../types/database.types';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MINUTES = 15;

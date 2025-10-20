@@ -158,7 +158,7 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
 }
 
 // Serialize and deserialize user for session support (optional)
-passport.serializeUser((user: any, done) => {
+passport.serializeUser((user: Express.User, done) => {
   done(null, user.id);
 });
 

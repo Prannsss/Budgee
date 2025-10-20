@@ -62,8 +62,13 @@ export const isValidPhone = (phone: string): boolean => {
 /**
  * Sanitize user object (remove sensitive data)
  */
-export const sanitizeUser = (user: any): any => {
-  const { password_hash, ...sanitized } = user.toJSON ? user.toJSON() : user;
+export const sanitizeUser = (user: Record<string, unknown>): Omit<Record<string, unknown>, 'password_hash'> => {
+  // Handle both Sequelize models and plain objects
+  const userObj = typeof (user as { toJSON?: () => unknown }).toJSON === 'function' 
+    ? (user as { toJSON: () => Record<string, unknown> }).toJSON() 
+    : user;
+  
+  const { password_hash, ...sanitized } = userObj as Record<string, unknown> & { password_hash?: string };
   return sanitized;
 };
 

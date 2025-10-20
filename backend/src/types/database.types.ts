@@ -129,7 +129,7 @@ export interface Account {
   logo_url: string | null;
   is_manual: boolean;
   is_active: boolean;
-  metadata: any;
+  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -178,7 +178,7 @@ export interface Transaction {
   status: 'pending' | 'completed' | 'failed';
   recurring_frequency: string | null;
   recurring_parent_id: number | null;
-  metadata: any;
+  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }

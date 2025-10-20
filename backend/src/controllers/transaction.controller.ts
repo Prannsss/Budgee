@@ -246,7 +246,16 @@ export const updateTransaction = asyncHandler(async (req: Request, res: Response
   }
 
   // Build update data
-  const updateData: any = {};
+  interface TransactionUpdate {
+    category_id?: number;
+    amount?: number;
+    description?: string;
+    date?: string;
+    notes?: string;
+    receipt_url?: string;
+  }
+  
+  const updateData: TransactionUpdate = {};
   if (category_id !== undefined) updateData.category_id = category_id;
   if (amount !== undefined) updateData.amount = Number(amount);
   if (description) updateData.description = description;

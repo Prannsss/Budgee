@@ -122,7 +122,7 @@ export const generateToken = (user: JWTPayload): string => {
       plan_id: user.plan_id,
     },
     secret,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as any
+    { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') } as jwt.SignOptions
   );
 };
 
@@ -138,6 +138,6 @@ export const generateRefreshToken = (userId: number): string => {
   return jwt.sign(
     { id: userId },
     secret,
-    { expiresIn: '30d' } as any
+    { expiresIn: '30d' } as jwt.SignOptions
   );
 };

@@ -278,7 +278,13 @@ export const checkSpendingLimit = asyncHandler(async (req: Request, res: Respons
     return;
   }
 
-  const violations: any[] = [];
+  const violations: Array<{
+    type: string;
+    limit: number;
+    current: number;
+    after_transaction: number;
+    exceeded_by: number;
+  }> = [];
 
   for (const limit of limits) {
     const newSpending = parseFloat(limit.current_spending.toString()) + parseFloat(amount);

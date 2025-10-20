@@ -83,7 +83,7 @@ export const getDashboardSummary = asyncHandler(async (req: Request, res: Respon
   // Group by category
   const expensesByCategory = (transactions || [])
     .filter(t => t.type === 'expense')
-    .reduce((acc: any, t) => {
+    .reduce((acc: Record<string, number>, t) => {
       const categoryName = t.category?.name || 'Uncategorized';
       acc[categoryName] = (acc[categoryName] || 0) + (Number(t.amount) || 0);
       return acc;
@@ -91,7 +91,7 @@ export const getDashboardSummary = asyncHandler(async (req: Request, res: Respon
 
   const incomeByCategory = (transactions || [])
     .filter(t => t.type === 'income')
-    .reduce((acc: any, t) => {
+    .reduce((acc: Record<string, number>, t) => {
       const categoryName = t.category?.name || 'Uncategorized';
       acc[categoryName] = (acc[categoryName] || 0) + (Number(t.amount) || 0);
       return acc;
@@ -210,7 +210,13 @@ export const getSpendingByCategory = asyncHandler(async (req: Request, res: Resp
     .lte('date', endDate.toISOString());
 
   // Group by category
-  const spendingMap = new Map<number, { category: any; total: number; count: number }>();
+  interface CategoryData {
+    category: unknown;
+    total: number;
+    count: number;
+  }
+  
+  const spendingMap = new Map<number, CategoryData>();
 
   (transactions || []).forEach(tx => {
     const categoryId = tx.category_id;
@@ -275,7 +281,13 @@ export const getIncomeBySource = asyncHandler(async (req: Request, res: Response
     .lte('date', endDate.toISOString());
 
   // Group by category
-  const incomeMap = new Map<number, { category: any; total: number; count: number }>();
+  interface IncomeCategoryData {
+    category: unknown;
+    total: number;
+    count: number;
+  }
+  
+  const incomeMap = new Map<number, IncomeCategoryData>();
 
   (transactions || []).forEach(tx => {
     const categoryId = tx.category_id;

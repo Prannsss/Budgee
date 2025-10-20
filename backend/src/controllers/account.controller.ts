@@ -182,7 +182,13 @@ export const updateAccount = asyncHandler(async (req: Request, res: Response) =>
   }
 
   // Build update data
-  const updateData: any = {};
+  interface AccountUpdate {
+    name?: string;
+    balance?: number;
+    logo_url?: string;
+  }
+  
+  const updateData: AccountUpdate = {};
   if (name) updateData.name = name;
   if (balance !== undefined) updateData.balance = balance;
   if (logo_url) updateData.logo_url = logo_url;
