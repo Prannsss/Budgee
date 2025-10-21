@@ -1,6 +1,6 @@
 # Budgee - Complete Application Documentation
 
-**Version:** 1.0.0  
+**Version:** 1.0.1  
 **Author:** Prannsss  
 **Last Updated:** October 15, 2025
 
@@ -70,8 +70,9 @@
 - **Runtime:** Node.js 18+
 - **Framework:** Express.js 4.18.2
 - **Language:** TypeScript 5.3.3
-- **Database:** PostgreSQL 8.11.3
+- **Database:** PostgreSQL (Supabase)
 - **ORM:** Sequelize 6.37.7
+- **Database Client:** @supabase/supabase-js (for Supabase integration)
 - **Authentication:** 
   - JWT (jsonwebtoken 9.0.2)
   - Passport.js (Google & Facebook OAuth)
@@ -81,7 +82,7 @@
   - CORS 2.8.5
   - express-rate-limit 7.1.5
 - **Validation:** express-validator 7.0.1
-- **Email:** Nodemailer 7.0.9
+- **Email:** Brevo API (API-based email service)
 - **Utilities:** 
   - dayjs (date manipulation)
   - uuid (unique identifiers)
@@ -97,9 +98,12 @@
 - **API Testing:** Postman collections included
 
 ### External Services
+- **Backend Hosting:** Render (https://render.com)
+- **Frontend Hosting:** Vercel (https://vercel.com)
+- **Database:** Supabase (PostgreSQL hosting)
 - **AI Service:** Google Gemini AI (via Genkit)
 - **OAuth Providers:** Google OAuth 2.0, Facebook Login
-- **Email Service:** SMTP (Gmail or custom)
+- **Email Service:** Brevo API (https://brevo.com)
 - **Firebase:** Optional (for additional features)
 
 ---
@@ -107,7 +111,7 @@
 ## Database Design
 
 ### Database Management System
-**PostgreSQL** - Relational database with JSONB support for flexible metadata storage
+**PostgreSQL (Supabase)** - Managed PostgreSQL database with JSONB support for flexible metadata storage, real-time capabilities, and built-in authentication features
 
 ### Schema Overview
 
@@ -365,7 +369,6 @@ Premium Plan:
 - Price: ₱499/month
 - 15 accounts
 - Full AI assistant
-- Priority support
 - Advanced analytics
 ```
 
@@ -393,12 +396,12 @@ transactions (1) ←→ (1) transaction_transfers (for transfers)
 
 ### Base URL
 - **Development:** `http://localhost:5000/api`
-- **Production:** `https://api.budgee.com/api` (example)
+- **Production:** `https://app-name.onrender.com/api`
 
 ### Authentication
 - **Type:** JWT Bearer Token
 - **Header:** `Authorization: Bearer <token>`
-- **Token Expiry:** 7 days (configurable)
+- **Token Expiry:** 15m (configurable)
 - **Refresh Token:** Supported via `/api/auth/refresh`
 
 ### Response Format
@@ -436,9 +439,9 @@ transactions (1) ←→ (1) transaction_transfers (for transfers)
 | POST | `/change-password` | Change password | Yes |
 | POST | `/logout` | User logout | Yes |
 | GET | `/google` | Initiate Google OAuth | No |
-| GET | `/google/callback` | Google OAuth callback | No |
+| GET | `/google/callback` | Google OAuth callback (Render-hosted) | No |
 | GET | `/facebook` | Initiate Facebook OAuth | No |
-| GET | `/facebook/callback` | Facebook OAuth callback | No |
+| GET | `/facebook/callback` | Facebook OAuth callback (Render-hosted) | No |
 
 **Example Request - Signup:**
 ```json
@@ -1038,8 +1041,9 @@ xl: 1280px  /* Desktops */
 - **Seamless Flow:** Redirect-based authentication
 
 #### 12. Email Notifications
+- **Service Provider:** Brevo API (formerly Sendinblue)
 - **Welcome Email:** After registration
-- **OTP Delivery:** Email and SMS verification codes
+- **OTP Delivery:** Email verification codes
 - **Transaction Alerts:** (Planned)
 - **Monthly Summary:** (Planned)
 - **Plan Renewal:** (Planned)
@@ -1291,36 +1295,39 @@ xl: 1280px  /* Desktops */
 
 ### Environment Variables
 
-#### Frontend (`.env.local`)
+#### Frontend (`.env.local` - Vercel)
 ```bash
-# API
-NEXT_PUBLIC_API_URL=http://localhost:5000
+# Backend API
+NEXT_PUBLIC_BACKEND_URL=https://app-name.onrender.com
 
 # Firebase (for AI features)
 NEXT_PUBLIC_FIREBASE_API_KEY=your_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_domain
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project
 
-# Google AI
+# Google AI (for client-side AI features if needed)
 GOOGLE_GENAI_API_KEY=your_google_ai_key
 
 # App
 NEXT_PUBLIC_APP_NAME=Budgee
-NEXT_PUBLIC_APP_URL=http://localhost:9002
+NEXT_PUBLIC_APP_URL=https://budgeebuddy.vercel.app
 ```
 
-#### Backend (`.env`)
+**Note:** Set these in Vercel dashboard under Settings > Environment Variables for production deployment.
+
+#### Backend (`.env` - Render)
 ```bash
 # Server
-NODE_ENV=development
+NODE_ENV=production
 PORT=5000
 
-# Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=budgee_dev
-DB_USER=postgres
-DB_PASSWORD=your_password
+# Supabase Database
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Database Connection (Supabase PostgreSQL)
+DATABASE_URL=postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres
 
 # JWT
 JWT_SECRET=your_secret_key
@@ -1328,22 +1335,27 @@ JWT_REFRESH_SECRET=your_refresh_key
 JWT_EXPIRES_IN=7d
 
 # CORS
-CORS_ORIGIN=http://localhost:9002
+CORS_ORIGIN=https://your-vercel-app.vercel.app
 
-# OAuth
+# OAuth (Render callbacks)
 GOOGLE_CLIENT_ID=your_client_id
 GOOGLE_CLIENT_SECRET=your_client_secret
-GOOGLE_CALLBACK_URL=http://localhost:5000/api/auth/google/callback
+GOOGLE_CALLBACK_URL=https://your-app-name.onrender.com/api/auth/google/callback
 
 FACEBOOK_APP_ID=your_app_id
 FACEBOOK_APP_SECRET=your_app_secret
+FACEBOOK_CALLBACK_URL=https://your-app-name.onrender.com/api/auth/facebook/callback
 
-# Email
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your_email@gmail.com
-SMTP_PASSWORD=your_app_password
+# Brevo Email API
+BREVO_API_KEY=your_brevo_api_key
+BREVO_SENDER_EMAIL=noreply@budgee.com
+BREVO_SENDER_NAME=Budgee Team
+
+# Google AI (Gemini)
+GEMINI_API_KEY=your_gemini_api_key
 ```
+
+**Note:** Set these in Render dashboard under Environment tab for your web service. Supabase credentials are obtained from your Supabase project settings.
 
 ### Development Setup
 
@@ -1371,12 +1383,15 @@ SMTP_PASSWORD=your_app_password
    npm install
    ```
 
-4. **Database Setup**
+4. **Database Setup (Supabase)**
    ```bash
-   # Create PostgreSQL database
+   # Option 1: Create a Supabase project at https://supabase.com
+   # - Create new project
+   # - Copy project URL and API keys
+   # - Run schema via Supabase SQL Editor
+   
+   # Option 2: Local PostgreSQL for development
    createdb budgee_dev
-
-   # Run schema
    psql -U postgres -d budgee_dev -f backend/database/schema.sql
    ```
 
@@ -1384,62 +1399,114 @@ SMTP_PASSWORD=your_app_password
    ```bash
    # Frontend
    cp .env.example .env.local
-   # Edit .env.local with your values
+   # Edit .env.local with:
+   # - NEXT_PUBLIC_BACKEND_URL (for local: http://localhost:5000)
+   # - Other frontend-specific variables
 
    # Backend
    cd backend
    cp .env.example .env
-   # Edit .env with your values
+   # Edit .env with:
+   # - Supabase credentials (SUPABASE_URL, SUPABASE_KEY, DATABASE_URL)
+   # - Brevo API key (BREVO_API_KEY)
+   # - OAuth credentials and callback URLs
+   # - Gemini API key (GEMINI_API_KEY)
    ```
 
 6. **Run Development Servers**
    ```bash
-   # Terminal 1 - Frontend (from root)
-   npm run dev
-   # Runs on http://localhost:9002
-
-   # Terminal 2 - Backend
+   # Terminal 1 - Backend (start first)
    cd backend
    npm run dev
    # Runs on http://localhost:5000
+
+   # Terminal 2 - Frontend (from root)
+   npm run dev
+   # Runs on http://localhost:9002
+   # Ensure NEXT_PUBLIC_BACKEND_URL points to http://localhost:5000
    ```
 
 ### Production Deployment
 
-#### Frontend (Vercel/Netlify)
+#### Frontend (Vercel)
 ```bash
-# Build
-npm run build
+# Vercel automatically builds and deploys from your Git repository
 
-# Start production server
-npm start
+# Manual deployment:
+npm run build
+vercel --prod
+
+# Environment Variables to set in Vercel:
+# - NEXT_PUBLIC_BACKEND_URL (your Render backend URL)
+# - GOOGLE_GENAI_API_KEY
+# - NEXT_PUBLIC_APP_NAME
+# - NEXT_PUBLIC_APP_URL
 ```
 
-#### Backend (VPS/Cloud)
+#### Backend (Render)
 ```bash
-# Build TypeScript
-cd backend
-npm run build
+# Render automatically builds and deploys from your Git repository
 
-# Start production
-npm start
-# Or use PM2: pm2 start dist/index.js --name budgee-api
+# Build Command: npm install && npm run build (in backend directory)
+# Start Command: npm start (in backend directory)
+
+# Environment Variables to set in Render:
+# - NODE_ENV=production
+# - PORT=5000
+# - SUPABASE_URL
+# - SUPABASE_KEY
+# - SUPABASE_SERVICE_ROLE_KEY
+# - DATABASE_URL (Supabase connection string)
+# - JWT_SECRET
+# - JWT_REFRESH_SECRET
+# - CORS_ORIGIN (your Vercel frontend URL)
+# - GOOGLE_CLIENT_ID
+# - GOOGLE_CLIENT_SECRET
+# - GOOGLE_CALLBACK_URL (https://your-app.onrender.com/api/auth/google/callback)
+# - FACEBOOK_APP_ID
+# - FACEBOOK_APP_SECRET
+# - FACEBOOK_CALLBACK_URL (https://your-app.onrender.com/api/auth/facebook/callback)
+# - BREVO_API_KEY
+# - BREVO_SENDER_EMAIL
+# - BREVO_SENDER_NAME
+# - GEMINI_API_KEY
 ```
 
-#### Database (Managed PostgreSQL)
-- Use services like:
-  - Supabase
-  - Amazon RDS
-  - DigitalOcean Managed Database
-  - Railway
-  - Neon
+#### Database (Supabase)
+1. Create a Supabase project at https://supabase.com
+2. Navigate to SQL Editor
+3. Run the schema from `backend/database/schema.sql`
+4. Copy connection details:
+   - Project URL (SUPABASE_URL)
+   - Anon/Public key (SUPABASE_KEY)
+   - Service role key (SUPABASE_SERVICE_ROLE_KEY)
+   - Direct connection string (DATABASE_URL)
+5. Add these credentials to Render environment variables
 
-#### Recommended Stack
+#### OAuth Configuration
+**Google OAuth:**
+1. Go to Google Cloud Console
+2. Add authorized redirect URI: `https://app-name.onrender.com/api/auth/google/callback`
+3. Update `GOOGLE_CALLBACK_URL` in Render environment
+
+**Facebook OAuth:**
+1. Go to Facebook Developers Console
+2. Add OAuth redirect URI: `https://app-name.onrender.com/api/auth/facebook/callback`
+3. Update `FACEBOOK_CALLBACK_URL` in Render environment
+
+#### Email Configuration (Brevo)
+1. Create account at https://brevo.com
+2. Generate API key from Settings > API Keys
+3. Add `BREVO_API_KEY` to Render environment
+4. Configure sender email and name
+
+#### Current Deployment Stack
 - **Frontend:** Vercel (optimized for Next.js)
-- **Backend:** DigitalOcean Droplet / AWS EC2
-- **Database:** Supabase / Amazon RDS
-- **CDN:** Cloudflare
-- **Monitoring:** Sentry, LogRocket
+- **Backend:** Render (Node.js web service)
+- **Database:** Supabase (Managed PostgreSQL)
+- **Email:** Brevo API
+- **AI:** Google Gemini AI
+- **Monitoring:** (To be configured: Sentry, LogRocket)
 
 ---
 
