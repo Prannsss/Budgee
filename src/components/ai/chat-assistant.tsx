@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { answerFinanceQuestion } from "@/ai/flows/ai-answer-finance-questions";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { useAuth } from "@/contexts/auth-context";
-import { TransactionService } from "@/lib/storage-service";
+import { useUserData } from "@/hooks/use-user-data";
 
 type Message = {
   role: "user" | "assistant";
@@ -23,6 +23,7 @@ type Message = {
 
 export function ChatAssistant({ trigger }: { trigger?: React.ReactElement }) {
   const { user } = useAuth();
+  const { transactions, accounts, totals } = useUserData();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -41,13 +42,8 @@ export function ChatAssistant({ trigger }: { trigger?: React.ReactElement }) {
     setInput("");
 
     try {
-      // Fetch user's financial data from localStorage
-      const transactions = TransactionService.getTransactions(user.id);
-      const accounts = TransactionService.getAccounts(user.id);
-      const totals = TransactionService.calculateTotals(user.id);
-
       // Prepare category totals
-      const categoryTotals = transactions.reduce((acc, txn) => {
+      const categoryTotals = transactions.reduce((acc: Record<string, number>, txn) => {
         acc[txn.category] = (acc[txn.category] || 0) + txn.amount;
         return acc;
       }, {} as Record<string, number>);
@@ -159,6 +155,7 @@ export function ChatAssistant({ trigger }: { trigger?: React.ReactElement }) {
 // Inline page-friendly chat without a popover
 export function ChatAssistantInline() {
   const { user } = useAuth();
+  const { transactions, accounts, totals } = useUserData();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -200,13 +197,8 @@ export function ChatAssistantInline() {
     setInput("");
 
     try {
-      // Fetch user's financial data from localStorage
-      const transactions = TransactionService.getTransactions(user.id);
-      const accounts = TransactionService.getAccounts(user.id);
-      const totals = TransactionService.calculateTotals(user.id);
-
       // Prepare category totals
-      const categoryTotals = transactions.reduce((acc, txn) => {
+      const categoryTotals = transactions.reduce((acc: Record<string, number>, txn) => {
         acc[txn.category] = (acc[txn.category] || 0) + txn.amount;
         return acc;
       }, {} as Record<string, number>);

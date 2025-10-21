@@ -10,7 +10,7 @@ import { useSubscription } from "@/contexts/subscription-context";
 import { pricingPlans, PricingPlan } from "@/lib/pricing-plans";
 
 export default function YourPlanPage() {
-  const { currentPlan, subscription, isLoading } = useSubscription();
+  const { currentPlan, userPlan, isLoading } = useSubscription();
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
 
@@ -55,15 +55,15 @@ export default function YourPlanPage() {
               <div className="h-2 w-2 rounded-full bg-green-500"></div>
               <span className="font-medium">You are currently on the <strong>{currentPlan} Plan</strong></span>
             </div>
-            {subscription && subscription.nextBillingDate && (
+            {userPlan && userPlan.next_billing_date && (
               <div className="text-sm text-muted-foreground">
-                Next billing: {new Date(subscription.nextBillingDate).toLocaleDateString()}
+                Next billing: {new Date(userPlan.next_billing_date).toLocaleDateString()}
               </div>
             )}
           </div>
-          {subscription && subscription.startDate && (
+          {userPlan && userPlan.created_at && (
             <div className="mt-2 text-sm text-muted-foreground">
-              Member since: {new Date(subscription.startDate).toLocaleDateString()}
+              Member since: {new Date(userPlan.created_at).toLocaleDateString()}
             </div>
           )}
         </div>

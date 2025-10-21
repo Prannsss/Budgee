@@ -69,11 +69,22 @@ export function useUserData() {
     if (!user?.id) return null;
     
     try {
+      // First, we need to find the category ID from the category name
+      // For now, we'll use a placeholder - in a real implementation, you'd fetch categories first
+      const categories = await API.categories.getAll();
+      const category = categories.find(cat => cat.name === transactionData.category);
+      
+      if (!category) {
+        console.error('Category not found:', transactionData.category);
+        return null;
+      }
+
       const newTransaction = await API.transactions.create({
         description: transactionData.description,
         amount: transactionData.amount,
-        category: transactionData.category,
-        accountId: transactionData.accountId,
+        category_id: Number(category.id),
+        account_id: Number(transactionData.accountId),
+        type: category.type === 'Income' ? 'income' : 'expense',
         date: transactionData.date || new Date().toISOString(),
         notes: transactionData.notes,
       });
