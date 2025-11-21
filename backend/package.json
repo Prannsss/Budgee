@@ -25,6 +25,7 @@
   "author": "Prannsss",
   "license": "MIT",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.75.1",
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",

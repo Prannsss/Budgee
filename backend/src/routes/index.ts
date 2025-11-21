@@ -8,6 +8,7 @@ import dashboardRoutes from './dashboard.routes';
 import savingsRoutes from './savings.routes';
 import pinRoutes from './pin.routes';
 import spendingLimitRoutes from './spending-limit.routes';
+import aiRoutes from './ai.routes';
 
 const router = Router(); // API Routes Configuration
 
@@ -38,5 +39,6 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/savings', savingsRoutes);
 router.use('/pin', pinRoutes);
 router.use('/spending-limits', spendingLimitRoutes);
+router.use('/ai', aiRoutes);
 
 export default router;

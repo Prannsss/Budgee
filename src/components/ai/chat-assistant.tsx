@@ -67,11 +67,15 @@ export function ChatAssistant({ trigger }: { trigger?: React.ReactElement }) {
         categoryTotals,
       };
 
-      // Call API route instead of server action
-      const response = await fetch('/api/ai/ask', {
+      // Call backend API instead of Next.js API route
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token'); // Get auth token
+      
+      const response = await fetch(`${apiUrl}/api/ai/ask`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
         },
         body: JSON.stringify({
           question: input,
@@ -249,11 +253,15 @@ export function ChatAssistantInline() {
         categoryTotals,
       };
 
-      // Call API route instead of server action
-      const response = await fetch('/api/ai/ask', {
+      // Call backend API instead of Next.js API route  
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token'); // Get auth token
+      
+      const response = await fetch(`${apiUrl}/api/ai/ask`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
         },
         body: JSON.stringify({
           question: input,
