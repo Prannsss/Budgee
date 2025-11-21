@@ -76,7 +76,18 @@ export function ChatAssistant({ trigger }: { trigger?: React.ReactElement }) {
       setMessages([...newMessages, { role: "assistant", content: result.answer }]);
     } catch (error) {
       console.error("Error answering finance question:", error);
-      setMessages([...newMessages, { role: "assistant", content: "Sorry, I couldn't get an answer. Please try again." }]);
+      let errorMessage = "Sorry, I couldn't get an answer. Please try again.";
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('not properly configured')) {
+          errorMessage = "AI service is not configured. Please contact support.";
+        } else if (error.message.includes('API key')) {
+          errorMessage = "There's an issue with the AI configuration. Please try again later.";
+        }
+      }
+      
+      setMessages([...newMessages, { role: "assistant", content: errorMessage }]);
     } finally {
       setIsLoading(false);
     }
@@ -231,7 +242,18 @@ export function ChatAssistantInline() {
       setMessages([...newMessages, { role: "assistant", content: result.answer }]);
     } catch (error) {
       console.error("Error answering finance question:", error);
-      setMessages([...newMessages, { role: "assistant", content: "Sorry, I couldn't get an answer. Please try again." }]);
+      let errorMessage = "Sorry, I couldn't get an answer. Please try again.";
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('not properly configured')) {
+          errorMessage = "AI service is not configured. Please contact support.";
+        } else if (error.message.includes('API key')) {
+          errorMessage = "There's an issue with the AI configuration. Please try again later.";
+        }
+      }
+      
+      setMessages([...newMessages, { role: "assistant", content: errorMessage }]);
     } finally {
       setIsLoading(false);
     }

@@ -40,7 +40,18 @@ const AnswerFinanceQuestionOutputSchema = z.object({
 export type AnswerFinanceQuestionOutput = z.infer<typeof AnswerFinanceQuestionOutputSchema>;
 
 export async function answerFinanceQuestion(input: AnswerFinanceQuestionInput): Promise<AnswerFinanceQuestionOutput> {
-  return answerFinanceQuestionFlow(input);
+  try {
+    // Check if API key is configured
+    if (!process.env.GOOGLE_GENAI_API_KEY) {
+      console.error('GOOGLE_GENAI_API_KEY is not configured');
+      throw new Error('AI service is not properly configured. Please check your environment variables.');
+    }
+    
+    return await answerFinanceQuestionFlow(input);
+  } catch (error) {
+    console.error('Error in answerFinanceQuestion:', error);
+    throw error;
+  }
 }
 
 const prompt = ai.definePrompt({
