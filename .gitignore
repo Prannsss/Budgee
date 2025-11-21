@@ -87,8 +87,9 @@ public/workbox-*.js.map
 .classpath
 .settings/
 
-# Postman collections (API testing)
-backend/Budgee_API.postman_collection.json
+# Documentation
+src/GENAI_DEPLOYMENT_GUIDE.md
+scr/SUBSCRIPTION_SETUP.md
 
 # OS
 .DS_Store

@@ -1305,15 +1305,18 @@ NEXT_PUBLIC_FIREBASE_API_KEY=your_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_domain
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project
 
-# Google AI (for client-side AI features if needed)
-GOOGLE_GENAI_API_KEY=your_google_ai_key
+# Google Gemini AI (REQUIRED for AI Chatbot - runs in Next.js Server Actions)
+# Get your API key from: https://aistudio.google.com/app/apikey
+GOOGLE_GENAI_API_KEY=your_google_gemini_api_key
 
 # App
 NEXT_PUBLIC_APP_NAME=Budgee
 NEXT_PUBLIC_APP_URL=https://budgeebuddy.vercel.app
 ```
 
-**Note:** Set these in Vercel dashboard under Settings > Environment Variables for production deployment.
+**IMPORTANT:** Set these in Vercel dashboard under Settings > Environment Variables for production deployment.
+- The `GOOGLE_GENAI_API_KEY` is **required** for the AI chatbot to work in production
+- This must be set in **Vercel** (not Render) because the AI flows run in Next.js Server Actions
 
 #### Backend (`.env` - Render)
 ```bash

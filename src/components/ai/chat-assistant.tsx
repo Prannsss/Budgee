@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { answerFinanceQuestion } from "@/ai/flows/ai-answer-finance-questions";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { useAuth } from "@/contexts/auth-context";
 import { useUserData } from "@/hooks/use-user-data";
@@ -68,11 +67,25 @@ export function ChatAssistant({ trigger }: { trigger?: React.ReactElement }) {
         categoryTotals,
       };
 
-      const result = await answerFinanceQuestion({ 
-        question: input,
-        userId: user.id,
-        financialData,
+      // Call API route instead of server action
+      const response = await fetch('/api/ai/ask', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question: input,
+          userId: user.id,
+          financialData,
+        }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to get AI response');
+      }
+
+      const result = await response.json();
       setMessages([...newMessages, { role: "assistant", content: result.answer }]);
     } catch (error) {
       console.error("Error answering finance question:", error);
@@ -80,10 +93,12 @@ export function ChatAssistant({ trigger }: { trigger?: React.ReactElement }) {
       
       // Provide more specific error messages
       if (error instanceof Error) {
-        if (error.message.includes('not properly configured')) {
+        if (error.message.includes('not configured') || error.message.includes('not properly configured')) {
           errorMessage = "AI service is not configured. Please contact support.";
         } else if (error.message.includes('API key')) {
           errorMessage = "There's an issue with the AI configuration. Please try again later.";
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage = "Network error. Please check your connection and try again.";
         }
       }
       
@@ -234,11 +249,25 @@ export function ChatAssistantInline() {
         categoryTotals,
       };
 
-      const result = await answerFinanceQuestion({ 
-        question: input,
-        userId: user.id,
-        financialData,
+      // Call API route instead of server action
+      const response = await fetch('/api/ai/ask', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question: input,
+          userId: user.id,
+          financialData,
+        }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to get AI response');
+      }
+
+      const result = await response.json();
       setMessages([...newMessages, { role: "assistant", content: result.answer }]);
     } catch (error) {
       console.error("Error answering finance question:", error);
@@ -246,10 +275,12 @@ export function ChatAssistantInline() {
       
       // Provide more specific error messages
       if (error instanceof Error) {
-        if (error.message.includes('not properly configured')) {
+        if (error.message.includes('not configured') || error.message.includes('not properly configured')) {
           errorMessage = "AI service is not configured. Please contact support.";
         } else if (error.message.includes('API key')) {
           errorMessage = "There's an issue with the AI configuration. Please try again later.";
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage = "Network error. Please check your connection and try again.";
         }
       }
       

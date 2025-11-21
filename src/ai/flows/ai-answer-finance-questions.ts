@@ -43,13 +43,20 @@ export async function answerFinanceQuestion(input: AnswerFinanceQuestionInput): 
   try {
     // Check if API key is configured
     if (!process.env.GOOGLE_GENAI_API_KEY) {
-      console.error('GOOGLE_GENAI_API_KEY is not configured');
-      throw new Error('AI service is not properly configured. Please check your environment variables.');
+      const errorMsg = 'GOOGLE_GENAI_API_KEY is not configured in environment variables';
+      console.error('[Budgee AI Error]', errorMsg);
+      console.error('[Budgee AI] Available env vars:', Object.keys(process.env).filter(k => k.includes('GOOGLE') || k.includes('GENAI')));
+      throw new Error('AI service is not properly configured. Please add GOOGLE_GENAI_API_KEY to your environment variables.');
     }
     
+    console.log('[Budgee AI] Processing question for user:', input.userId);
     return await answerFinanceQuestionFlow(input);
   } catch (error) {
-    console.error('Error in answerFinanceQuestion:', error);
+    console.error('[Budgee AI] Error in answerFinanceQuestion:', error);
+    if (error instanceof Error) {
+      console.error('[Budgee AI] Error message:', error.message);
+      console.error('[Budgee AI] Error stack:', error.stack);
+    }
     throw error;
   }
 }
@@ -117,10 +124,11 @@ const answerFinanceQuestionFlow = ai.defineFlow(
     outputSchema: AnswerFinanceQuestionOutputSchema,
   },
   async input => {
-    const { financialData } = input;
+    try {
+      const { financialData } = input;
 
-    // Prepare financial context
-    const financialContext = `
+      // Prepare financial context
+      const financialContext = `
 User Financial Summary:
 - Total Income: ₱${financialData.totalIncome.toFixed(2)}
 - Total Expenses: ₱${financialData.totalExpenses.toFixed(2)}
@@ -141,12 +149,18 @@ ${Object.entries(financialData.categoryTotals)
   .join('\n')}
 `.trim();
 
-    const {output} = await prompt({
-      question: input.question,
-      financialContext,
-    });
-    
-    return output!;
+      console.log('[Budgee AI] Calling Gemini API...');
+      const {output} = await prompt({
+        question: input.question,
+        financialContext,
+      });
+      
+      console.log('[Budgee AI] Successfully received response from Gemini');
+      return output!;
+    } catch (error) {
+      console.error('[Budgee AI] Error in flow execution:', error);
+      throw error;
+    }
   }
 );
 
