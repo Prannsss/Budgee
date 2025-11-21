@@ -87,6 +87,9 @@ public/workbox-*.js.map
 .classpath
 .settings/
 
+# Postman collections (API testing)
+backend/Budgee_API.postman_collection.json
+
 # OS
 .DS_Store
 Thumbs.db
