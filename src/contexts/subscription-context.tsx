@@ -62,12 +62,25 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     loadUserPlan();
   }, [user?.id]);
 
-  const setCurrentPlan = async (planId: PlanType) => {
+  const setCurrentPlan = async (planName: PlanType) => {
     if (!user?.id) return;
     
     try {
       setIsLoading(true);
-      // Use the plan upgrade API
+      
+      // Map plan name to plan ID (1=Free, 2=Budgeet, 3=Premium)
+      const planIdMap: Record<PlanType, number> = {
+        'Free': 1,
+        'Budgeet': 2,
+        'Premium': 3,
+      };
+      
+      const planId = planIdMap[planName];
+      if (!planId) {
+        throw new Error(`Invalid plan name: ${planName}`);
+      }
+      
+      // Use the plan upgrade API with plan ID
       await API.plans.upgrade(planId);
       
       // Refresh user profile to get updated plan
@@ -81,6 +94,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       setHasAIBuddyAccess(userProfile.hasAIBuddyAccess || false);
     } catch (error) {
       console.error('Error upgrading plan:', error);
+      throw error; // Re-throw to allow caller to handle
     } finally {
       setIsLoading(false);
     }

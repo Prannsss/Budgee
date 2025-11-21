@@ -745,10 +745,10 @@ export class PlanAPI {
   /**
    * Upgrade to a new plan
    */
-  static async upgrade(planId: string): Promise<{ success: boolean; message: string }> {
+  static async upgrade(planId: number): Promise<{ success: boolean; message: string }> {
     const response = await httpClient.post<ApiResponse<{ success: boolean; message: string }>>(
       '/api/plans/upgrade',
-      { planId }
+      { plan_id: planId }
     );
     return response.data;
   }

@@ -1,4 +1,5 @@
 export interface PricingPlan {
+  id: number;
   name: string;
   price: string;
   period: string;
@@ -12,6 +13,7 @@ export interface PricingPlan {
 
 export const pricingPlans: PricingPlan[] = [
   {
+    id: 1,
     name: "Free",
     price: "₱0",
     period: "/ month",
@@ -28,6 +30,7 @@ export const pricingPlans: PricingPlan[] = [
     href: "/signup",
   },
   {
+    id: 2,
     name: "Budgeet",
     price: "₱199",
     period: "/ month",
@@ -46,6 +49,7 @@ export const pricingPlans: PricingPlan[] = [
     popular: true,
   },
   {
+    id: 3,
     name: "Premium",
     price: "₱399",
     period: "/ month",

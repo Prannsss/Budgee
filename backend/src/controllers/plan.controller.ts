@@ -61,6 +61,15 @@ export const upgradePlan = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.id!;
   const { plan_id } = req.body;
 
+  // Validate plan_id is provided and is a number
+  if (!plan_id || typeof plan_id !== 'number') {
+    res.status(400).json({
+      success: false,
+      message: 'Valid plan_id (number) is required',
+    });
+    return;
+  }
+
   // Validate plan exists
   const { data: plan, error: planError } = await supabase
     .from('plans')
@@ -100,7 +109,7 @@ export const upgradePlan = asyncHandler(async (req: Request, res: Response) => {
     return;
   }
 
-  // Update user plan
+  // Update user plan and set subscription_upgraded_at for AI buddy access
   const { error: updateError } = await supabase
     .from('users')
     .update({ 
@@ -110,6 +119,7 @@ export const upgradePlan = asyncHandler(async (req: Request, res: Response) => {
     .eq('id', userId);
 
   if (updateError) {
+    console.error('Failed to update user plan:', updateError);
     res.status(500).json({
       success: false,
       message: 'Failed to upgrade plan',
@@ -118,7 +128,7 @@ export const upgradePlan = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Get updated user with plan details
-  const { data: updatedUser } = await supabase
+  const { data: updatedUser, error: fetchError } = await supabase
     .from('users')
     .select(`
       *,
@@ -126,6 +136,15 @@ export const upgradePlan = asyncHandler(async (req: Request, res: Response) => {
     `)
     .eq('id', userId)
     .single();
+
+  if (fetchError || !updatedUser) {
+    console.error('Failed to fetch updated user:', fetchError);
+    res.status(500).json({
+      success: false,
+      message: 'Plan upgraded but failed to fetch updated user data',
+    });
+    return;
+  }
 
   // Log activity
   await supabase.from('activity_logs').insert({
@@ -138,7 +157,7 @@ export const upgradePlan = asyncHandler(async (req: Request, res: Response) => {
 
   res.json({
     success: true,
-    message: 'Plan upgraded successfully',
+    message: `Plan upgraded successfully to ${plan.name}. ${plan.ai_enabled ? 'AI features are now enabled!' : ''}`,
     data: { user: updatedUser },
   });
 });

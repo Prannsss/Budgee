@@ -45,22 +45,31 @@ export function PaymentModal({ isOpen, onClose, selectedPlan }: PaymentModalProp
   const handlePayment = async () => {
     setIsProcessing(true);
     
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Update the plan - this will automatically save to localStorage
-    if (selectedPlan) {
-      setCurrentPlan(selectedPlan.name as 'Free' | 'Basic' | 'Premium');
+    try {
+      // Simulate payment processing
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Update the plan on backend using plan ID
+      if (selectedPlan) {
+        await setCurrentPlan(selectedPlan.name as 'Free' | 'Budgeet' | 'Premium');
+      }
+      
+      setIsProcessing(false);
+      onClose();
+      
+      // Show success message with toast notification
+      toast({
+        title: "Upgrade Successful!",
+        description: `You have successfully upgraded to the ${selectedPlan?.name} plan. Welcome to your enhanced experience!`,
+      });
+    } catch (error) {
+      setIsProcessing(false);
+      toast({
+        title: "Upgrade Failed",
+        description: error instanceof Error ? error.message : "Failed to upgrade plan. Please try again.",
+        variant: "destructive",
+      });
     }
-    
-    setIsProcessing(false);
-    onClose();
-    
-    // Show success message with toast notification
-    toast({
-      title: "Upgrade Successful!",
-      description: `You have successfully upgraded to the ${selectedPlan?.name} plan. Welcome to your enhanced experience!`,
-    });
   };
 
   if (!selectedPlan) return null;
