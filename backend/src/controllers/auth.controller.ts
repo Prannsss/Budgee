@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
-import { hashPassword, comparePassword, sanitizeUser, generateOTP, getOTPExpiration } from '../utils/helpers';
+import { hashPassword, comparePassword, sanitizeUser, generateOTP, getOTPExpiration, hasAIBuddyAccess } from '../utils/helpers';
 import { generateToken, generateRefreshToken } from '../middlewares/auth.middleware';
 import { asyncHandler } from '../middlewares/error.middleware';
 import { sendVerificationEmail, sendWelcomeEmail } from '../utils/email.service';
@@ -227,9 +227,15 @@ export const getProfile = asyncHandler(async (req: Request, res: Response) => {
 
   const userData = sanitizeUser(user);
 
+  // Add AI buddy access status
+  const aiAccess = hasAIBuddyAccess(user);
+
   res.json({
     success: true,
-    data: { user: userData },
+    data: { 
+      user: userData,
+      hasAIBuddyAccess: aiAccess
+    },
   });
 });
 

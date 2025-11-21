@@ -17,6 +17,7 @@ export interface UserAttributes {
   oauth_provider?: string;
   oauth_id?: string;
   last_login?: Date;
+  subscription_upgraded_at?: Date;
   created_at?: Date;
   updated_at?: Date;
 }
@@ -48,6 +49,7 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   public oauth_provider?: string;
   public oauth_id?: string;
   public last_login?: Date;
+  public subscription_upgraded_at?: Date;
 
   public readonly created_at!: Date;
   public readonly updated_at!: Date;
@@ -117,6 +119,10 @@ User.init(
       allowNull: true,
     },
     last_login: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    subscription_upgraded_at: {
       type: DataTypes.DATE,
       allowNull: true,
     },

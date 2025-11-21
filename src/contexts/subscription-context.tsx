@@ -10,6 +10,7 @@ interface SubscriptionContextType {
   userPlan: any | null;
   setCurrentPlan: (plan: PlanType) => Promise<void>;
   isAIEnabled: boolean;
+  hasAIBuddyAccess: boolean;
   isLoading: boolean;
 }
 
@@ -19,6 +20,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [currentPlan, setCurrentPlanState] = useState<PlanType>('Free');
   const [userPlan, setUserPlan] = useState<any | null>(null);
+  const [hasAIBuddyAccess, setHasAIBuddyAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load user plan data from backend when user changes
@@ -44,10 +46,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
           setCurrentPlanState('Free');
           setUserPlan(null);
         }
+
+        // Set AI buddy access status from backend
+        setHasAIBuddyAccess(userProfile.hasAIBuddyAccess || false);
       } catch (error) {
         console.error('Error loading user plan:', error);
         setCurrentPlanState('Free');
         setUserPlan(null);
+        setHasAIBuddyAccess(false);
       } finally {
         setIsLoading(false);
       }
@@ -70,6 +76,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         setUserPlan(userProfile.plan);
         setCurrentPlanState(userProfile.plan.name as PlanType);
       }
+      
+      // Update AI buddy access
+      setHasAIBuddyAccess(userProfile.hasAIBuddyAccess || false);
     } catch (error) {
       console.error('Error upgrading plan:', error);
     } finally {
@@ -86,6 +95,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         userPlan,
         setCurrentPlan, 
         isAIEnabled,
+        hasAIBuddyAccess,
         isLoading
       }}
     >

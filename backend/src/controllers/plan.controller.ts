@@ -103,7 +103,10 @@ export const upgradePlan = asyncHandler(async (req: Request, res: Response) => {
   // Update user plan
   const { error: updateError } = await supabase
     .from('users')
-    .update({ plan_id })
+    .update({ 
+      plan_id,
+      subscription_upgraded_at: new Date().toISOString()
+    })
     .eq('id', userId);
 
   if (updateError) {
@@ -123,6 +126,15 @@ export const upgradePlan = asyncHandler(async (req: Request, res: Response) => {
     `)
     .eq('id', userId)
     .single();
+
+  // Log activity
+  await supabase.from('activity_logs').insert({
+    user_id: userId,
+    action: 'plan_upgraded',
+    description: `Upgraded to ${plan.name} plan`,
+    entity_type: 'plan',
+    entity_id: plan_id
+  });
 
   res.json({
     success: true,

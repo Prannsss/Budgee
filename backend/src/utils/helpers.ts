@@ -130,3 +130,30 @@ export const maskAccountNumber = (accountNumber: string): string => {
   }
   return '*'.repeat(accountNumber.length - 4) + accountNumber.slice(-4);
 };
+
+/**
+ * Check if user has AI Buddy access (30 days from subscription upgrade)
+ * @param user User object with plan and subscription_upgraded_at
+ * @returns boolean indicating if AI Buddy is available
+ */
+export const hasAIBuddyAccess = (user: {
+  plan?: { ai_enabled: boolean };
+  subscription_upgraded_at?: string | Date | null;
+}): boolean => {
+  // If plan has AI enabled permanently, return true
+  if (user.plan?.ai_enabled) {
+    return true;
+  }
+
+  // Check if user has upgraded within the last 30 days
+  if (user.subscription_upgraded_at) {
+    const upgradeDate = new Date(user.subscription_upgraded_at);
+    const now = new Date();
+    const daysSinceUpgrade = (now.getTime() - upgradeDate.getTime()) / (1000 * 60 * 60 * 24);
+    
+    // Grant access for 30 days after upgrade
+    return daysSinceUpgrade <= 30;
+  }
+
+  return false;
+};

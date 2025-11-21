@@ -267,18 +267,18 @@ export const initializeDefaultCategories = async (userId: number): Promise<void>
   try {
     // Income Categories
     const incomeCategories = [
-      { user_id: userId, name: 'Salary', type: 'income' as const, is_default: false },
-      { user_id: userId, name: 'Miscellaneous', type: 'income' as const, is_default: false },
+      { user_id: userId, name: 'Salary', type: 'income' as const, is_default: true },
+      { user_id: userId, name: 'Miscellaneous', type: 'income' as const, is_default: true },
     ];
 
     // Expense Categories
     const expenseCategories = [
-      { user_id: userId, name: 'Food', type: 'expense' as const, is_default: false },
-      { user_id: userId, name: 'Transportation', type: 'expense' as const, is_default: false },
-      { user_id: userId, name: 'Rent', type: 'expense' as const, is_default: false },
-      { user_id: userId, name: 'Utilities', type: 'expense' as const, is_default: false },
-      { user_id: userId, name: 'Entertainment', type: 'expense' as const, is_default: false },
-      { user_id: userId, name: 'Miscellaneous', type: 'expense' as const, is_default: false },
+      { user_id: userId, name: 'Food', type: 'expense' as const, is_default: true },
+      { user_id: userId, name: 'Transportation', type: 'expense' as const, is_default: true },
+      { user_id: userId, name: 'Rent', type: 'expense' as const, is_default: true },
+      { user_id: userId, name: 'Utilities', type: 'expense' as const, is_default: true },
+      { user_id: userId, name: 'Entertainment', type: 'expense' as const, is_default: true },
+      { user_id: userId, name: 'Miscellaneous', type: 'expense' as const, is_default: true },
     ];
 
     // Bulk create all default categories

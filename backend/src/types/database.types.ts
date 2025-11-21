@@ -102,6 +102,7 @@ export interface User {
   oauth_provider: string | null;
   oauth_id: string | null;
   last_login: string | null;
+  subscription_upgraded_at: string | null;
   created_at: string;
   updated_at: string;
 }

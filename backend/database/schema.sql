@@ -47,18 +47,20 @@ CREATE TABLE users (
     name VARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     phone VARCHAR(20),
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL, -- Must use bcrypt or argon2 hashing (recommended: argon2id)
     plan_id INTEGER NOT NULL DEFAULT 1,
     avatar_url VARCHAR(500),
     email_verified BOOLEAN DEFAULT FALSE,
     phone_verified BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
     oauth_provider VARCHAR(50), -- 'google', 'facebook', or NULL
-    oauth_id VARCHAR(255),
+    oauth_id VARCHAR(255), -- Unique per provider - enforced by constraint below
     last_login TIMESTAMP WITH TIME ZONE,
+    subscription_upgraded_at TIMESTAMP WITH TIME ZONE, -- Tracks last plan upgrade for 30-day AI buddy access
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE RESTRICT ON UPDATE CASCADE
+    FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT unique_oauth_provider_id UNIQUE (oauth_provider, oauth_id)
 );
 
 -- ================================================
@@ -88,7 +90,7 @@ CREATE TABLE accounts (
     institution_id INTEGER,
     name VARCHAR(100) NOT NULL, -- e.g., "GCash", "BDO Savings", "Cash"
     type VARCHAR(20) NOT NULL CHECK (type IN ('Cash', 'Bank', 'E-Wallet')),
-    account_number VARCHAR(100), -- Masked or encrypted (null for cash)
+    account_number VARCHAR(100), -- Should be encrypted at application level (AES-256), masked for display. NULL for cash accounts.
     balance DECIMAL(15, 2) DEFAULT 0.00,
     verified BOOLEAN DEFAULT FALSE,
     logo_url VARCHAR(500), -- Logo of bank/e-wallet
@@ -190,7 +192,7 @@ CREATE TABLE savings_allocations (
 CREATE TABLE user_pins (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL UNIQUE,
-    pin_hash VARCHAR(255) NOT NULL,
+    pin_hash VARCHAR(255) NOT NULL, -- Must use bcrypt or argon2 hashing (recommended: argon2id)
     is_enabled BOOLEAN DEFAULT TRUE,
     failed_attempts INTEGER DEFAULT 0,
     locked_until TIMESTAMP WITH TIME ZONE,
@@ -282,8 +284,8 @@ CREATE INDEX idx_users_plan_id ON users(plan_id);
 CREATE INDEX idx_users_oauth ON users(oauth_provider, oauth_id);
 CREATE INDEX idx_users_active ON users(is_active);
 
--- Account queries
-CREATE INDEX idx_accounts_user_id ON accounts(user_id);
+-- Account queries (idx_accounts_user_id removed - redundant with idx_accounts_active)
+-- CREATE INDEX idx_accounts_user_id ON accounts(user_id); -- REMOVED: Redundant with idx_accounts_active composite index
 CREATE INDEX idx_accounts_institution_id ON accounts(institution_id);
 CREATE INDEX idx_accounts_type ON accounts(type);
 CREATE INDEX idx_accounts_active ON accounts(user_id, is_active);
@@ -499,64 +501,70 @@ BEGIN
     IF TG_OP = 'INSERT' AND NEW.type = 'expense' AND NEW.status = 'completed' THEN
         transaction_date := NEW.date;
         
-        -- Update Daily limit
-        UPDATE spending_limits
-        SET 
-            current_spending = current_spending + NEW.amount,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE 
-            user_id = NEW.user_id 
-            AND type = 'Daily'
-            AND last_reset >= CURRENT_TIMESTAMP - INTERVAL '1 day';
-        
-        -- Update Weekly limit
-        UPDATE spending_limits
-        SET 
-            current_spending = current_spending + NEW.amount,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE 
-            user_id = NEW.user_id 
-            AND type = 'Weekly'
-            AND last_reset >= CURRENT_TIMESTAMP - INTERVAL '7 days';
-        
-        -- Update Monthly limit
-        UPDATE spending_limits
-        SET 
-            current_spending = current_spending + NEW.amount,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE 
-            user_id = NEW.user_id 
-            AND type = 'Monthly'
-            AND DATE_TRUNC('month', last_reset) = DATE_TRUNC('month', CURRENT_TIMESTAMP);
+        -- Only update if transaction is from today (prevent backdated transactions from affecting current limits)
+        IF transaction_date = CURRENT_DATE THEN
+            -- Update Daily limit (only if not expired)
+            UPDATE spending_limits
+            SET 
+                current_spending = current_spending + NEW.amount,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE 
+                user_id = NEW.user_id 
+                AND type = 'Daily'
+                AND last_reset >= CURRENT_DATE;
+            
+            -- Update Weekly limit (only if not expired)
+            UPDATE spending_limits
+            SET 
+                current_spending = current_spending + NEW.amount,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE 
+                user_id = NEW.user_id 
+                AND type = 'Weekly'
+                AND last_reset >= CURRENT_DATE - INTERVAL '6 days';
+            
+            -- Update Monthly limit (only if same month)
+            UPDATE spending_limits
+            SET 
+                current_spending = current_spending + NEW.amount,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE 
+                user_id = NEW.user_id 
+                AND type = 'Monthly'
+                AND DATE_TRUNC('month', last_reset) = DATE_TRUNC('month', CURRENT_DATE);
+        END IF;
         
         RETURN NEW;
     END IF;
 
     -- Handle UPDATE
     IF TG_OP = 'UPDATE' AND NEW.type = 'expense' THEN
-        -- Reverse old transaction if it was completed
-        IF OLD.status = 'completed' THEN
-            UPDATE spending_limits
-            SET 
-                current_spending = GREATEST(current_spending - OLD.amount, 0),
-                updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = OLD.user_id;
-        END IF;
-        
-        -- Add new transaction if it's completed
-        IF NEW.status = 'completed' THEN
-            UPDATE spending_limits
-            SET 
-                current_spending = current_spending + NEW.amount,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = NEW.user_id;
+        -- Only process if transaction date is today
+        IF OLD.date = CURRENT_DATE OR NEW.date = CURRENT_DATE THEN
+            -- Reverse old transaction if it was completed and from today
+            IF OLD.status = 'completed' AND OLD.date = CURRENT_DATE THEN
+                UPDATE spending_limits
+                SET 
+                    current_spending = GREATEST(current_spending - OLD.amount, 0),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = OLD.user_id;
+            END IF;
+            
+            -- Add new transaction if it's completed and is today
+            IF NEW.status = 'completed' AND NEW.date = CURRENT_DATE THEN
+                UPDATE spending_limits
+                SET 
+                    current_spending = current_spending + NEW.amount,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = NEW.user_id;
+            END IF;
         END IF;
         
         RETURN NEW;
     END IF;
 
     -- Handle DELETE
-    IF TG_OP = 'DELETE' AND OLD.type = 'expense' AND OLD.status = 'completed' THEN
+    IF TG_OP = 'DELETE' AND OLD.type = 'expense' AND OLD.status = 'completed' AND OLD.date = CURRENT_DATE THEN
         UPDATE spending_limits
         SET 
             current_spending = GREATEST(current_spending - OLD.amount, 0),
@@ -606,6 +614,67 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to initialize new users with defaults
+CREATE OR REPLACE FUNCTION initialize_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Create default categories
+    PERFORM create_default_categories_for_user(NEW.id);
+    
+    -- Create default spending limits
+    PERFORM create_default_spending_limits_for_user(NEW.id);
+    
+    -- Create cash account
+    PERFORM ensure_cash_account_for_user(NEW.id);
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to validate account creation against plan limits
+CREATE OR REPLACE FUNCTION validate_account_limits()
+RETURNS TRIGGER AS $$
+DECLARE
+    user_plan_id INTEGER;
+    max_accounts_limit INTEGER;
+    max_wallets_limit INTEGER;
+    current_account_count INTEGER;
+    current_wallet_count INTEGER;
+BEGIN
+    -- Get user's plan limits
+    SELECT u.plan_id INTO user_plan_id
+    FROM users u
+    WHERE u.id = NEW.user_id;
+    
+    SELECT p.max_accounts, p.max_wallets INTO max_accounts_limit, max_wallets_limit
+    FROM plans p
+    WHERE p.id = user_plan_id;
+    
+    -- Count current accounts (excluding the one being inserted)
+    SELECT COUNT(*) INTO current_account_count
+    FROM accounts
+    WHERE user_id = NEW.user_id AND is_active = TRUE;
+    
+    -- Check total account limit
+    IF current_account_count >= max_accounts_limit THEN
+        RAISE EXCEPTION 'Account limit reached. Your plan allows % accounts.', max_accounts_limit;
+    END IF;
+    
+    -- Check wallet limit if creating a wallet
+    IF NEW.type = 'E-Wallet' THEN
+        SELECT COUNT(*) INTO current_wallet_count
+        FROM accounts
+        WHERE user_id = NEW.user_id AND type = 'E-Wallet' AND is_active = TRUE;
+        
+        IF current_wallet_count >= max_wallets_limit THEN
+            RAISE EXCEPTION 'E-Wallet limit reached. Your plan allows % e-wallets.', max_wallets_limit;
+        END IF;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Apply trigger to all tables with updated_at
 CREATE TRIGGER update_plans_updated_at BEFORE UPDATE ON plans
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -630,6 +699,18 @@ CREATE TRIGGER update_user_pins_updated_at BEFORE UPDATE ON user_pins
 
 CREATE TRIGGER update_spending_limits_updated_at BEFORE UPDATE ON spending_limits
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Trigger to initialize new users
+CREATE TRIGGER new_user_initialization
+    AFTER INSERT ON users
+    FOR EACH ROW 
+    EXECUTE FUNCTION initialize_new_user();
+
+-- Trigger to validate account limits before creation
+CREATE TRIGGER validate_account_limits_trigger
+    BEFORE INSERT ON accounts
+    FOR EACH ROW
+    EXECUTE FUNCTION validate_account_limits();
 
 -- Apply balance update trigger to transactions
 CREATE TRIGGER transaction_balance_trigger 
@@ -827,8 +908,8 @@ END $$;
 
 COMMENT ON TABLE institutions IS 'Reference table for financial institutions (banks, e-wallets, credit providers)';
 COMMENT ON TABLE plans IS 'Subscription plans with feature limits and pricing';
-COMMENT ON TABLE users IS 'User accounts with authentication and profile data';
-COMMENT ON TABLE accounts IS 'Financial accounts including cash, bank, and e-wallets';
+COMMENT ON TABLE users IS 'User accounts with authentication and profile data. New users automatically get default categories, spending limits, and cash account via trigger.';
+COMMENT ON TABLE accounts IS 'Financial accounts including cash, bank, and e-wallets. Account creation is validated against plan limits via trigger.';
 COMMENT ON TABLE categories IS 'User-defined transaction categories with hierarchical support';
 COMMENT ON TABLE transactions IS 'All financial transactions including income, expense, and transfers';
 COMMENT ON TABLE transaction_transfers IS 'Links transactions for account-to-account transfers';
@@ -856,11 +937,24 @@ COMMENT ON TABLE spending_limits IS 'User spending limits for Daily, Weekly, and
 --
 -- 3. MODIFIED TABLES:
 --    - accounts: Added institution_id FK, is_manual column for tracking API vs manual accounts
+--    - users: Added unique constraint for (oauth_provider, oauth_id)
 --
 -- 4. OPTIMIZED:
 --    - Consolidated update_updated_at_column() trigger function (shared across all tables)
 --    - Added indexes for new columns (institution_id, is_manual, is_default)
 --    - Updated recurring transaction index to use recurring_parent_id only
+--    - Removed idx_accounts_user_id (redundant with idx_accounts_active composite index)
+--
+-- 5. FIXED:
+--    - Added initialize_new_user() trigger to automatically set up new users
+--    - Fixed update_spending_limits_on_transaction() to only process today's transactions
+--    - Added validate_account_limits() trigger to enforce plan limits
+--    - Clarified transfer transaction handling in update_account_balance()
+--
+-- 6. SECURITY:
+--    - Added documentation for encryption (account_number: AES-256)
+--    - Added documentation for hashing (password_hash, pin_hash: argon2id recommended)
+--    - Added unique constraint for OAuth provider/ID combination
 -- ================================================
 
 -- ================================================
