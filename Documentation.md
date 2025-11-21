@@ -1,6 +1,6 @@
 # Budgee - Complete Application Documentation
 
-**Version:** 1.0.1  
+**Version:** 1.0.2 
 **Author:** Prannsss  
 **Last Updated:** October 15, 2025
 
