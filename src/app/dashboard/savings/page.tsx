@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { SkeletonTable } from "@/components/ui/skeleton-components";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SavingsPage() {
   const [savingsAllocations, setSavingsAllocations] = useState<SavingsAllocation[]>([]);
@@ -210,7 +210,7 @@ export default function SavingsPage() {
             
             <TabsContent value="all" className="mt-0">
               {isLoading ? (
-                <SkeletonTable rows={5} columns={5} />
+                <SkeletonAllocationList />
               ) : filteredAllocations.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <PiggyBank className="h-16 w-16 mx-auto mb-4 opacity-50" />
@@ -244,7 +244,7 @@ export default function SavingsPage() {
             
             <TabsContent value="deposit" className="mt-0">
               {isLoading ? (
-                <SkeletonTable rows={5} columns={5} />
+                <SkeletonAllocationList />
               ) : filteredAllocations.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <ArrowUpCircle className="h-16 w-16 mx-auto mb-4 opacity-50 text-green-500" />
@@ -278,7 +278,7 @@ export default function SavingsPage() {
             
             <TabsContent value="withdrawal" className="mt-0">
               {isLoading ? (
-                <SkeletonTable rows={5} columns={5} />
+                <SkeletonAllocationList />
               ) : filteredAllocations.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <ArrowDownCircle className="h-16 w-16 mx-auto mb-4 opacity-50 text-blue-500" />
@@ -394,6 +394,31 @@ function AllocationCard({
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
       </div>
+    </div>
+  );
+}
+
+function SkeletonAllocationList() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex items-center justify-between p-4 rounded-lg border bg-card">
+          <div className="flex items-center gap-4 flex-1">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right space-y-1">
+              <Skeleton className="h-5 w-20 ml-auto" />
+              <Skeleton className="h-3 w-12 ml-auto" />
+            </div>
+            <Skeleton className="h-8 w-8 rounded-md" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

@@ -61,17 +61,30 @@ export default function YourPlanPage() {
               </div>
             )}
           </div>
-          {userPlan && userPlan.created_at && (
-            <div className="mt-2 text-sm text-muted-foreground">
-              Member since: {new Date(userPlan.created_at).toLocaleDateString()}
-            </div>
-          )}
+          <div className="flex flex-col sm:flex-row sm:gap-6 mt-2 text-sm text-muted-foreground">
+            {userPlan && userPlan.created_at && (
+              <div>
+                Member since: {new Date(userPlan.created_at).toLocaleDateString()}
+              </div>
+            )}
+            {userPlan && userPlan.subscription_expires_at && (
+              <div>
+                Expires on: {new Date(userPlan.subscription_expires_at).toLocaleDateString()}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Plans Layout - Simple Grid for both Desktop and Mobile */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {pricingPlans.map((plan) => {
             const isCurrent = plan.name === currentPlan;
+            const isPaidPlan = currentPlan !== 'Free';
+            // Disable other plans if currently on a paid plan
+            const isDisabled = isCurrent || (isPaidPlan && !isCurrent);
+            // Hide button for Free plan if currently on Free plan
+            const shouldHideButton = isCurrent && plan.name === 'Free';
+
             return (
               <Card 
                 key={plan.name} 
@@ -81,7 +94,7 @@ export default function YourPlanPage() {
                     : plan.popular 
                     ? 'border-primary shadow-xl' 
                     : 'shadow-lg hover:shadow-xl transition-shadow'
-                }`}
+                } ${isDisabled && !isCurrent ? 'opacity-60 grayscale-[0.5]' : ''}`}
               >
                 {isCurrent && (
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
@@ -117,14 +130,16 @@ export default function YourPlanPage() {
                   </ul>
                 </CardContent>
                 <CardFooter className="pt-0">
-                  <Button 
-                    onClick={() => handleUpgradeClick(plan)}
-                    className="w-full" 
-                    variant={isCurrent ? 'outline' : plan.popular ? 'default' : 'outline'}
-                    disabled={isCurrent}
-                  >
-                    {isCurrent ? plan.currentPlanCta : plan.cta}
-                  </Button>
+                  {!shouldHideButton && (
+                    <Button 
+                      onClick={() => handleUpgradeClick(plan)}
+                      className="w-full" 
+                      variant={isCurrent ? 'outline' : plan.popular ? 'default' : 'outline'}
+                      disabled={isDisabled}
+                    >
+                      {isCurrent ? plan.currentPlanCta : plan.cta}
+                    </Button>
+                  )}
                 </CardFooter>
               </Card>
             );

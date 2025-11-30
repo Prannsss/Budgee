@@ -11,9 +11,9 @@ export default function ChatPage() {
   const { totals, isLoading } = useUserData();
 
   return (
-    <div className="flex flex-col space-y-4 md:space-y-0 md:-m-4 lg:-m-6 md:h-[calc(100vh-0px)]">
+    <div className="flex flex-col space-y-2 md:space-y-0 md:-m-4 lg:-m-6 md:h-[calc(100vh-0px)]">
       <div className="md:px-10 md:pt-6 lg:px-14 lg:pt-8 flex-shrink-0">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10">
               <Bot className="h-5 w-5 text-primary" />
@@ -32,20 +32,20 @@ export default function ChatPage() {
           
           {/* Quick Financial Summary */}
           {user && !isLoading && (
-            <div className="flex flex-wrap gap-3 md:justify-end">
-              <div className="flex items-center gap-2 rounded-full bg-green-500/10 px-4 py-2 text-sm font-medium border border-green-500/20">
+            <div className="flex overflow-x-auto pb-2 md:pb-0 gap-3 justify-center md:justify-end no-scrollbar">
+              <div className="flex-shrink-0 flex items-center gap-2 rounded-full bg-green-500/10 px-4 py-2 text-sm font-medium border border-green-500/20">
                 <TrendingUp className="h-4 w-4 text-green-600" />
                 <span className="text-green-700 dark:text-green-400">
                   Income: ₱{totals.totalIncome.toLocaleString()}
                 </span>
               </div>
-              <div className="flex items-center gap-2 rounded-full bg-red-500/10 px-4 py-2 text-sm font-medium border border-red-500/20">
+              <div className="flex-shrink-0 flex items-center gap-2 rounded-full bg-red-500/10 px-4 py-2 text-sm font-medium border border-red-500/20">
                 <Wallet className="h-4 w-4 text-red-600" />
                 <span className="text-red-700 dark:text-red-400">
                   Expenses: ₱{totals.totalExpenses.toLocaleString()}
                 </span>
               </div>
-              <div className="flex items-center gap-2 rounded-full bg-blue-500/10 px-4 py-2 text-sm font-medium border border-blue-500/20">
+              <div className="flex-shrink-0 flex items-center gap-2 rounded-full bg-blue-500/10 px-4 py-2 text-sm font-medium border border-blue-500/20">
                 <PiggyBank className="h-4 w-4 text-blue-600" />
                 <span className="text-blue-700 dark:text-blue-400">
                   Savings: ₱{totals.savings.toLocaleString()}

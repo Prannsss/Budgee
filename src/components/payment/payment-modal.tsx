@@ -39,7 +39,34 @@ export function PaymentModal({ isOpen, onClose, selectedPlan }: PaymentModalProp
   });
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    let formattedValue = value;
+
+    if (field === "cardNumber") {
+      // Remove non-digits
+      const digits = value.replace(/\D/g, "");
+      // Add space every 4 digits
+      formattedValue = digits.replace(/(\d{4})(?=\d)/g, "$1 ");
+    } else if (field === "expiryDate") {
+      // Remove non-digits and non-slash
+      let clean = value.replace(/[^\d/]/g, "");
+      
+      // Handle "1/30" -> "01/30" logic
+      if (clean.length === 1 && parseInt(clean) > 1) {
+        clean = "0" + clean;
+      }
+      
+      // Add slash after 2 digits if not present
+      if (clean.length === 2 && !clean.includes("/")) {
+        // If user is typing (not deleting), add slash
+        if (value.length > formData.expiryDate.length) {
+          clean = clean + "/";
+        }
+      }
+      
+      formattedValue = clean;
+    }
+
+    setFormData(prev => ({ ...prev, [field]: formattedValue }));
   };
 
   const handlePayment = async () => {
@@ -76,7 +103,7 @@ export function PaymentModal({ isOpen, onClose, selectedPlan }: PaymentModalProp
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />

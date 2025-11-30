@@ -109,12 +109,17 @@ export const upgradePlan = asyncHandler(async (req: Request, res: Response) => {
     return;
   }
 
+  // Calculate expiration date (30 days from now)
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 30);
+
   // Update user plan and set subscription_upgraded_at for AI buddy access
   const { error: updateError } = await supabase
     .from('users')
     .update({ 
       plan_id,
-      subscription_upgraded_at: new Date().toISOString()
+      subscription_upgraded_at: new Date().toISOString(),
+      subscription_expires_at: expiresAt.toISOString()
     })
     .eq('id', userId);
 

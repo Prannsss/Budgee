@@ -8,11 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { PublicRoute } from "@/components/auth/protected-route";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import { TokenManager } from "@/lib/api-service";
+import { useAuth } from "@/contexts/auth-context";
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { refreshUser } = useAuth();
 
   useEffect(() => {
     // Handle OAuth callback
@@ -32,46 +35,37 @@ export default function LoginPage() {
     }
 
     if (token && refreshToken) {
-      // Store tokens
-      localStorage.setItem('token', token);
-      localStorage.setItem('refreshToken', refreshToken);
-
-      // Fetch user data
-      const fetchUserData = async () => {
+      const handleLogin = async () => {
         try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-          const response = await fetch(`${apiUrl}/api/auth/me`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
+          // Store tokens using TokenManager to ensure correct keys
+          TokenManager.setToken(token);
+          TokenManager.setRefreshToken(refreshToken);
 
-          if (response.ok) {
-            const result = await response.json();
-            if (result.success && result.data?.user) {
-              // Store user data
-              localStorage.setItem('user', JSON.stringify(result.data.user));
-              toast({
-                title: "Welcome! 🎉",
-                description: "You've successfully logged in.",
-              });
-              router.push('/dashboard');
-            }
-          }
+          // Refresh user data in context
+          await refreshUser();
+
+          toast({
+            title: "Welcome! 🎉",
+            description: "You've successfully logged in.",
+          });
+          
+          // Redirect to dashboard
+          router.push('/dashboard');
         } catch (error) {
-          console.error('Failed to fetch user data:', error);
+          console.error('Failed to complete login:', error);
           toast({
             title: "Error",
             description: "Failed to complete login. Please try again.",
             variant: "destructive",
           });
+          TokenManager.clearTokens();
           router.replace('/login');
         }
       };
 
-      fetchUserData();
+      handleLogin();
     }
-  }, [searchParams, router, toast]);
+  }, [searchParams, router, toast, refreshUser]);
 
   return (
     <PublicRoute>

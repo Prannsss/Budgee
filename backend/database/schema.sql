@@ -57,6 +57,7 @@ CREATE TABLE users (
     oauth_id VARCHAR(255), -- Unique per provider - enforced by constraint below
     last_login TIMESTAMP WITH TIME ZONE,
     subscription_upgraded_at TIMESTAMP WITH TIME ZONE, -- Tracks last plan upgrade for 30-day AI buddy access
+    subscription_expires_at TIMESTAMP WITH TIME ZONE, -- Tracks when the subscription expires (30 days after upgrade)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE RESTRICT ON UPDATE CASCADE,
