@@ -19,7 +19,7 @@ export default function PricingPage() {
     <div className="flex flex-col min-h-screen">
       <PublicHeader />
       <main className="flex-1">
-        <section className="container flex flex-col items-center gap-6 py-12 md:py-24">
+        <section className="container flex flex-col items-center gap-6 pt-32 pb-12 md:pt-48 md:pb-24">
           <div className="mx-auto max-w-2xl text-center">
             <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl font-headline">
               Find the perfect plan

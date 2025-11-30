@@ -101,21 +101,18 @@ export default function Home() {
       <div className="flex flex-col min-h-screen bg-background text-foreground relative">
         {/* Animated background elements */}
         <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+          <div className="absolute inset-0 bg-grid-pattern opacity-50"></div>
           <div className="absolute top-0 -left-4 w-72 h-72 bg-primary/10 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
           <div className="absolute top-0 -right-4 w-72 h-72 bg-purple-300/10 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
           <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-300/10 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
         </div>
 
         {/* Sticky Header - Semi-transparent */}
-        <div className="sticky top-0 z-50 w-full border-b bg-background/50 backdrop-blur-lg supports-[backdrop-filter]:bg-background/30 shadow-sm">
-          <PublicHeader />
-        </div>
+        <PublicHeader />
         
         <main className="flex-1">
         {/* Hero Section with enhanced design */}
-        <section className="w-full min-h-screen md:min-h-0 py-0 md:py-24 lg:py-32 xl:py-48 bg-background relative">
-          {/* Decorative grid pattern */}
-          <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+        <section className="w-full min-h-screen md:min-h-0 py-0 md:py-24 lg:py-32 xl:py-48 bg-transparent relative">
           
           <div className="px-4 md:px-6 h-full relative z-10">
             <div className="flex flex-col items-center justify-center text-center h-full min-h-screen md:min-h-0">
