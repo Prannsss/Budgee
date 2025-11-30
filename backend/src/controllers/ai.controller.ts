@@ -9,12 +9,48 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 // Initialize Google Gemini API
 let genAI: GoogleGenerativeAI | null = null;
 
+// Use a stable model with better rate limits
+const GEMINI_MODEL = 'gemini-2.0-flash';
+
 const initializeAI = () => {
-  if (!genAI && process.env.GOOGLE_GENAI_API_KEY) {
-    genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY);
+  if (!genAI && process.env.GEMINI_API_KEY) {
+    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   }
   return genAI;
 };
+
+// Helper to delay execution
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Retry wrapper for API calls
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<T> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Check if it's a rate limit error (429)
+      if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('quota')) {
+        const waitTime = baseDelay * Math.pow(2, attempt); // Exponential backoff
+        console.log(`[AI Controller] Rate limited, waiting ${waitTime}ms before retry ${attempt + 1}/${maxRetries}`);
+        await delay(waitTime);
+        continue;
+      }
+      
+      // For other errors, don't retry
+      throw error;
+    }
+  }
+  
+  throw lastError;
+}
 
 interface FinancialData {
   totalIncome: number;
@@ -72,8 +108,8 @@ export const answerFinanceQuestion = async (req: Request, res: Response) => {
     }
 
     // Check if API key is configured
-    if (!process.env.GOOGLE_GENAI_API_KEY) {
-      console.error('[AI Controller] GOOGLE_GENAI_API_KEY is not configured');
+    if (!process.env.GEMINI_API_KEY) {
+      console.error('[AI Controller] GEMINI_API_KEY is not configured');
       return res.status(503).json({
         success: false,
         error: 'AI service is not properly configured. Please contact support.',
@@ -89,8 +125,8 @@ export const answerFinanceQuestion = async (req: Request, res: Response) => {
       throw new Error('Failed to initialize AI service');
     }
 
-    // Get the generative model
-    const model = ai.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    // Get the generative model - using stable model with better rate limits
+    const model = ai.getGenerativeModel({ model: GEMINI_MODEL });
 
     // Prepare financial context
     const financialContext = `
@@ -161,8 +197,11 @@ Here are my top suggestions:
 
 Answer as their friendly money buddy (NOT as a data report):`;
 
-    // Generate response
-    const result = await model.generateContent(prompt);
+    // Generate response with retry logic for rate limits
+    const result = await withRetry(async () => {
+      return await model.generateContent(prompt);
+    }, 3, 2000);
+    
     const response = await result.response;
     const answer = response.text();
 
@@ -174,7 +213,7 @@ Answer as their friendly money buddy (NOT as a data report):`;
       answer,
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('[AI Controller] Error processing request:', error);
     
     // Log detailed error information
@@ -182,6 +221,15 @@ Answer as their friendly money buddy (NOT as a data report):`;
       console.error('[AI Controller] Error name:', error.name);
       console.error('[AI Controller] Error message:', error.message);
       console.error('[AI Controller] Error stack:', error.stack);
+    }
+
+    // Check for rate limit errors
+    if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('quota') || error?.message?.includes('Too Many Requests')) {
+      return res.status(429).json({
+        success: false,
+        error: 'AI service is temporarily busy. Please wait a moment and try again.',
+        retryAfter: 30,
+      });
     }
 
     // Return error response
@@ -200,7 +248,7 @@ Answer as their friendly money buddy (NOT as a data report):`;
  * GET /api/ai/health
  */
 export const aiHealthCheck = (_req: Request, res: Response) => {
-  const isConfigured = !!process.env.GOOGLE_GENAI_API_KEY;
+  const isConfigured = !!process.env.GEMINI_API_KEY;
   
   return res.json({
     success: true,
@@ -209,6 +257,6 @@ export const aiHealthCheck = (_req: Request, res: Response) => {
     configured: isConfigured,
     message: isConfigured 
       ? 'AI service is ready' 
-      : 'AI service is not configured - GOOGLE_GENAI_API_KEY missing',
+      : 'AI service is not configured - GEMINI_API_KEY missing',
   });
 };

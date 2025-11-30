@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview An AI agent that summarizes user's financial data.
  *
@@ -7,7 +6,7 @@
  * - SummarizeFinanceDataOutput - The return type for the summarizeFinanceData function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '../genkit';
 import {z} from 'genkit';
 
 const SummarizeFinanceDataInputSchema = z.object({

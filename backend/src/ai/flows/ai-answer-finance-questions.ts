@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview An AI agent to answer user questions about their finances.
  *
@@ -7,7 +6,7 @@
  * - AnswerFinanceQuestionOutput - The return type for the answerFinanceQuestion function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '../genkit';
 import {z} from 'genkit';
 
 const AnswerFinanceQuestionInputSchema = z.object({
@@ -42,11 +41,11 @@ export type AnswerFinanceQuestionOutput = z.infer<typeof AnswerFinanceQuestionOu
 export async function answerFinanceQuestion(input: AnswerFinanceQuestionInput): Promise<AnswerFinanceQuestionOutput> {
   try {
     // Check if API key is configured
-    if (!process.env.GOOGLE_GENAI_API_KEY) {
-      const errorMsg = 'GOOGLE_GENAI_API_KEY is not configured in environment variables';
+    if (!process.env.GEMINI_API_KEY) {
+      const errorMsg = 'GEMINI_API_KEY is not configured in environment variables';
       console.error('[Budgee AI Error]', errorMsg);
-      console.error('[Budgee AI] Available env vars:', Object.keys(process.env).filter(k => k.includes('GOOGLE') || k.includes('GENAI')));
-      throw new Error('AI service is not properly configured. Please add GOOGLE_GENAI_API_KEY to your environment variables.');
+      console.error('[Budgee AI] Available env vars:', Object.keys(process.env).filter(k => k.includes('GEMINI') || k.includes('GENAI')));
+      throw new Error('AI service is not properly configured. Please add GEMINI_API_KEY to your environment variables.');
     }
     
     console.log('[Budgee AI] Processing question for user:', input.userId);
