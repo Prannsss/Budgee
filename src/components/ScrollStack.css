@@ -1,35 +1,45 @@
 .scroll-stack-scroller {
   position: relative;
   width: 100%;
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: visible;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
+  /* height: 100%;  Removed to allow natural height */
+  /* overflow-y: auto; Removed to allow window scroll */
+  overflow: visible; /* Allow cards to be seen if they extend slightly, but usually they are contained */
+  /* overscroll-behavior: contain; Removed */
+  /* -webkit-overflow-scrolling: touch; Removed */
+  /* scroll-behavior: smooth; Removed */
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
-  will-change: scroll-position;
+  will-change: transform; /* Changed from scroll-position */
 }
 
 .scroll-stack-inner {
-  /* Further reduce top gap and bottom spacer */
-  padding: 6vh 1.5rem 8vh;
-  min-height: 100vh;
+  /* Adjust padding */
+  padding: 0; /* Let the parent handle padding */
+  min-height: 100vh; /* Ensure it's tall enough for the stack effect */
 }
 
-/* Mobile optimizations */
-@media (max-width: 767px) {
+/* Mobile adjustments */
+@media (max-width: 768px) {
   .scroll-stack-scroller {
-    overflow-y: visible;
-    height: auto;
+    overflow: visible;
+    display: block;
   }
-  
+
   .scroll-stack-inner {
-    padding: 2rem 0.5rem 4rem;
-    min-height: 0;
+    min-height: 150vh; /* Ensure enough scroll space on mobile */
+    padding-bottom: 10vh;
+  }
+
+  .scroll-stack-card {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    min-height: 300px;
+    height: auto;
+    margin-bottom: 2rem !important;
   }
 }
+
 
 .scroll-stack-card-wrapper {
   position: relative;
@@ -58,96 +68,16 @@
   align-items: center;
 }
 
-/* Mobile card adjustments for carousel-style stacking */
-@media (max-width: 767px) {
-  .scroll-stack-card {
-    height: auto;
-    min-height: 20rem;
-    padding: 3rem 2rem;
-    border-radius: 28px;
-    margin: 1.5rem 1rem;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-    transition: transform 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease;
-  }
-  
-  .scroll-stack-card:active {
-    transform: scale(0.97);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
-  }
-}
+/* Mobile card adjustments for carousel-style stacking - Removed in favor of new mobile block */
+
 
 .scroll-stack-end {
   width: 100%;
   height: 1px;
 }
 
-/* Mobile stacking layout - Vertical Stack */
-.scroll-stack-mobile-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  padding: 2rem 1rem;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  overflow-x: hidden;
-  overflow-y: visible;
-  height: auto;
-}
+/* Mobile stacking layout - Vertical Stack removed/disabled to allow JS stacking */
 
-@media (max-width: 767px) {
-  .scroll-stack-mobile-wrapper .scroll-stack-card {
-    position: relative !important;
-    transform: none !important;
-    filter: none !important;
-    width: 100%;
-    max-width: 100%;
-    flex-shrink: 0;
-    min-height: 22rem;
-    max-height: none;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    margin: 0 auto;
-  }
-  
-  /* First and last card spacing */
-  .scroll-stack-mobile-wrapper .scroll-stack-card:not(:last-child) {
-    margin-bottom: 0;
-  }
-  
-  .scroll-stack-mobile-wrapper .scroll-stack-card:first-child {
-    margin-top: 0;
-  }
-  
-  .scroll-stack-mobile-wrapper .scroll-stack-card:last-child {
-    margin-bottom: 0;
-  }
-  
-  /* Better text sizing on mobile */
-  .scroll-stack-card h3 {
-    font-size: 1.5rem;
-    line-height: 2rem;
-    margin-bottom: 1rem;
-  }
-  
-  .scroll-stack-card p {
-    font-size: 1rem;
-    line-height: 1.625rem;
-  }
-  
-  /* Icon sizing on mobile */
-  .scroll-stack-card .rounded-full {
-    width: 4rem;
-    height: 4rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .scroll-stack-card .rounded-full svg {
-    width: 2rem;
-    height: 2rem;
-  }
-}
 
 /* Desktop enhancements */
 @media (min-width: 768px) {
@@ -168,29 +98,5 @@
   box-sizing: border-box;
 }
 
-/* Remove carousel effects for simple stacking */
-@media (max-width: 767px) {
-  /* Container positioning */
-  .scroll-stack-mobile-wrapper {
-    position: relative;
-  }
-}
+/* Remove carousel effects for simple stacking - Removed */
 
-/* Ensure proper spacing for card content */
-@media (max-width: 767px) {
-  .scroll-stack-card > div {
-    padding: 0.5rem 1rem;
-  }
-  
-  /* Smooth scrolling on mobile */
-  html {
-    scroll-behavior: smooth;
-  }
-  
-  /* Mobile stack container */
-  .scroll-stack-mobile-wrapper {
-    margin: 0;
-    min-height: 0;
-    padding: 1rem 0;
-  }
-}

@@ -141,7 +141,7 @@ export default function Home() {
                 </FadeIn>
 
                 <FadeIn delay={0.3} className="flex flex-col gap-3 min-[400px]:flex-row justify-center items-center">
-                  <Button asChild size="lg" className="shadow-lg hover:shadow-xl transition-all hover:scale-105 group shiny-button">
+                  <Button asChild size="lg" className="shadow-lg border hover:shadow-xl transition-all hover:scale-105 group shiny-button">
                     <Link href="/signup" className="flex items-center gap-2 relative overflow-hidden">
                       <span className="relative z-10">Sign Up for Free</span>
                       <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform relative z-10" />

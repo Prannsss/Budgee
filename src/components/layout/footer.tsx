@@ -11,7 +11,7 @@ export default function Footer() {
           {/* Brand Section */}
           <div className="space-y-4 col-span-2 md:col-span-1">
             <div className="flex items-center space-x-2">
-              <Bot className="h-6 w-6 text-primary" />
+              <img src="/favicon.ico" alt="Budgee Logo" className="h-6 w-6" />
               <span className="text-xl font-bold text-foreground">Budgee</span>
             </div>
             <p className="text-sm text-muted-foreground max-w-xs">

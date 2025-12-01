@@ -184,7 +184,6 @@ const ScrollStack: React.FC<ScrollStackProps> = ({
   }, [updateCardTransforms]);
 
   const setupLenis = useCallback(() => {
-    if (isMobile) return null;
     // Document-level smooth scrolling
     const lenis = new Lenis({
       duration: 1.1,
@@ -315,16 +314,10 @@ const ScrollStack: React.FC<ScrollStackProps> = ({
       className={`relative w-full ${className}`.trim()}
       ref={scrollerRef}
     >
-      {isMobile ? (
-        <div className="scroll-stack-mobile-wrapper">
-          {children}
-        </div>
-      ) : (
-        <div className="scroll-stack-inner">
-          {children}
-          <div className="scroll-stack-end w-full h-px" />
-        </div>
-      )}
+      <div className="scroll-stack-inner">
+        {children}
+        <div className="scroll-stack-end w-full h-px" />
+      </div>
     </div>
   );
 };

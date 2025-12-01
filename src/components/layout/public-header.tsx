@@ -54,8 +54,11 @@ export default function PublicHeader() {
       <Button variant="ghost" asChild className="text-sm font-medium text-muted-foreground hover:text-foreground">
         <Link href="/login">Login</Link>
       </Button>
-      <Button asChild className="rounded-full px-6">
-        <Link href="/signup">Get Started</Link>
+      <Button asChild className="rounded-full px-6 shiny-button">
+        <Link href="/signup">
+          <span className="relative z-10">Get Started</span>
+          <div className="shine-overlay"></div>
+        </Link>
       </Button>
     </>
   );
@@ -86,8 +89,11 @@ export default function PublicHeader() {
       >
         Login
       </Link>
-      <Button asChild size="lg" className="mx-auto rounded-full w-full">
-        <Link href="/signup">Get Started</Link>
+      <Button asChild size="lg" className="mx-auto rounded-full w-full shiny-button">
+        <Link href="/signup">
+          <span className="relative z-10">Get Started</span>
+          <div className="shine-overlay"></div>
+        </Link>
       </Button>
     </>
   );
