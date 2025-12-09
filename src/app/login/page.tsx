@@ -78,7 +78,7 @@ export default function LoginPage() {
           </Link>
         </div>
         {/* Responsive card - hidden on mobile, shown on desktop */}
-        <Card className="shadow-2xl md:shadow-2xl shadow-none border-0 md:border">
+        <Card className="shadow-2xl md:shadow-2xl border-0 md:border">
           <CardHeader className="text-center md:text-left">
             <CardTitle>Welcome back</CardTitle>
             <CardDescription>Enter your email and password to login to your account.</CardDescription>
