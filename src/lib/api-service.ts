@@ -236,6 +236,12 @@ class HttpClient {
       if (!contentType || !contentType.includes('application/json')) {
         // Response is not JSON, try to get text for debugging
         const text = await response.text();
+        
+        // Check if it's an offline response
+        if (text.toLowerCase().includes('offline') || response.status === 503) {
+          throw new Error('You are currently offline. Please check your internet connection.');
+        }
+        
         console.error('Non-JSON response received:', text.substring(0, 200));
         throw new Error('Server returned an invalid response. Please check if the backend is running.');
       }

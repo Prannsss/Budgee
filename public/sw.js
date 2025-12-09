@@ -157,7 +157,16 @@ async function networkFirst(request, cacheName) {
       return cachedResponse;
     }
     
-    return new Response('Offline', { status: 503 });
+    // Return proper JSON response for API requests
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'You are currently offline. Please check your internet connection.',
+      offline: true
+    }), { 
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
 
@@ -181,10 +190,14 @@ async function networkFirstForPages(request) {
     }
     
     // Last resort fallback
-    return new Response('Offline', { 
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'You are currently offline.',
+      offline: true
+    }), { 
       status: 503, 
       statusText: 'Service Unavailable',
-      headers: { 'Content-Type': 'text/plain' }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
 }

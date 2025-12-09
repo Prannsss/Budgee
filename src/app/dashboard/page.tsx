@@ -266,8 +266,7 @@ export default function DashboardPage() {
             trigger={
               <Button
                 size="icon"
-                variant="secondary"
-                className="h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-shadow"
+                className="h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-shadow bg-green-500 hover:bg-green-600 text-white"
               >
                 <PiggyBank className="h-5 w-5" />
               </Button>

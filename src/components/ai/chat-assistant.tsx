@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Bot, Loader2, Send, User, Trash2, Sparkles, AlertCircle, RefreshCw } from "lucide-react";
+import { Bot, Loader2, Send, User, Sparkles, AlertCircle, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -481,6 +481,18 @@ export function ChatAssistantInline() {
   // Check if user has AI enabled in their plan
   const hasAIAccess = user?.plan?.aiEnabled !== false;
 
+  // Listen for clear chat event from parent
+  useEffect(() => {
+    const handleClearChatEvent = () => {
+      clearChatHistory();
+    };
+    
+    window.addEventListener('budgee:clearChat', handleClearChatEvent);
+    return () => {
+      window.removeEventListener('budgee:clearChat', handleClearChatEvent);
+    };
+  }, [user?.id]);
+
   return (
     <div className="relative rounded-lg border p-4 min-h-[calc(100vh-140px)] md:min-h-0 md:h-full md:border-0 md:p-0 md:flex md:flex-col">
       <ScrollArea className="w-full pr-4 pb-28 md:pr-6 md:pb-4 md:flex-1 md:overflow-y-auto">
@@ -620,22 +632,6 @@ export function ChatAssistantInline() {
           <div ref={scrollRef} />
         </div>
       </ScrollArea>
-      
-      {/* Clear chat button */}
-      <div className="flex items-center gap-2 md:max-w-3xl md:mx-auto md:w-full">
-        {messages.length > 0 && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={clearChatHistory}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <Trash2 className="h-4 w-4" />
-            <span className="text-xs">Clear chat</span>
-          </Button>
-        )}
-      </div>
       
       {/* Input form */}
       <form

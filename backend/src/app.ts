@@ -32,18 +32,41 @@ const createApp = (): Application => {
   // Initialize Passport for OAuth
   app.use(passport.initialize());
 
-  // Rate limiting
-  const limiter = rateLimit({
+  // Rate limiting - separate limiters for different endpoints
+  const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: process.env.NODE_ENV === 'development' ? 1000 : 100, // Higher limit for development
+    max: process.env.NODE_ENV === 'development' ? 5000 : 500, // Much higher limits
     message: { 
       success: false, 
       message: 'Too many requests from this IP, please try again later.' 
     },
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    standardHeaders: true,
+    legacyHeaders: false,
+    // Skip rate limiting for certain paths
+    skip: (req) => {
+      // Don't rate limit health checks
+      return req.path === '/api/health';
+    },
   });
-  app.use('/api/', limiter);
+
+  // Stricter limiter for auth endpoints to prevent brute force
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: process.env.NODE_ENV === 'development' ? 100 : 20, // 20 login attempts per 15 min
+    message: { 
+      success: false, 
+      message: 'Too many login attempts from this IP, please try again in 15 minutes.' 
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // Apply general limiter to all API routes
+  app.use('/api/', generalLimiter);
+  
+  // Apply stricter limiter to auth login/signup routes
+  app.use('/api/auth/login', authLimiter);
+  app.use('/api/auth/signup', authLimiter);
 
   // Body parsing middleware
   app.use(express.json({ limit: '10mb' }));
