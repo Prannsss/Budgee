@@ -353,31 +353,33 @@ function AllocationCard({
   };
 
   return (
-    <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-      <div className="flex items-center gap-4 flex-1">
-        <div className={`p-3 rounded-full ${
+    <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors gap-3">
+      <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+        <div className={`p-2 md:p-3 rounded-full flex-shrink-0 ${
           allocation.type === 'deposit' 
             ? 'bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-400' 
             : 'bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
         }`}>
           {allocation.type === 'deposit' ? (
-            <ArrowUpCircle className="h-5 w-5" />
+            <ArrowUpCircle className="h-4 w-4 md:h-5 md:w-5" />
           ) : (
-            <ArrowDownCircle className="h-5 w-5" />
+            <ArrowDownCircle className="h-4 w-4 md:h-5 md:w-5" />
           )}
         </div>
-        <div className="flex-1">
-          <p className="font-semibold">{allocation.description}</p>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            <span>From {accountName}</span>
-            <span>•</span>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold truncate" title={allocation.description}>
+            {allocation.description}
+          </p>
+          <div className="flex flex-col md:flex-row md:flex-wrap gap-x-4 gap-y-0.5 text-xs md:text-sm text-muted-foreground">
+            <span className="truncate">From {accountName}</span>
+            <span className="hidden md:inline">•</span>
             <span>{formatDate(allocation.date)}</span>
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
         <div className="text-right">
-          <p className={`text-lg font-semibold ${
+          <p className={`text-sm md:text-lg font-semibold whitespace-nowrap ${
             allocation.type === 'deposit' ? 'text-green-600' : 'text-blue-600'
           }`}>
             {allocation.type === 'deposit' ? '+' : '-'}{formatCurrency(allocation.amount)}
@@ -389,6 +391,7 @@ function AllocationCard({
         <Button
           variant="ghost"
           size="icon"
+          className="h-8 w-8 flex-shrink-0"
           onClick={() => onDelete(allocation)}
         >
           <Trash2 className="h-4 w-4 text-destructive" />
@@ -402,20 +405,20 @@ function SkeletonAllocationList() {
   return (
     <div className="space-y-3">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="flex items-center justify-between p-4 rounded-lg border bg-card">
-          <div className="flex items-center gap-4 flex-1">
-            <Skeleton className="h-10 w-10 rounded-full" />
-            <div className="space-y-2 flex-1">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-24" />
+        <div key={i} className="flex items-center justify-between p-4 rounded-lg border bg-card gap-3">
+          <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+            <Skeleton className="h-9 w-9 md:h-11 md:w-11 rounded-full flex-shrink-0" />
+            <div className="space-y-2 flex-1 min-w-0">
+              <Skeleton className="h-4 w-3/4 max-w-[200px]" />
+              <Skeleton className="h-3 w-1/2 max-w-[150px]" />
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right space-y-1">
-              <Skeleton className="h-5 w-20 ml-auto" />
-              <Skeleton className="h-3 w-12 ml-auto" />
+          <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
+            <div className="text-right space-y-1.5">
+              <Skeleton className="h-5 w-20 md:w-24 ml-auto" />
+              <Skeleton className="h-5 w-14 ml-auto" />
             </div>
-            <Skeleton className="h-8 w-8 rounded-md" />
+            <Skeleton className="h-8 w-8 rounded-md flex-shrink-0" />
           </div>
         </div>
       ))}

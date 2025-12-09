@@ -629,7 +629,7 @@ export function ChatAssistantInline() {
             variant="ghost"
             size="sm"
             onClick={clearChatHistory}
-            className="hidden md:flex items-center gap-2 text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
           >
             <Trash2 className="h-4 w-4" />
             <span className="text-xs">Clear chat</span>

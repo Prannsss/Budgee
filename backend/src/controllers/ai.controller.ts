@@ -10,7 +10,11 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 let genAI: GoogleGenerativeAI | null = null;
 
 // Use a stable model with better rate limits
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const GEMINI_MODEL = 'gemini-1.5-flash';
+
+// Simple in-memory cache to reduce API calls
+const responseCache = new Map<string, { answer: string; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
 
 const initializeAI = () => {
   if (!genAI && process.env.GEMINI_API_KEY) {
@@ -22,11 +26,17 @@ const initializeAI = () => {
 // Helper to delay execution
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Retry wrapper for API calls
+// Generate a cache key from the question and financial data summary
+const generateCacheKey = (question: string, totalIncome: number, totalExpenses: number): string => {
+  const normalizedQuestion = question.toLowerCase().trim();
+  return `${normalizedQuestion}_${Math.round(totalIncome)}_${Math.round(totalExpenses)}`;
+};
+
+// Retry wrapper for API calls with better exponential backoff
 async function withRetry<T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
-  baseDelay: number = 1000
+  baseDelay: number = 2000
 ): Promise<T> {
   let lastError: Error | null = null;
   
@@ -36,10 +46,16 @@ async function withRetry<T>(
     } catch (error: any) {
       lastError = error;
       
-      // Check if it's a rate limit error (429)
-      if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('quota')) {
-        const waitTime = baseDelay * Math.pow(2, attempt); // Exponential backoff
-        console.log(`[AI Controller] Rate limited, waiting ${waitTime}ms before retry ${attempt + 1}/${maxRetries}`);
+      // Check if it's a rate limit error (429) or resource exhausted
+      const isRateLimitError = error?.status === 429 || 
+        error?.message?.includes('429') || 
+        error?.message?.includes('quota') ||
+        error?.message?.includes('RESOURCE_EXHAUSTED') ||
+        error?.message?.includes('Too Many Requests');
+      
+      if (isRateLimitError && attempt < maxRetries - 1) {
+        const waitTime = baseDelay * Math.pow(2, attempt) + Math.random() * 1000; // Add jitter
+        console.log(`[AI Controller] Rate limited, waiting ${Math.round(waitTime)}ms before retry ${attempt + 1}/${maxRetries}`);
         await delay(waitTime);
         continue;
       }
@@ -104,6 +120,18 @@ export const answerFinanceQuestion = async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         error: 'Financial data is required',
+      });
+    }
+
+    // Check cache first for similar questions
+    const cacheKey = generateCacheKey(question, financialData.totalIncome, financialData.totalExpenses);
+    const cached = responseCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
+      console.log('[AI Controller] Returning cached response for:', question);
+      return res.status(200).json({
+        success: true,
+        answer: cached.answer,
+        cached: true,
       });
     }
 
@@ -207,6 +235,19 @@ Answer as their friendly money buddy (NOT as a data report):`;
 
     console.log('[AI Controller] Successfully generated response');
 
+    // Cache the response for future similar questions
+    responseCache.set(cacheKey, { answer, timestamp: Date.now() });
+    
+    // Clean up old cache entries periodically
+    if (responseCache.size > 100) {
+      const now = Date.now();
+      for (const [key, value] of responseCache.entries()) {
+        if (now - value.timestamp > CACHE_TTL) {
+          responseCache.delete(key);
+        }
+      }
+    }
+
     // Return successful response
     return res.status(200).json({
       success: true,
@@ -224,7 +265,7 @@ Answer as their friendly money buddy (NOT as a data report):`;
     }
 
     // Check for rate limit errors
-    if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('quota') || error?.message?.includes('Too Many Requests')) {
+    if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('quota') || error?.message?.includes('Too Many Requests') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
       return res.status(429).json({
         success: false,
         error: 'AI service is temporarily busy. Please wait a moment and try again.',

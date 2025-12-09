@@ -32,21 +32,21 @@ export default function ChatPage() {
           
           {/* Quick Financial Summary */}
           {user && !isLoading && (
-            <div className="flex overflow-x-auto pb-2 md:pb-0 gap-3 justify-center md:justify-end no-scrollbar">
-              <div className="flex-shrink-0 flex items-center gap-2 rounded-full bg-green-500/10 px-4 py-2 text-sm font-medium border border-green-500/20">
-                <TrendingUp className="h-4 w-4 text-green-600" />
+            <div className="flex flex-wrap gap-2 justify-start md:justify-end">
+              <div className="flex items-center gap-2 rounded-full bg-green-500/10 px-3 py-1.5 text-xs md:text-sm font-medium border border-green-500/20">
+                <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-green-600" />
                 <span className="text-green-700 dark:text-green-400">
                   Income: ₱{totals.totalIncome.toLocaleString()}
                 </span>
               </div>
-              <div className="flex-shrink-0 flex items-center gap-2 rounded-full bg-red-500/10 px-4 py-2 text-sm font-medium border border-red-500/20">
-                <Wallet className="h-4 w-4 text-red-600" />
+              <div className="flex items-center gap-2 rounded-full bg-red-500/10 px-3 py-1.5 text-xs md:text-sm font-medium border border-red-500/20">
+                <Wallet className="h-3 w-3 md:h-4 md:w-4 text-red-600" />
                 <span className="text-red-700 dark:text-red-400">
                   Expenses: ₱{totals.totalExpenses.toLocaleString()}
                 </span>
               </div>
-              <div className="flex-shrink-0 flex items-center gap-2 rounded-full bg-blue-500/10 px-4 py-2 text-sm font-medium border border-blue-500/20">
-                <PiggyBank className="h-4 w-4 text-blue-600" />
+              <div className="flex items-center gap-2 rounded-full bg-blue-500/10 px-3 py-1.5 text-xs md:text-sm font-medium border border-blue-500/20">
+                <PiggyBank className="h-3 w-3 md:h-4 md:w-4 text-blue-600" />
                 <span className="text-blue-700 dark:text-blue-400">
                   Savings: ₱{totals.savings.toLocaleString()}
                 </span>
