@@ -49,7 +49,7 @@ export type SavingsAllocation = {
   type: 'deposit' | 'withdrawal'; // deposit to savings or withdrawal from savings
 };
 
-export type PlanType = 'Free' | 'Basic' | 'Premium';
+export type PlanType = 'Free' | 'Budgeet' | 'Premium';
 
 export type Subscription = {
   id: string;

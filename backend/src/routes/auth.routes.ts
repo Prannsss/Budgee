@@ -9,6 +9,7 @@ import {
   verifyEmail,
   resendVerification,
   deleteAccount,
+  refreshAccessToken,
 } from '../controllers/auth.controller';
 import { googleCallback, facebookCallback } from '../controllers/oauth.controller';
 import { authenticateToken } from '../middlewares/auth.middleware';
@@ -23,6 +24,7 @@ router.post('/signup', validateRequest(signupValidator), signup);
 router.post('/login', validateRequest(loginValidator), login);
 router.post('/verify-email', verifyEmail);
 router.post('/resend-verification', resendVerification);
+router.post('/refresh-token', refreshAccessToken);
 
 // OAuth routes
 // Google OAuth

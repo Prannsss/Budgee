@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { CreditCard, Lock, Calendar, User } from "lucide-react";
 import { useSubscription } from "@/contexts/subscription-context";
 import { useToast } from "@/hooks/use-toast";
+import type { PlanType } from "@/lib/types";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -78,7 +79,7 @@ export function PaymentModal({ isOpen, onClose, selectedPlan }: PaymentModalProp
       
       // Update the plan on backend using plan ID
       if (selectedPlan) {
-        await setCurrentPlan(selectedPlan.name as 'Free' | 'Budgeet' | 'Premium');
+        await setCurrentPlan(selectedPlan.name as PlanType);
       }
       
       setIsProcessing(false);

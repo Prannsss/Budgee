@@ -517,7 +517,7 @@ export class TransactionService {
         'Net worth tracking',
         'Monthly spending summary'
       ],
-      'Basic': [
+      'Budgeet': [
         'Everything in Free',
         'Connect up to 5 accounts',
         'Advanced categorization rules',
@@ -526,7 +526,7 @@ export class TransactionService {
         'Budget goals and alerts'
       ],
       'Premium': [
-        'Everything in Basic',
+        'Everything in Budgeet',
         'Unlimited account connections',
         'Full AI financial assistant access',
         'Investment and savings tracking',

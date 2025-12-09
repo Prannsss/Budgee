@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
 import { supabase } from '../config/supabase';
 import { hashPassword, comparePassword, sanitizeUser, generateOTP, getOTPExpiration, hasAIBuddyAccess } from '../utils/helpers';
 import { generateToken, generateRefreshToken } from '../middlewares/auth.middleware';
@@ -646,6 +647,90 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response) =>
     res.status(500).json({
       success: false,
       message: 'Failed to delete account. Please try again later.',
+    });
+  }
+});
+
+/**
+ * Refresh access token using refresh token
+ * POST /api/auth/refresh-token
+ */
+export const refreshAccessToken = asyncHandler(async (req: Request, res: Response) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    res.status(400).json({
+      success: false,
+      message: 'Refresh token is required',
+    });
+    return;
+  }
+
+  const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+  if (!secret) {
+    res.status(500).json({
+      success: false,
+      message: 'Server configuration error',
+    });
+    return;
+  }
+
+  try {
+    // Verify the refresh token
+    const decoded = jwt.verify(refreshToken, secret) as { id: number };
+
+    // Fetch user to ensure they still exist and are active
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select(`
+        *,
+        plan:plans(*)
+      `)
+      .eq('id', decoded.id)
+      .eq('is_active', true)
+      .single();
+
+    if (userError || !user) {
+      res.status(401).json({
+        success: false,
+        message: 'User not found or inactive',
+      });
+      return;
+    }
+
+    // Generate new tokens
+    const newToken = generateToken({
+      id: user.id,
+      email: user.email,
+      plan_id: user.plan_id,
+    });
+    const newRefreshToken = generateRefreshToken(user.id);
+
+    // Return new tokens and user data
+    const userData = sanitizeUser(user);
+
+    res.json({
+      success: true,
+      message: 'Token refreshed successfully',
+      data: {
+        user: userData,
+        token: newToken,
+        refreshToken: newRefreshToken,
+      },
+    });
+  } catch (error) {
+    if (error instanceof jwt.JsonWebTokenError) {
+      res.status(401).json({
+        success: false,
+        message: 'Invalid or expired refresh token',
+      });
+      return;
+    }
+
+    console.error('Token refresh error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to refresh token',
     });
   }
 });

@@ -51,6 +51,27 @@ export class TokenManager {
   static isAuthenticated(): boolean {
     return !!this.getToken();
   }
+
+  /**
+   * Check if token is expired or about to expire (within 5 minutes)
+   */
+  static isTokenExpiringSoon(): boolean {
+    const token = this.getToken();
+    if (!token) return true;
+    
+    try {
+      // Decode JWT payload (base64)
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const expiryTime = payload.exp * 1000; // Convert to milliseconds
+      const currentTime = Date.now();
+      const fiveMinutes = 5 * 60 * 1000;
+      
+      // Return true if token expires within 5 minutes
+      return expiryTime - currentTime < fiveMinutes;
+    } catch {
+      return true; // If we can't decode, assume expired
+    }
+  }
 }
 
 // ==================== HTTP Client ====================
@@ -58,20 +79,91 @@ export class TokenManager {
 interface RequestOptions extends RequestInit {
   body?: any;
   requiresAuth?: boolean;
+  skipRefresh?: boolean; // Flag to prevent infinite refresh loops
 }
 
 class HttpClient {
   private baseUrl: string;
+  private isRefreshing: boolean = false;
+  private refreshPromise: Promise<boolean> | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
+  }
+
+  /**
+   * Attempt to refresh the access token using the refresh token
+   */
+  private async refreshToken(): Promise<boolean> {
+    const refreshToken = TokenManager.getRefreshToken();
+    if (!refreshToken) {
+      return false;
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/api/auth/refresh-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.data?.token) {
+        TokenManager.setToken(data.data.token);
+        if (data.data.refreshToken) {
+          TokenManager.setRefreshToken(data.data.refreshToken);
+        }
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Ensure we have a valid token, refreshing if necessary
+   */
+  private async ensureValidToken(): Promise<boolean> {
+    // If token is not expiring soon, we're good
+    if (!TokenManager.isTokenExpiringSoon()) {
+      return true;
+    }
+
+    // If already refreshing, wait for the existing refresh
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    // Start refreshing
+    this.isRefreshing = true;
+    this.refreshPromise = this.refreshToken().finally(() => {
+      this.isRefreshing = false;
+      this.refreshPromise = null;
+    });
+
+    return this.refreshPromise;
   }
 
   private async request<T>(
     endpoint: string, 
     options: RequestOptions = {}
   ): Promise<T> {
-    const { body, requiresAuth = true, headers = {}, ...restOptions } = options;
+    const { body, requiresAuth = true, skipRefresh = false, headers = {}, ...restOptions } = options;
+
+    // Try to refresh token before making authenticated requests (unless skipping)
+    if (requiresAuth && !skipRefresh && TokenManager.getToken()) {
+      await this.ensureValidToken();
+    }
 
     const config: RequestInit = {
       ...restOptions,
@@ -97,10 +189,42 @@ class HttpClient {
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, config);
 
-      // Handle unauthorized errors
+      // Handle unauthorized errors - try to refresh token first
+      if (response.status === 401 && requiresAuth && !skipRefresh) {
+        // Try to refresh the token
+        const refreshed = await this.refreshToken();
+        
+        if (refreshed) {
+          // Retry the request with the new token
+          const newToken = TokenManager.getToken();
+          if (newToken) {
+            (config.headers as Record<string, string>)['Authorization'] = `Bearer ${newToken}`;
+          }
+          
+          const retryResponse = await fetch(`${this.baseUrl}${endpoint}`, config);
+          
+          if (retryResponse.ok) {
+            const contentType = retryResponse.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+              const text = await retryResponse.text();
+              console.error('Non-JSON response received:', text.substring(0, 200));
+              throw new Error('Server returned an invalid response.');
+            }
+            return await retryResponse.json();
+          }
+        }
+        
+        // Token refresh failed or retry failed - clear tokens and redirect
+        TokenManager.clearTokens();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('auth:unauthorized'));
+        }
+        throw new Error('Session expired. Please login again.');
+      }
+      
+      // Handle other unauthorized errors (without refresh attempt)
       if (response.status === 401) {
         TokenManager.clearTokens();
-        // Redirect to login or dispatch logout event
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('auth:unauthorized'));
         }
@@ -943,6 +1067,7 @@ export interface UserProfile {
     description?: string;
     features: string[];
   };
+  hasAIBuddyAccess?: boolean;
 }
 
 export interface UpdateProfileInput {
@@ -955,8 +1080,12 @@ export class UserAPI {
    * Get current user profile with plan details
    */
   static async getProfile(): Promise<UserProfile> {
-    const response = await httpClient.get<ApiResponse<{ user: UserProfile }>>('/api/auth/me');
-    return response.data.user;
+    const response = await httpClient.get<ApiResponse<{ user: UserProfile; hasAIBuddyAccess?: boolean }>>('/api/auth/me');
+    // Merge hasAIBuddyAccess from response into user object
+    return {
+      ...response.data.user,
+      hasAIBuddyAccess: response.data.hasAIBuddyAccess,
+    };
   }
 
   /**
