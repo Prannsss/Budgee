@@ -99,7 +99,7 @@ export function InstallPrompt() {
           <div className="space-y-3">
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <Smartphone className="h-4 w-4" />
-              <span>Works offline</span>
+              <span>Easier Access</span>
             </div>
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <Monitor className="h-4 w-4" />
