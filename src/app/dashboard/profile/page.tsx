@@ -309,7 +309,7 @@ export default function ProfilePage() {
 
       {/* Version Info */}
       <div className="text-center">
-        <p className="text-xs text-muted-foreground">Version 1.20.0</p>
+        <p className="text-xs text-muted-foreground">Version 1.11</p>
       </div>
 
       {/* Delete Account Confirmation Dialog */}

@@ -30,6 +30,14 @@ export function StatCard({ title, value, description, icon, isLoading, variant =
     variant === 'expense' ? 'text-red-600' : 
     '';
 
+  // Determine font size based on text length
+  const getTextSizeClass = (text: string) => {
+    const length = text.length;
+    if (length > 20) return 'text-sm sm:text-base';
+    if (length > 15) return 'text-base sm:text-lg';
+    return 'text-2xl';
+  };
+
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -37,7 +45,9 @@ export function StatCard({ title, value, description, icon, isLoading, variant =
         {icon}
       </CardHeader>
       <CardContent>
-        <div className={`text-2xl font-bold ${valueColorClass}`}>{value}</div>
+        <div className={`font-bold ${valueColorClass} ${getTextSizeClass(value)} break-all`}>
+          {value}
+        </div>
         {description && (
           <p className="text-xs text-muted-foreground">{description}</p>
         )}

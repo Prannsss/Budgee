@@ -45,7 +45,12 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         const userProfile = await API.user.getProfile();
         
         if (userProfile.plan) {
-          setUserPlan(userProfile.plan);
+          // Include subscription_expires_at from the user object
+          setUserPlan({
+            ...userProfile.plan,
+            subscription_expires_at: userProfile.subscription_expires_at,
+            subscription_upgraded_at: userProfile.subscription_upgraded_at
+          });
           setCurrentPlanState(userProfile.plan.name as PlanType);
         } else {
           // Fallback to Free plan if no plan info
@@ -92,7 +97,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       // Refresh user profile to get updated plan
       const userProfile = await API.user.getProfile();
       if (userProfile.plan) {
-        setUserPlan(userProfile.plan);
+        setUserPlan({
+          ...userProfile.plan,
+          subscription_expires_at: userProfile.subscription_expires_at,
+          subscription_upgraded_at: userProfile.subscription_upgraded_at
+        });
         setCurrentPlanState(userProfile.plan.name as PlanType);
       }
       

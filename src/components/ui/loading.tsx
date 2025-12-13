@@ -8,17 +8,8 @@ interface AppLoadingProps {
 export function AppLoading({ message = "Loading...", className }: AppLoadingProps) {
   return (
     <div className={`flex flex-col items-center justify-center min-h-screen space-y-4 ${className}`}>
-      <div className="flex items-center space-x-2">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <span className="text-muted-foreground font-medium">{message}</span>
-      </div>
-      
-      {/* Optional skeleton preview */}
-      <div className="w-full max-w-md space-y-3 mt-8">
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-4 w-1/2" />
-        <Skeleton className="h-4 w-5/6" />
-      </div>
+      <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+      <span className="text-muted-foreground font-medium">{message}</span>
     </div>
   );
 }

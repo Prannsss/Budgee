@@ -8,9 +8,11 @@ import { useState } from "react";
 import { PaymentModal } from "@/components/payment/payment-modal";
 import { useSubscription } from "@/contexts/subscription-context";
 import { pricingPlans, PricingPlan } from "@/lib/pricing-plans";
+import { useAuth } from "@/contexts/auth-context";
 
 export default function YourPlanPage() {
   const { currentPlan, userPlan, isLoading } = useSubscription();
+  const { user } = useAuth();
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
 
@@ -55,21 +57,24 @@ export default function YourPlanPage() {
               <div className="h-2 w-2 rounded-full bg-green-500"></div>
               <span className="font-medium">You are currently on the <strong>{currentPlan} Plan</strong></span>
             </div>
-            {userPlan && userPlan.next_billing_date && (
-              <div className="text-sm text-muted-foreground">
-                Next billing: {new Date(userPlan.next_billing_date).toLocaleDateString()}
-              </div>
-            )}
           </div>
           <div className="flex flex-col sm:flex-row sm:gap-6 mt-2 text-sm text-muted-foreground">
-            {userPlan && userPlan.created_at && (
+            {user && user.createdAt && (
               <div>
-                Member since: {new Date(userPlan.created_at).toLocaleDateString()}
+                Member since: {new Date(user.createdAt).toLocaleDateString('en-US', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
               </div>
             )}
-            {userPlan && userPlan.subscription_expires_at && (
+            {userPlan && userPlan.subscription_expires_at && currentPlan !== 'Free' && (
               <div>
-                Expires on: {new Date(userPlan.subscription_expires_at).toLocaleDateString()}
+                Plan expires: {new Date(userPlan.subscription_expires_at).toLocaleDateString('en-US', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
               </div>
             )}
           </div>

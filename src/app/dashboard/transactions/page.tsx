@@ -298,7 +298,7 @@ export default function TransactionsPage() {
   }, [tab, transactions]);
 
   return (
-    <div className="space-y-6 px-4 md:px-0">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight font-headline">
           Transactions

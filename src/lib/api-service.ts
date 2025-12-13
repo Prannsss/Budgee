@@ -1105,6 +1105,8 @@ export interface UserProfile {
   oauth_provider?: string;
   oauth_id?: string;
   last_login?: string;
+  subscription_upgraded_at?: string;
+  subscription_expires_at?: string;
   created_at: string;
   updated_at: string;
   plan?: {

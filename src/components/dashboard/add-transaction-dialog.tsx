@@ -105,6 +105,28 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
       return;
     }
 
+    // Validate amount limit (1 million)
+    const numAmount = parseFloat(amount);
+    if (numAmount > 1000000) {
+      toast({
+        title: "Amount Too Large",
+        description: "Transaction amount cannot exceed ₱1,000,000.",
+        variant: "destructive",
+      });
+      setIsAdding(false);
+      return;
+    }
+
+    if (numAmount <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Amount must be greater than zero.",
+        variant: "destructive",
+      });
+      setIsAdding(false);
+      return;
+    }
+
     try {
       // Find the selected category object to get its ID
       const selectedCategory = categories.find(cat => cat.name === category);
@@ -213,11 +235,11 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="Income" id="income" />
-                  <Label htmlFor="income">Income</Label>
+                  <Label htmlFor="income" className="cursor-pointer">Income</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="Expense" id="expense" />
-                  <Label htmlFor="expense">Expense</Label>
+                  <Label htmlFor="expense" className="cursor-pointer">Expense</Label>
                 </div>
               </RadioGroup>
             </div>
@@ -229,10 +251,24 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
                 type="number"
                 placeholder="Enter amount"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string for deletion
+                  if (value === '') {
+                    setAmount('');
+                    return;
+                  }
+                  // Prevent values greater than 1 million
+                  const numValue = parseFloat(value);
+                  if (!isNaN(numValue) && numValue <= 1000000) {
+                    setAmount(value);
+                  }
+                }}
                 min="0"
+                max="1000000"
                 step="0.01"
               />
+              <p className="text-xs text-muted-foreground">Maximum amount: ₱1,000,000</p>
             </div>
 
             <div className="space-y-2">

@@ -150,6 +150,15 @@ export default function DashboardPage() {
     const safeNumber = Number(n) || 0;
     return formatter.format(safeNumber);
   }, [formatter]);
+
+  // Helper to get responsive text size based on formatted value length
+  const getResponsiveTextSize = useCallback((value: string) => {
+    const length = value.length;
+    if (length > 20) return 'text-base sm:text-lg md:text-xl';
+    if (length > 15) return 'text-xl sm:text-2xl';
+    return 'text-3xl';
+  }, []);
+
   return (
     <div className="flex flex-col gap-6">
       <Card className="shadow-lg bg-primary text-primary-foreground">
@@ -165,9 +174,9 @@ export default function DashboardPage() {
             >
               {showAmounts ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
             </Button>
-            <div className="text-center">
+            <div className="text-center flex-1 px-2">
               <p className="text-sm text-primary-foreground/80">Net Worth</p>
-              <p className="text-3xl font-bold tracking-tight">
+              <p className={`${getResponsiveTextSize(fmt(netWorth))} font-bold tracking-tight break-all`}>
                 {showAmounts ? fmt(netWorth) : "••••••"}
               </p>
             </div>
@@ -185,15 +194,15 @@ export default function DashboardPage() {
           <div className="grid grid-cols-3 gap-4 text-center text-sm mt-6">
             <div>
               <p className="text-primary-foreground/80">Assets</p>
-              <p className="font-semibold">{showAmounts ? fmt(assets) : "••••"}</p>
+              <p className="font-semibold break-all text-xs sm:text-sm">{showAmounts ? fmt(assets) : "••••"}</p>
             </div>
             <div>
               <p className="text-primary-foreground/80">Savings</p>
-              <p className="font-semibold">{showAmounts ? fmt(savings) : "••••"}</p>
+              <p className="font-semibold break-all text-xs sm:text-sm">{showAmounts ? fmt(savings) : "••••"}</p>
             </div>
             <div>
               <p className="text-primary-foreground/80">Liabilities</p>
-              <p className="font-semibold">{showAmounts ? fmt(liabilities) : "••••"}</p>
+              <p className="font-semibold break-all text-xs sm:text-sm">{showAmounts ? fmt(liabilities) : "••••"}</p>
             </div>
           </div>
         </CardContent>
