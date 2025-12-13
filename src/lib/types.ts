@@ -16,6 +16,7 @@ export type Transaction = {
   status: 'pending' | 'completed' | 'failed';
   accountId: string; // references Account.id
   notes?: string; // Optional notes field
+  isDemo?: boolean; // Flag for demo/simulated transactions
 };
 
 export type Institution = {
@@ -28,6 +29,10 @@ export type Institution = {
   is_supported: boolean;
 };
 
+// Provider types for account connections
+export type AccountProvider = 'demo' | 'manual' | 'bank';
+export type ConnectionStatus = 'simulated' | 'connected' | 'disconnected' | 'pending';
+
 export type Account = {
   id: string;
   name: string;
@@ -37,6 +42,13 @@ export type Account = {
   institutionId?: number; // Optional: links to institutions table
   institutionName?: string; // Display name of the institution
   institutionLogo?: string; // Logo URL from institutions
+  // Demo/Manual account flags
+  isDemo?: boolean; // True for simulated demo accounts
+  isManual?: boolean; // True for manually entered accounts
+  provider?: AccountProvider; // Source of the account data
+  connectionStatus?: ConnectionStatus; // Current connection state
+  nickname?: string; // User-defined nickname for the account
+  createdAt?: string; // When the account was created
 };
 
 export type SavingsAllocation = {

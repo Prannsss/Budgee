@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { API } from '@/lib/api-service';
 import { useAuth } from '@/contexts/auth-context';
 import type { Transaction, Account } from '@/lib/types';
+import { getDemoAccounts } from '@/lib/demo-bank-service';
 
 export function useUserData() {
   const { user } = useAuth();
@@ -23,14 +24,21 @@ export function useUserData() {
 
     try {
       setIsLoading(true);
-      const [userTransactions, userAccounts, dashboardStats] = await Promise.all([
+      const [userTransactions, userAccounts, dashboardStats, demoAccounts] = await Promise.all([
         API.transactions.getAll(),
         API.accounts.getAll(),
         API.dashboard.getSummary(),
+        Promise.resolve(getDemoAccounts()),
       ]);
 
       setTransactions(Array.isArray(userTransactions) ? userTransactions : []);
-      setAccounts(Array.isArray(userAccounts) ? userAccounts : []);
+      
+      // Combine API accounts and demo accounts
+      const allAccounts = [
+        ...(Array.isArray(userAccounts) ? userAccounts : []),
+        ...(Array.isArray(demoAccounts) ? demoAccounts : [])
+      ];
+      setAccounts(allAccounts);
       setTotals({
         totalIncome: Number(dashboardStats?.totalIncome) || 0,
         totalExpenses: Number(dashboardStats?.totalExpenses) || 0,

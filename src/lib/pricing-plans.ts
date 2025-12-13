@@ -19,8 +19,7 @@ export const pricingPlans: PricingPlan[] = [
     period: "/ month",
     description: "For individuals just starting with budgeting.",
     features: [
-      "Connect 1 bank account",
-      "Connect 1 e-wallet",
+      "Connect up to 2 accounts",
       "Basic transaction categorization",
       "Net worth tracking",
       "Monthly spending summary",

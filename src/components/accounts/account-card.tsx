@@ -1,12 +1,13 @@
 import { Account } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
-import { Banknote, Landmark, MoreVertical, Wallet } from "lucide-react";
+import { Banknote, Landmark, MoreVertical, Wallet, FlaskConical } from "lucide-react";
 import { Button } from "../ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import Image from "next/image";
 
 type AccountCardProps = {
     account: Account;
+    onDelete?: (accountId: string) => void;
 }
 
 const iconMap = {
@@ -15,9 +16,22 @@ const iconMap = {
     Cash: <Banknote className="h-6 w-6 text-muted-foreground" />,
 }
 
-export function AccountCard({ account }: AccountCardProps) {
+/**
+ * Demo Badge Component
+ * Clearly indicates that an account is simulated/demo data
+ */
+function DemoBadge() {
     return (
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
+        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+            <FlaskConical className="h-3 w-3" />
+            Demo
+        </span>
+    );
+}
+
+export function AccountCard({ account, onDelete }: AccountCardProps) {
+    return (
+        <Card className={`shadow-sm hover:shadow-md transition-shadow ${account.isDemo ? 'border-amber-200 dark:border-amber-800/50' : ''}`}>
             <CardHeader className="p-4 md:p-6 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                 <div className="flex w-full items-start gap-3">
                     {/* Display institution logo if available, otherwise show icon */}
@@ -28,8 +42,11 @@ export function AccountCard({ account }: AccountCardProps) {
                     ) : (
                         iconMap[account.type]
                     )}
-                    <div className="min-w-0">
-                        <CardTitle className="truncate text-base md:text-lg">{account.name}</CardTitle>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                            <CardTitle className="truncate text-base md:text-lg">{account.name}</CardTitle>
+                            {account.isDemo && <DemoBadge />}
+                        </div>
                         <CardDescription className="truncate text-xs md:text-sm">
                             {account.institutionName || account.type} 
                             {account.lastFour && ` •••• ${account.lastFour}`}
@@ -51,10 +68,30 @@ export function AccountCard({ account }: AccountCardProps) {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Refresh</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
-                                Disconnect
-                            </DropdownMenuItem>
+                            {account.isDemo ? (
+                                <>
+                                    <DropdownMenuItem disabled className="text-muted-foreground text-xs">
+                                        Demo accounts cannot sync
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                        className="text-destructive"
+                                        onClick={() => onDelete?.(account.id)}
+                                    >
+                                        Remove Demo Account
+                                    </DropdownMenuItem>
+                                </>
+                            ) : account.type === 'Cash' ? (
+                                <DropdownMenuItem disabled className="text-muted-foreground text-xs">
+                                    Default cash account
+                                </DropdownMenuItem>
+                            ) : (
+                                <>
+                                    <DropdownMenuItem>Refresh</DropdownMenuItem>
+                                    <DropdownMenuItem className="text-destructive">
+                                        Disconnect
+                                    </DropdownMenuItem>
+                                </>
+                            )}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -66,7 +103,9 @@ export function AccountCard({ account }: AccountCardProps) {
                         currency: "PHP",
                     }).format(account.balance)}
                 </div>
-                <p className="hidden text-xs text-muted-foreground md:block">Current balance</p>
+                <p className="hidden text-xs text-muted-foreground md:block">
+                    {account.isDemo ? 'Simulated balance' : 'Current balance'}
+                </p>
             </CardContent>
         </Card>
     );

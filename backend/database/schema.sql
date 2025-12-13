@@ -353,14 +353,13 @@ INSERT INTO plans (name, price, max_wallets, max_accounts, ai_enabled, ads_enabl
 (
   'Free', 
   0.00, 
-  1, 
-  1, 
+  2, 
+  2, 
   FALSE, 
   TRUE, 
   'For individuals just starting with budgeting.',
   ARRAY[
-    'Connect 1 bank account',
-    'Connect 1 e-wallet', 
+    'Connect up to 2 accounts',
     'Basic transaction categorization',
     'Net worth tracking',
     'Monthly spending summary'
@@ -386,14 +385,14 @@ INSERT INTO plans (name, price, max_wallets, max_accounts, ai_enabled, ads_enabl
 (
   'Premium', 
   399.00, 
-  10, 
-  15, 
+  999, 
+  999, 
   TRUE, 
   FALSE, 
   'Complete financial management suite.',
   ARRAY[
     'Everything in Budgeet',
-    'Connect up to 15 accounts',
+    'Unlimited account connections',
     'Advanced AI insights and predictions',
     'Multi-currency support',
     'Investment tracking',
@@ -731,7 +730,9 @@ CREATE TRIGGER transaction_spending_limit_trigger
 -- User Dashboard Summary View (FIXED: No JOIN multiplication)
 -- This view calculates financial metrics accurately by using separate subqueries
 -- to avoid the JOIN multiplication problem that inflates totals.
-CREATE OR REPLACE VIEW user_dashboard_summary AS
+-- Using SECURITY INVOKER (default) to respect RLS policies of the querying user
+CREATE OR REPLACE VIEW user_dashboard_summary
+WITH (security_invoker = true) AS
 SELECT 
     u.id as user_id,
     u.name,
@@ -792,7 +793,9 @@ LEFT JOIN (
 WHERE u.is_active = TRUE;
 
 -- Monthly Transaction Summary View
-CREATE OR REPLACE VIEW monthly_transaction_summary AS
+-- Using SECURITY INVOKER to respect RLS policies of the querying user
+CREATE OR REPLACE VIEW monthly_transaction_summary
+WITH (security_invoker = true) AS
 SELECT 
     user_id,
     DATE_TRUNC('month', date) as month,
@@ -805,7 +808,9 @@ GROUP BY user_id, DATE_TRUNC('month', date)
 ORDER BY user_id, month DESC;
 
 -- Account Balance Summary View
-CREATE OR REPLACE VIEW account_balance_summary AS
+-- Using SECURITY INVOKER to respect RLS policies of the querying user
+CREATE OR REPLACE VIEW account_balance_summary
+WITH (security_invoker = true) AS
 SELECT 
     a.user_id,
     a.type as account_type,
@@ -815,6 +820,315 @@ SELECT
 FROM accounts a
 WHERE a.is_active = TRUE
 GROUP BY a.user_id, a.type;
+
+-- ================================================
+-- Row Level Security (RLS) Configuration
+-- ================================================
+-- Enable RLS on all tables for Supabase security compliance
+-- This ensures users can only access their own data
+
+-- Enable RLS on all tables
+ALTER TABLE plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE institutions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transaction_transfers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE savings_allocations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_pins ENABLE ROW LEVEL SECURITY;
+ALTER TABLE refresh_tokens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE otps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE spending_limits ENABLE ROW LEVEL SECURITY;
+
+-- ================================================
+-- RLS Policies for plans table
+-- Plans are public read-only (everyone can view subscription plans)
+-- ================================================
+CREATE POLICY "Plans are viewable by everyone"
+    ON plans FOR SELECT
+    USING (true);
+
+-- Only service role can modify plans
+CREATE POLICY "Plans are manageable by service role only"
+    ON plans FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- ================================================
+-- RLS Policies for users table
+-- Users can only view and update their own profile
+-- ================================================
+CREATE POLICY "Users can view their own profile"
+    ON users FOR SELECT
+    USING (auth.uid()::text = oauth_id OR id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can update their own profile"
+    ON users FOR UPDATE
+    USING (auth.uid()::text = oauth_id OR id = (auth.jwt() ->> 'user_id')::integer);
+
+-- Service role can manage all users
+CREATE POLICY "Service role can manage all users"
+    ON users FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- ================================================
+-- RLS Policies for institutions table
+-- Institutions are public read-only (reference data)
+-- ================================================
+CREATE POLICY "Institutions are viewable by everyone"
+    ON institutions FOR SELECT
+    USING (true);
+
+CREATE POLICY "Institutions are manageable by service role only"
+    ON institutions FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- ================================================
+-- RLS Policies for accounts table
+-- Users can only access their own accounts
+-- ================================================
+CREATE POLICY "Users can view their own accounts"
+    ON accounts FOR SELECT
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can insert their own accounts"
+    ON accounts FOR INSERT
+    WITH CHECK (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can update their own accounts"
+    ON accounts FOR UPDATE
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can delete their own accounts"
+    ON accounts FOR DELETE
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Service role can manage all accounts"
+    ON accounts FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- ================================================
+-- RLS Policies for categories table
+-- Users can only access their own categories
+-- ================================================
+CREATE POLICY "Users can view their own categories"
+    ON categories FOR SELECT
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can insert their own categories"
+    ON categories FOR INSERT
+    WITH CHECK (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can update their own categories"
+    ON categories FOR UPDATE
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can delete their own categories"
+    ON categories FOR DELETE
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Service role can manage all categories"
+    ON categories FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- ================================================
+-- RLS Policies for transactions table
+-- Users can only access their own transactions
+-- ================================================
+CREATE POLICY "Users can view their own transactions"
+    ON transactions FOR SELECT
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can insert their own transactions"
+    ON transactions FOR INSERT
+    WITH CHECK (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can update their own transactions"
+    ON transactions FOR UPDATE
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can delete their own transactions"
+    ON transactions FOR DELETE
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Service role can manage all transactions"
+    ON transactions FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- ================================================
+-- RLS Policies for transaction_transfers table
+-- Users can only access transfers involving their transactions
+-- ================================================
+CREATE POLICY "Users can view their own transfers"
+    ON transaction_transfers FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM transactions t 
+            WHERE (t.id = from_transaction_id OR t.id = to_transaction_id)
+            AND t.user_id = (auth.jwt() ->> 'user_id')::integer
+        )
+    );
+
+CREATE POLICY "Users can insert their own transfers"
+    ON transaction_transfers FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM transactions t 
+            WHERE t.id = from_transaction_id
+            AND t.user_id = (auth.jwt() ->> 'user_id')::integer
+        )
+    );
+
+CREATE POLICY "Users can delete their own transfers"
+    ON transaction_transfers FOR DELETE
+    USING (
+        EXISTS (
+            SELECT 1 FROM transactions t 
+            WHERE (t.id = from_transaction_id OR t.id = to_transaction_id)
+            AND t.user_id = (auth.jwt() ->> 'user_id')::integer
+        )
+    );
+
+CREATE POLICY "Service role can manage all transfers"
+    ON transaction_transfers FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- ================================================
+-- RLS Policies for savings_allocations table
+-- Users can only access their own savings allocations
+-- ================================================
+CREATE POLICY "Users can view their own savings allocations"
+    ON savings_allocations FOR SELECT
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can insert their own savings allocations"
+    ON savings_allocations FOR INSERT
+    WITH CHECK (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can update their own savings allocations"
+    ON savings_allocations FOR UPDATE
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can delete their own savings allocations"
+    ON savings_allocations FOR DELETE
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Service role can manage all savings allocations"
+    ON savings_allocations FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- ================================================
+-- RLS Policies for user_pins table
+-- Users can only access their own PIN
+-- ================================================
+CREATE POLICY "Users can view their own PIN"
+    ON user_pins FOR SELECT
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can insert their own PIN"
+    ON user_pins FOR INSERT
+    WITH CHECK (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can update their own PIN"
+    ON user_pins FOR UPDATE
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can delete their own PIN"
+    ON user_pins FOR DELETE
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Service role can manage all PINs"
+    ON user_pins FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- ================================================
+-- RLS Policies for refresh_tokens table
+-- Users can only access their own refresh tokens
+-- ================================================
+CREATE POLICY "Users can view their own refresh tokens"
+    ON refresh_tokens FOR SELECT
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can insert their own refresh tokens"
+    ON refresh_tokens FOR INSERT
+    WITH CHECK (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can update their own refresh tokens"
+    ON refresh_tokens FOR UPDATE
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can delete their own refresh tokens"
+    ON refresh_tokens FOR DELETE
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Service role can manage all refresh tokens"
+    ON refresh_tokens FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- ================================================
+-- RLS Policies for otps table
+-- Users can only access their own OTPs
+-- ================================================
+CREATE POLICY "Users can view their own OTPs"
+    ON otps FOR SELECT
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can insert their own OTPs"
+    ON otps FOR INSERT
+    WITH CHECK (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can update their own OTPs"
+    ON otps FOR UPDATE
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can delete their own OTPs"
+    ON otps FOR DELETE
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Service role can manage all OTPs"
+    ON otps FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- ================================================
+-- RLS Policies for activity_logs table
+-- Users can only access their own activity logs
+-- ================================================
+CREATE POLICY "Users can view their own activity logs"
+    ON activity_logs FOR SELECT
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can insert their own activity logs"
+    ON activity_logs FOR INSERT
+    WITH CHECK (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Service role can manage all activity logs"
+    ON activity_logs FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- ================================================
+-- RLS Policies for spending_limits table
+-- Users can only access their own spending limits
+-- ================================================
+CREATE POLICY "Users can view their own spending limits"
+    ON spending_limits FOR SELECT
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can insert their own spending limits"
+    ON spending_limits FOR INSERT
+    WITH CHECK (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can update their own spending limits"
+    ON spending_limits FOR UPDATE
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Users can delete their own spending limits"
+    ON spending_limits FOR DELETE
+    USING (user_id = (auth.jwt() ->> 'user_id')::integer);
+
+CREATE POLICY "Service role can manage all spending limits"
+    ON spending_limits FOR ALL
+    USING (auth.role() = 'service_role');
 
 -- ================================================
 -- Grant Permissions (if needed for specific user)
@@ -952,27 +1266,35 @@ COMMENT ON TABLE spending_limits IS 'User spending limits for Daily, Weekly, and
 --    - Added validate_account_limits() trigger to enforce plan limits
 --    - Clarified transfer transaction handling in update_account_balance()
 --
--- 6. SECURITY:
+-- 6. SECURITY (Supabase RLS Compliance - Dec 2024):
 --    - Added documentation for encryption (account_number: AES-256)
 --    - Added documentation for hashing (password_hash, pin_hash: argon2id recommended)
 --    - Added unique constraint for OAuth provider/ID combination
+--    - ENABLED Row Level Security (RLS) on ALL tables
+--    - Added RLS policies for user data isolation (users can only access their own data)
+--    - Added service_role bypass policies for backend operations
+--    - Plans and institutions tables are public read-only (reference data)
+--    - Views updated with SECURITY INVOKER to respect RLS policies
+--
+-- 7. VIEWS (Security Fix):
+--    - user_dashboard_summary: Added WITH (security_invoker = true)
+--    - monthly_transaction_summary: Added WITH (security_invoker = true)
+--    - account_balance_summary: Added WITH (security_invoker = true)
 -- ================================================
 
 -- ================================================
 -- Security and Constraints
 -- ================================================
 
--- Row Level Security (Optional - Enable if needed)
--- ALTER TABLE users ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE savings_goals ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE savings_allocations ENABLE ROW LEVEL SECURITY;
+-- ================================================
+-- Security and Constraints
+-- ================================================
 
--- Example RLS Policies (Uncomment to enable)
--- CREATE POLICY user_data_policy ON users FOR ALL USING (id = current_user_id());
--- CREATE POLICY account_data_policy ON accounts FOR ALL USING (user_id = current_user_id());
+-- Row Level Security is NOW ENABLED above (see "RLS Policies" section)
+-- All tables have RLS enabled with appropriate policies for:
+-- - Users can only access their own data
+-- - Service role can access all data (for backend operations)
+-- - Plans and Institutions are public read-only (reference data)
 
 -- ================================================
 -- Performance Analysis Queries

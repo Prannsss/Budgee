@@ -10,6 +10,10 @@ import {
   resendVerification,
   deleteAccount,
   refreshAccessToken,
+  forgotPassword,
+  verifyResetCode,
+  resetPassword,
+  changeSignupEmail,
 } from '../controllers/auth.controller';
 import { googleCallback, facebookCallback } from '../controllers/oauth.controller';
 import { authenticateToken } from '../middlewares/auth.middleware';
@@ -25,6 +29,12 @@ router.post('/login', validateRequest(loginValidator), login);
 router.post('/verify-email', verifyEmail);
 router.post('/resend-verification', resendVerification);
 router.post('/refresh-token', refreshAccessToken);
+
+// Password reset routes (public)
+router.post('/forgot-password', forgotPassword);
+router.post('/verify-reset-code', verifyResetCode);
+router.post('/reset-password', resetPassword);
+router.post('/change-signup-email', changeSignupEmail);
 
 // OAuth routes
 // Google OAuth

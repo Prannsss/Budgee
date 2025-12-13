@@ -4,7 +4,7 @@ import { supabase } from '../config/supabase';
 import { hashPassword, comparePassword, sanitizeUser, generateOTP, getOTPExpiration, hasAIBuddyAccess } from '../utils/helpers';
 import { generateToken, generateRefreshToken } from '../middlewares/auth.middleware';
 import { asyncHandler } from '../middlewares/error.middleware';
-import { sendVerificationEmail, sendWelcomeEmail } from '../utils/email.service';
+import { sendVerificationEmail, sendWelcomeEmail, sendPasswordResetEmail } from '../utils/email.service';
 import { createDefaultCashAccount } from '../utils/account.service';
 import { initializeDefaultCategories } from './category.controller';
 import { User, UserInsert, OTPInsert, ActivityLogInsert } from '../types/database.types';
@@ -733,4 +733,439 @@ export const refreshAccessToken = asyncHandler(async (req: Request, res: Respons
       message: 'Failed to refresh token',
     });
   }
+});
+/**
+ * Request password reset (forgot password)
+ * Sends a reset code to the user's email
+ * POST /api/auth/forgot-password
+ */
+export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email) {
+    res.status(400).json({
+      success: false,
+      message: 'Email is required',
+    });
+    return;
+  }
+
+  // Always return success to prevent email enumeration attacks
+  // Even if user doesn't exist, we say "if account exists, email sent"
+  const successResponse = {
+    success: true,
+    message: 'If an account with that email exists, we have sent a password reset code.',
+  };
+
+  // Find user by email
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('id, email, name, is_active')
+    .eq('email', email)
+    .single();
+
+  // If user doesn't exist or is inactive, return generic success (security)
+  if (userError || !user || !user.is_active) {
+    res.json(successResponse);
+    return;
+  }
+
+  // Check rate limiting - prevent spam (60 seconds cooldown)
+  const { data: lastOTPs } = await supabase
+    .from('otps')
+    .select('created_at')
+    .eq('user_id', user.id)
+    .eq('purpose', 'password_reset')
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (lastOTPs && lastOTPs.length > 0) {
+    const timeSinceLastSent = Date.now() - new Date(lastOTPs[0].created_at).getTime();
+    const cooldownPeriod = 60 * 1000; // 60 seconds
+
+    if (timeSinceLastSent < cooldownPeriod) {
+      // Still return success for security, but don't send email
+      res.json(successResponse);
+      return;
+    }
+  }
+
+  // Generate reset code
+  const resetCode = generateOTP();
+  const otpExpires = getOTPExpiration(10); // 10 minutes
+
+  // Invalidate any existing password reset OTPs for this user
+  await supabase
+    .from('otps')
+    .update({ is_verified: true }) // Mark as used so they can't be reused
+    .eq('user_id', user.id)
+    .eq('purpose', 'password_reset')
+    .eq('is_verified', false);
+
+  // Create new OTP
+  const { error: otpError } = await supabase.from('otps').insert({
+    user_id: user.id,
+    code: resetCode,
+    purpose: 'password_reset',
+    expires_at: otpExpires.toISOString(),
+    is_verified: false,
+    attempts: 0,
+    max_attempts: 3,
+  } as OTPInsert);
+
+  if (otpError) {
+    console.error('Error creating password reset OTP:', otpError);
+    // Still return success for security
+    res.json(successResponse);
+    return;
+  }
+
+  // Send password reset email
+  try {
+    await sendPasswordResetEmail(email, user.name || 'User', resetCode);
+  } catch (error) {
+    console.error('Failed to send password reset email:', error);
+    // Still return success for security
+  }
+
+  // Log activity
+  await supabase.from('activity_logs').insert({
+    user_id: user.id,
+    action: 'password_reset_requested',
+    description: 'Password reset email requested',
+    ip_address: req.ip,
+    user_agent: req.get('user-agent'),
+  } as ActivityLogInsert);
+
+  res.json(successResponse);
+});
+
+/**
+ * Verify reset code (step 2 of forgot password)
+ * POST /api/auth/verify-reset-code
+ */
+export const verifyResetCode = asyncHandler(async (req: Request, res: Response) => {
+  const { email, code } = req.body;
+
+  if (!email || !code) {
+    res.status(400).json({
+      success: false,
+      message: 'Email and reset code are required',
+    });
+    return;
+  }
+
+  // Find user
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('email', email)
+    .single();
+
+  if (userError || !user) {
+    res.status(400).json({
+      success: false,
+      message: 'Invalid reset code or email',
+    });
+    return;
+  }
+
+  // Find valid OTP
+  const { data: otps, error: otpError } = await supabase
+    .from('otps')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('code', code)
+    .eq('purpose', 'password_reset')
+    .eq('is_verified', false)
+    .order('created_at', { ascending: false });
+
+  if (otpError || !otps || otps.length === 0) {
+    res.status(400).json({
+      success: false,
+      message: 'Invalid reset code',
+    });
+    return;
+  }
+
+  const otp = otps[0];
+
+  // Check if code is expired
+  const now = new Date();
+  const expiresAt = new Date(otp.expires_at);
+  if (now.getTime() > expiresAt.getTime()) {
+    res.status(400).json({
+      success: false,
+      message: 'Reset code has expired. Please request a new one.',
+      expired: true,
+    });
+    return;
+  }
+
+  // Check attempt count
+  if (otp.attempts >= otp.max_attempts) {
+    res.status(400).json({
+      success: false,
+      message: 'Too many attempts. Please request a new reset code.',
+    });
+    return;
+  }
+
+  // Increment attempt count
+  await supabase
+    .from('otps')
+    .update({ attempts: otp.attempts + 1 })
+    .eq('id', otp.id);
+
+  // Generate a temporary reset token that's valid for 15 minutes
+  // This token will be used to actually reset the password
+  const resetToken = jwt.sign(
+    { userId: user.id, email, otpId: otp.id, purpose: 'password_reset' },
+    process.env.JWT_SECRET || 'secret',
+    { expiresIn: '15m' }
+  );
+
+  res.json({
+    success: true,
+    message: 'Code verified successfully',
+    data: {
+      resetToken,
+    },
+  });
+});
+
+/**
+ * Reset password with verified reset token
+ * POST /api/auth/reset-password
+ */
+export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { resetToken, newPassword } = req.body;
+
+  if (!resetToken || !newPassword) {
+    res.status(400).json({
+      success: false,
+      message: 'Reset token and new password are required',
+    });
+    return;
+  }
+
+  // Validate password strength
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+  if (!passwordRegex.test(newPassword)) {
+    res.status(400).json({
+      success: false,
+      message: 'Password must be at least 8 characters with uppercase, lowercase, and a number',
+    });
+    return;
+  }
+
+  try {
+    // Verify the reset token
+    const decoded = jwt.verify(resetToken, process.env.JWT_SECRET || 'secret') as {
+      userId: number;
+      email: string;
+      otpId: number;
+      purpose: string;
+    };
+
+    if (decoded.purpose !== 'password_reset') {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid reset token',
+      });
+      return;
+    }
+
+    // Verify OTP hasn't been used yet
+    const { data: otp, error: otpError } = await supabase
+      .from('otps')
+      .select('*')
+      .eq('id', decoded.otpId)
+      .eq('is_verified', false)
+      .single();
+
+    if (otpError || !otp) {
+      res.status(400).json({
+        success: false,
+        message: 'Reset link has already been used or expired',
+      });
+      return;
+    }
+
+    // Hash the new password
+    const passwordHash = await hashPassword(newPassword);
+
+    // Update password
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ password_hash: passwordHash })
+      .eq('id', decoded.userId);
+
+    if (updateError) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update password',
+      });
+      return;
+    }
+
+    // Mark OTP as used
+    await supabase
+      .from('otps')
+      .update({ is_verified: true })
+      .eq('id', decoded.otpId);
+
+    // Log activity
+    await supabase.from('activity_logs').insert({
+      user_id: decoded.userId,
+      action: 'password_reset_completed',
+      description: 'Password was reset successfully',
+      ip_address: req.ip,
+      user_agent: req.get('user-agent'),
+    } as ActivityLogInsert);
+
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully. You can now log in with your new password.',
+    });
+  } catch (error) {
+    if (error instanceof jwt.JsonWebTokenError || error instanceof jwt.TokenExpiredError) {
+      res.status(400).json({
+        success: false,
+        message: 'Reset link has expired. Please request a new password reset.',
+        expired: true,
+      });
+      return;
+    }
+
+    console.error('Password reset error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reset password',
+    });
+  }
+});
+
+/**
+ * Change email address for unverified users
+ * This allows users who signed up with wrong email to fix it
+ * POST /api/auth/change-signup-email
+ */
+export const changeSignupEmail = asyncHandler(async (req: Request, res: Response) => {
+  const { currentEmail, newEmail } = req.body;
+
+  if (!currentEmail || !newEmail) {
+    res.status(400).json({
+      success: false,
+      message: 'Current email and new email are required',
+    });
+    return;
+  }
+
+  // Validate new email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(newEmail)) {
+    res.status(400).json({
+      success: false,
+      message: 'Please provide a valid email address',
+    });
+    return;
+  }
+
+  // Find the unverified user
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('id, name, email_verified')
+    .eq('email', currentEmail)
+    .single();
+
+  if (userError || !user) {
+    res.status(404).json({
+      success: false,
+      message: 'Account not found',
+    });
+    return;
+  }
+
+  // Only allow email change for unverified accounts
+  if (user.email_verified) {
+    res.status(400).json({
+      success: false,
+      message: 'Cannot change email for verified accounts. Please use the profile settings.',
+    });
+    return;
+  }
+
+  // Check if new email is already in use
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('id')
+    .eq('email', newEmail)
+    .single();
+
+  if (existingUser) {
+    res.status(409).json({
+      success: false,
+      message: 'This email is already registered',
+    });
+    return;
+  }
+
+  // Update email
+  const { error: updateError } = await supabase
+    .from('users')
+    .update({ email: newEmail })
+    .eq('id', user.id);
+
+  if (updateError) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update email',
+    });
+    return;
+  }
+
+  // Invalidate old OTPs
+  await supabase
+    .from('otps')
+    .update({ is_verified: true })
+    .eq('user_id', user.id)
+    .eq('purpose', 'email_verify');
+
+  // Generate new verification code
+  const verificationCode = generateOTP();
+  const otpExpires = getOTPExpiration(10);
+
+  // Create new OTP
+  await supabase.from('otps').insert({
+    user_id: user.id,
+    code: verificationCode,
+    purpose: 'email_verify',
+    expires_at: otpExpires.toISOString(),
+    is_verified: false,
+    attempts: 0,
+    max_attempts: 3,
+  } as OTPInsert);
+
+  // Send verification email to new address
+  try {
+    await sendVerificationEmail(newEmail, user.name || 'User', verificationCode);
+  } catch (error) {
+    console.error('Failed to send verification email:', error);
+  }
+
+  // Log activity
+  await supabase.from('activity_logs').insert({
+    user_id: user.id,
+    action: 'signup_email_changed',
+    description: `Email changed from ${currentEmail} to ${newEmail}`,
+  } as ActivityLogInsert);
+
+  res.json({
+    success: true,
+    message: 'Email updated successfully. A new verification code has been sent.',
+    data: {
+      email: newEmail,
+    },
+  });
 });

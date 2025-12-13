@@ -471,6 +471,51 @@ export class AuthAPI {
   }
 
   /**
+   * Request password reset (forgot password)
+   * Always returns success to prevent email enumeration
+   */
+  static async forgotPassword(email: string): Promise<void> {
+    await httpClient.post('/api/auth/forgot-password', {
+      email,
+    }, false);
+  }
+
+  /**
+   * Verify password reset code
+   * Returns a reset token if code is valid
+   */
+  static async verifyResetCode(email: string, code: string): Promise<{ resetToken: string }> {
+    const response = await httpClient.post<ApiResponse<{ resetToken: string }>>(
+      '/api/auth/verify-reset-code',
+      { email, code },
+      false
+    );
+    return response.data;
+  }
+
+  /**
+   * Reset password with verified reset token
+   */
+  static async resetPassword(resetToken: string, newPassword: string): Promise<void> {
+    await httpClient.post('/api/auth/reset-password', {
+      resetToken,
+      newPassword,
+    }, false);
+  }
+
+  /**
+   * Change email for unverified signup (recovery flow)
+   */
+  static async changeSignupEmail(currentEmail: string, newEmail: string): Promise<{ email: string }> {
+    const response = await httpClient.post<ApiResponse<{ email: string }>>(
+      '/api/auth/change-signup-email',
+      { currentEmail, newEmail },
+      false
+    );
+    return response.data;
+  }
+
+  /**
    * Logout user
    */
   static async logout(): Promise<void> {

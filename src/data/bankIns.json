@@ -93,7 +93,7 @@
     "id": 11,
     "name": "MariBank Philippines",
     "short_name": "MariBank(SeaBank)",
-    "type": "bank",
+    "type": "e-wallet",
     "country": "Philippines",
     "logo": "/institutions/maribank.svg",
     "is_supported": true

@@ -87,14 +87,13 @@ export const createAccount = asyncHandler(async (req: Request, res: Response) =>
     return;
   }
 
-  // Check plan limits
-  const accountType = type === 'E-Wallet' ? 'E-Wallet' : 'Bank';
-  const { count: accountCount } = await supabase
+  // Check plan limits - use total account count (excluding Cash accounts)
+  const { count: totalAccountCount } = await supabase
     .from('accounts')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', userId)
     .eq('is_active', true)
-    .eq('type', accountType);
+    .neq('type', 'Cash'); // Don't count Cash accounts
 
   const plan = (user as any).plan;
   
@@ -106,12 +105,15 @@ export const createAccount = asyncHandler(async (req: Request, res: Response) =>
     return;
   }
 
-  const limit = type === 'E-Wallet' ? plan.max_wallets : plan.max_accounts;
+  // Use max_accounts as the total limit for all account types
+  const totalLimit = plan.max_accounts;
+  const currentCount = totalAccountCount || 0;
 
-  if ((accountCount || 0) >= limit) {
+  // Check if adding this new account would exceed the limit
+  if (currentCount >= totalLimit) {
     res.status(403).json({
       success: false,
-      message: `You have reached the ${type === 'E-Wallet' ? 'e-wallet' : 'bank account'} limit for your plan. Please upgrade to add more.`,
+      message: `You have reached the account limit (${totalLimit}) for your plan. Please upgrade to add more.`,
     });
     return;
   }

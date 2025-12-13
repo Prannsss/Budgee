@@ -3,6 +3,26 @@
 ## Overview
 This implementation adds dynamic subscription plan management to the Budgee application with the following key features:
 
+## Account Connection Limits
+
+### Free Plan
+- **1 e-wallet connection** (GCash, Maya, etc.)
+- **1 bank account connection** (BPI, BDO, etc.)
+- Cash account does not count toward limits
+
+### Budgeet Plan (₱199/month)
+- **Up to 5 total accounts** (any combination of banks and e-wallets)
+- Cash account does not count toward limits
+
+### Premium Plan (₱399/month)
+- **Unlimited** bank and e-wallet connections
+
+### Limit Enforcement
+- When users reach their limit, they see an "Upgrade your plan" modal
+- Free plan users are prompted to upgrade to Budgeet
+- Budgeet plan users are prompted to upgrade to Premium
+- The modal shows plan benefits and pricing
+
 ## Features Implemented
 
 ### 1. Subscription Context Management
@@ -102,12 +122,15 @@ const items = isAIEnabled ? [...baseItems, aiItem] : baseItems;
 ### New Files:
 - `src/contexts/subscription-context.tsx`
 - `src/components/payment/payment-modal.tsx`
+- `src/components/accounts/upgrade-plan-modal.tsx` - Modal prompting users to upgrade when hitting limits
 
 ### Modified Files:
 - `src/app/dashboard/layout.tsx` - Added SubscriptionProvider
 - `src/app/dashboard/settings/page.tsx` - Enhanced mobile design + payment integration
 - `src/components/layout/mobile-bottom-nav.tsx` - Dynamic AI tab rendering
 - `src/components/layout/sidebar-nav.tsx` - Conditional AI menu item
+- `src/components/accounts/connect-account-dialog.tsx` - Account limit checking before connection
+- `src/contexts/subscription-context.tsx` - Added getAccountLimits and canConnectAccount functions
 
 ## Testing
 

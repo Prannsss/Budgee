@@ -15,6 +15,7 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 import { GoogleIcon } from "../icons/google";
 import { FacebookIcon } from "../icons/facebook";
 import { useAuth } from "@/contexts/auth-context";
+import { PENDING_EMAIL_KEY } from "@/lib/constants";
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
   formType: "login" | "signup";
@@ -88,11 +89,19 @@ export function UserAuthForm({ className, formType, ...props }: UserAuthFormProp
             });
           }
         } catch (error: any) {
-          // Check if error is due to unverified email
-          if (error.message && error.message.includes('verify')) {
+          // Check if error is due to unverified email (403 status or specific message)
+          const isUnverified = 
+            error.response?.status === 403 ||
+            error.response?.data?.requiresVerification ||
+            (error.message && error.message.toLowerCase().includes('verify'));
+          
+          if (isUnverified) {
+            // Store email for recovery flow
+            localStorage.setItem(PENDING_EMAIL_KEY, data.email);
+            
             toast({
               title: "Email Not Verified",
-              description: "Please verify your email address before logging in.",
+              description: "Please verify your email address to continue.",
               variant: "destructive",
             });
             // Redirect to verification page with email
@@ -100,7 +109,7 @@ export function UserAuthForm({ className, formType, ...props }: UserAuthFormProp
           } else {
             toast({
               title: "Error",
-              description: "Invalid credentials. Please try again.",
+              description: error.response?.data?.message || "Invalid credentials. Please try again.",
               variant: "destructive",
             });
           }
@@ -111,6 +120,9 @@ export function UserAuthForm({ className, formType, ...props }: UserAuthFormProp
           const success = await signup(data.email, data.password, data.firstName, data.lastName);
           
           if (success) {
+            // Store pending email for recovery flow
+            localStorage.setItem(PENDING_EMAIL_KEY, data.email);
+            
             toast({
               title: "Account Created! 🎉",
               description: "Please check your email to verify your account.",

@@ -85,6 +85,14 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <UserAuthForm formType="login" />
+            <div className="mt-4 text-center">
+              <Link
+                href="/forgot-password"
+                className="text-sm text-muted-foreground underline underline-offset-4 hover:text-primary"
+              >
+                Forgot your password?
+              </Link>
+            </div>
           </CardContent>
         </Card>
         <p className="px-8 text-center text-sm text-muted-foreground mt-6">

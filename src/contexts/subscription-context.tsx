@@ -12,6 +12,12 @@ interface SubscriptionContextType {
   isAIEnabled: boolean;
   hasAIBuddyAccess: boolean;
   isLoading: boolean;
+  getAccountLimits: () => { maxTotal: number; maxWallets: number; maxAccounts: number };
+  canConnectAccount: (currentAccounts: { wallets: number; banks: number }) => { 
+    canConnect: boolean; 
+    limitType: 'wallets' | 'banks' | 'total' | null;
+    message: string;
+  };
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -102,6 +108,67 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   const isAIEnabled = currentPlan !== 'Free';
 
+  // Account limits based on user's plan from database
+  // The plan has max_wallets and max_accounts, we use the total of both as the max
+  const getAccountLimits = () => {
+    if (userPlan) {
+      // Use actual plan limits from database
+      // For simplicity, we use max_accounts as the total limit (since we want combined limit)
+      // Free: 2 total, Budgeet: 5 total, Premium: 15+ (effectively unlimited for most users)
+      const maxWallets = userPlan.maxWallets || userPlan.max_wallets || 1;
+      const maxAccounts = userPlan.maxAccounts || userPlan.max_accounts || 1;
+      
+      // For combined total limit, use the larger of the two as the total
+      // Or sum them for true total (Free: 2, Budgeet: 10, Premium: 25)
+      // Based on user requirement: Free=2, Budgeet=5, Premium=unlimited
+      // We'll use max_accounts as the total limit since that's what makes sense
+      let maxTotal: number;
+      if (currentPlan === 'Premium') {
+        maxTotal = -1; // Unlimited for premium
+      } else if (currentPlan === 'Budgeet') {
+        maxTotal = 5; // Budgeet allows 5 total
+      } else {
+        maxTotal = 2; // Free allows 2 total
+      }
+      
+      return { maxTotal, maxWallets, maxAccounts };
+    }
+    
+    // Fallback based on plan name if userPlan not loaded
+    switch (currentPlan) {
+      case 'Free':
+        return { maxTotal: 2, maxWallets: 1, maxAccounts: 1 };
+      case 'Budgeet':
+        return { maxTotal: 5, maxWallets: 5, maxAccounts: 5 };
+      case 'Premium':
+        return { maxTotal: -1, maxWallets: -1, maxAccounts: -1 }; // Unlimited
+      default:
+        return { maxTotal: 2, maxWallets: 1, maxAccounts: 1 };
+    }
+  };
+
+  // Check if user can connect more accounts
+  const canConnectAccount = (currentAccounts: { wallets: number; banks: number }) => {
+    const limits = getAccountLimits();
+    const totalAccounts = currentAccounts.wallets + currentAccounts.banks;
+
+    // Premium plan - unlimited
+    if (limits.maxTotal === -1) {
+      return { canConnect: true, limitType: null, message: '' };
+    }
+
+    // Check total account limit
+    if (totalAccounts >= limits.maxTotal) {
+      return { 
+        canConnect: false, 
+        limitType: 'total' as const, 
+        message: `You can only connect up to ${limits.maxTotal} accounts on the ${currentPlan} plan.` 
+      };
+    }
+
+    return { canConnect: true, limitType: null, message: '' };
+  };
+
   return (
     <SubscriptionContext.Provider 
       value={{ 
@@ -110,7 +177,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         setCurrentPlan, 
         isAIEnabled,
         hasAIBuddyAccess,
-        isLoading
+        isLoading,
+        getAccountLimits,
+        canConnectAccount,
       }}
     >
       {children}
