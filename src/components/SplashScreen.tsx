@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { TrendingUp, PieChart, DollarSign, Wallet, ShieldCheck } from "lucide-react";
 
 type SplashScreenProps = {
   onFinish?: () => void;
@@ -10,371 +11,189 @@ type SplashScreenProps = {
 
 export default function SplashScreen({
   onFinish,
-  durationMs = 3000,
+  durationMs = 3500, // Slightly increased to allow for the smooth exit
 }: SplashScreenProps) {
   const [show, setShow] = useState(true);
-  const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number }>>([]);
   
+  // Logic to handle the exit sequence
   useEffect(() => {
-    // Generate particles for ambient effect
-    const particleArray = Array.from({ length: 12 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100 - 50,
-      y: Math.random() * 100 - 50,
-    }));
-    setParticles(particleArray);
-  }, []);
+    const timer = setTimeout(() => {
+      setShow(false);
+    }, durationMs - 1000); // Start exit animation before unmounting
 
-  if (!show) return null;
+    const cleanupTimer = setTimeout(() => {
+      onFinish?.();
+    }, durationMs);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(cleanupTimer);
+    };
+  }, [durationMs, onFinish]);
 
   const logo = "/icons/iconsplash.svg";
 
-  const Overlay: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <AnimatePresence mode="wait">
+  // Floating icons configuration
+  const floatingIcons = [
+    { Icon: TrendingUp, delay: 0, x: -30, y: -20, color: "text-emerald-400" },
+    { Icon: DollarSign, delay: 0.2, x: 35, y: -30, color: "text-yellow-400" },
+    { Icon: PieChart, delay: 0.4, x: -25, y: 30, color: "text-blue-400" },
+    { Icon: Wallet, delay: 0.6, x: 30, y: 25, color: "text-purple-400" },
+    { Icon: ShieldCheck, delay: 0.8, x: 0, y: -40, color: "text-teal-400" },
+  ];
+
+  return (
+    <AnimatePresence>
       {show && (
         <motion.div
-          initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-gray-50 to-white dark:from-gray-950 dark:to-black overflow-hidden"
-          role="status"
-          aria-label="Loading Budgee"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, scale: 1.1, filter: "blur(10px)" }}
+          transition={{ duration: 0.8, ease: "easeInOut" }}
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-50 dark:bg-slate-950 overflow-hidden"
         >
-          {children}
-          <span className="sr-only">Loading Budgee...</span>
+          {/* BACKGROUND LAYERS */}
+          
+          {/* 1. Subtle Grid Pattern (Simulates Spreadsheet/Data) */}
+          <div className="absolute inset-0 z-0 opacity-[0.03] dark:opacity-[0.05]" 
+               style={{ 
+                 backgroundImage: 'radial-gradient(#64748b 1px, transparent 1px)', 
+                 backgroundSize: '24px 24px' 
+               }} 
+          />
+
+          {/* 2. Abstract Financial Graph Line (Draws itself) */}
+          <svg className="absolute inset-0 w-full h-full z-0 pointer-events-none opacity-20">
+            <motion.path
+              d="M0,500 C150,500 150,400 300,400 C450,400 450,300 600,300 C750,300 750,150 900,150 L900,600 L0,600 Z"
+              fill="url(#gradient)"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 0.4 }}
+              transition={{ duration: 2.5, ease: "easeInOut" }}
+            />
+            <defs>
+              <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.5" />
+                <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+          </svg>
+
+          {/* 3. Floating Finance Icons */}
+          <div className="absolute inset-0 pointer-events-none">
+            {floatingIcons.map(({ Icon, delay, x, y, color }, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, scale: 0, x: 0, y: 0 }}
+                animate={{ 
+                  opacity: [0, 0.4, 0],
+                  scale: [0.5, 1, 0.8],
+                  x: [`${x}%`, `${x + (index % 2 === 0 ? 5 : -5)}%`],
+                  y: [`${y}%`, `${y - 10}%`],
+                }}
+                transition={{
+                  duration: 3,
+                  delay: delay,
+                  ease: "easeInOut",
+                  repeat: Infinity,
+                  repeatType: "reverse"
+                }}
+                className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${color}`}
+              >
+                <Icon size={32} strokeWidth={1.5} />
+              </motion.div>
+            ))}
+          </div>
+
+          {/* CENTERPIECE */}
+          <div className="relative z-10 flex flex-col items-center justify-center">
+            
+            {/* The "Coin" / Logo Container */}
+            <div className="relative w-32 h-32 md:w-40 md:h-40">
+              
+              {/* Outer Glow Ring (Pulse) */}
+              <motion.div
+                animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.1, 0.3] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute inset-0 rounded-full bg-blue-400/20 blur-xl"
+              />
+
+              {/* The Spinning Coin Effect */}
+              <motion.div
+                initial={{ rotateY: -180, scale: 0.5, opacity: 0 }}
+                animate={{ 
+                  rotateY: 0, 
+                  scale: 1, 
+                  opacity: 1,
+                  rotateZ: [0, -5, 5, 0] // Subtle wobble at the end
+                }}
+                transition={{
+                  duration: 1.2,
+                  type: "spring",
+                  stiffness: 100,
+                  damping: 12,
+                  delay: 0.2
+                }}
+                className="relative w-full h-full bg-white dark:bg-slate-900 rounded-full shadow-2xl flex items-center justify-center border border-slate-100 dark:border-slate-800"
+                style={{ transformStyle: "preserve-3d" }}
+              >
+                <img 
+                  src={logo} 
+                  alt="Budgee Logo" 
+                  className="w-3/5 h-3/5 object-contain drop-shadow-md"
+                />
+                
+                {/* Shine effect passing over the coin */}
+                <motion.div
+                  initial={{ x: "-150%", opacity: 0 }}
+                  animate={{ x: "150%", opacity: 1 }}
+                  transition={{ duration: 0.8, delay: 1, ease: "easeInOut" }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-12 rounded-full pointer-events-none"
+                />
+              </motion.div>
+            </div>
+
+            {/* Text & Loading Indicators */}
+            <div className="mt-8 flex flex-col items-center">
+              <motion.h1
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.8, duration: 0.5 }}
+                className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-teal-500 dark:from-blue-400 dark:to-teal-400 tracking-tight"
+              >
+                Budgee
+              </motion.h1>
+
+              <motion.div
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: "100px", opacity: 1 }}
+                transition={{ delay: 1, duration: 0.8 }}
+                className="h-1 mt-4 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden"
+              >
+                <motion.div
+                  initial={{ x: "-100%" }}
+                  animate={{ x: "0%" }}
+                  transition={{ 
+                    duration: 1.5, 
+                    delay: 1.2, 
+                    ease: "circOut" 
+                  }}
+                  className="h-full w-full bg-gradient-to-r from-blue-500 to-teal-500"
+                />
+              </motion.div>
+              
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.5 }}
+                className="mt-2 text-xs font-medium text-slate-400 uppercase tracking-widest"
+              >
+                Securing Data...
+              </motion.p>
+            </div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>
-  );
-
-  return (
-    <Overlay>
-      {/* Enhanced Ambient Particles with Depth */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {particles.map((particle) => (
-          <motion.div
-            key={particle.id}
-            initial={{ 
-              x: `${50 + particle.x}%`, 
-              y: `${50 + particle.y}%`,
-              scale: 0,
-              opacity: 0
-            }}
-            animate={{ 
-              x: [`${50 + particle.x}%`, `${50 + particle.x + 15}%`, `${50 + particle.x - 10}%`],
-              y: [`${50 + particle.y}%`, `${50 + particle.y - 20}%`, `${50 + particle.y - 35}%`],
-              scale: [0, 2, 1.5, 0],
-              opacity: [0, 0.6, 0.4, 0],
-              rotate: [0, 180, 360]
-            }}
-            transition={{
-              duration: 4,
-              ease: [0.43, 0.13, 0.23, 0.96],
-              delay: particle.id * 0.15,
-              repeat: Infinity,
-              repeatDelay: 2
-            }}
-            className="absolute w-3 h-3 rounded-full"
-            style={{
-              background: particle.id % 2 === 0 
-                ? 'radial-gradient(circle, rgba(96, 165, 250, 0.8) 0%, rgba(139, 92, 246, 0.4) 50%, transparent 70%)'
-                : 'radial-gradient(circle, rgba(139, 92, 246, 0.8) 0%, rgba(236, 72, 153, 0.4) 50%, transparent 70%)',
-              filter: 'blur(2px)',
-            }}
-          />
-        ))}
-        
-        {/* Additional floating orbs */}
-        {Array.from({ length: 6 }, (_, i) => (
-          <motion.div
-            key={`orb-${i}`}
-            initial={{ 
-              x: `${Math.random() * 100}%`, 
-              y: `${Math.random() * 100}%`,
-              scale: 0
-            }}
-            animate={{ 
-              x: [`${Math.random() * 100}%`, `${Math.random() * 100}%`],
-              y: [`${Math.random() * 100}%`, `${Math.random() * 100}%`],
-              scale: [0, 1, 0.8, 0]
-            }}
-            transition={{
-              duration: 6,
-              ease: "easeInOut",
-              delay: i * 0.4,
-              repeat: Infinity,
-            }}
-            className="absolute w-32 h-32 rounded-full"
-            style={{
-              background: 'radial-gradient(circle, rgba(96, 165, 250, 0.15) 0%, transparent 70%)',
-              filter: 'blur(40px)',
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Enhanced Rotating Rings with Gradient Borders */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <motion.div
-          initial={{ rotate: 0, scale: 0.5, opacity: 0 }}
-          animate={{ 
-            rotate: 360, 
-            scale: [0.5, 1.3, 1.1],
-            opacity: [0, 0.4, 0.2, 0]
-          }}
-          transition={{
-            duration: 2.5,
-            ease: [0.43, 0.13, 0.23, 0.96],
-            repeat: Infinity,
-          }}
-          className="absolute w-[280px] h-[280px] rounded-full"
-          style={{
-            background: 'conic-gradient(from 0deg, transparent, rgba(96, 165, 250, 0.3), transparent)',
-            filter: 'blur(2px)',
-          }}
-        />
-        <motion.div
-          initial={{ rotate: 0, scale: 0.5, opacity: 0 }}
-          animate={{ 
-            rotate: -360, 
-            scale: [0.5, 1.4, 1.2],
-            opacity: [0, 0.3, 0.15, 0]
-          }}
-          transition={{
-            duration: 3.5,
-            ease: [0.43, 0.13, 0.23, 0.96],
-            repeat: Infinity,
-            delay: 0.3
-          }}
-          className="absolute w-[350px] h-[350px] rounded-full"
-          style={{
-            background: 'conic-gradient(from 180deg, transparent, rgba(139, 92, 246, 0.3), transparent)',
-            filter: 'blur(2px)',
-          }}
-        />
-        <motion.div
-          initial={{ rotate: 0, scale: 0.5, opacity: 0 }}
-          animate={{ 
-            rotate: 360, 
-            scale: [0.5, 1.5, 1.3],
-            opacity: [0, 0.25, 0.1, 0]
-          }}
-          transition={{
-            duration: 4,
-            ease: [0.43, 0.13, 0.23, 0.96],
-            repeat: Infinity,
-            delay: 0.6
-          }}
-          className="absolute w-[420px] h-[420px] rounded-full"
-          style={{
-            background: 'conic-gradient(from 90deg, transparent, rgba(236, 72, 153, 0.2), transparent)',
-            filter: 'blur(3px)',
-          }}
-        />
-      </div>
-
-      {/* Main Logo Container */}
-      <div className="relative">
-        {/* Enhanced Shadow/Glow Base */}
-        <motion.div
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ 
-            scale: [0, 1.4, 1.2, 1],
-            opacity: [0, 0.8, 0.6, 0.4]
-          }}
-          transition={{
-            duration: 2,
-            ease: [0.34, 1.56, 0.64, 1]
-          }}
-          className="absolute -inset-12 rounded-full blur-3xl"
-          style={{
-            background: 'radial-gradient(circle, rgba(96, 165, 250, 0.4) 0%, rgba(139, 92, 246, 0.3) 50%, rgba(236, 72, 153, 0.2) 100%)',
-          }}
-        />
-        
-        {/* Pulsing Secondary Glow */}
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ 
-            scale: [0.8, 1.2, 0.9],
-            opacity: [0, 0.6, 0.3]
-          }}
-          transition={{
-            duration: 3,
-            ease: "easeInOut",
-            repeat: Infinity,
-          }}
-          className="absolute -inset-10 rounded-full blur-2xl"
-          style={{
-            background: 'radial-gradient(circle, rgba(139, 92, 246, 0.5) 0%, transparent 70%)',
-          }}
-        />
-
-        {/* Enhanced Logo Wrapper with 3D Effect */}
-        <motion.div
-          initial={{ scale: 0, rotateY: -180, rotateZ: -90, opacity: 0 }}
-          animate={{ 
-            scale: [0, 1.15, 0.98, 1],
-            rotateY: [-180, 0],
-            rotateZ: [-90, 0],
-            opacity: [0, 1]
-          }}
-          transition={{
-            duration: 1.4,
-            ease: [0.34, 1.56, 0.64, 1],
-            times: [0, 0.6, 0.85, 1]
-          }}
-          style={{
-            transformStyle: 'preserve-3d',
-            perspective: '1000px',
-          }}
-          className="relative w-[180px] h-[180px] flex items-center justify-center"
-        >
-          {/* Inner Glow Ring */}
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ 
-              scale: [0.8, 1.05, 0.95, 1],
-              opacity: [0, 0.8, 0.6, 0.4]
-            }}
-            transition={{
-              duration: 1.5,
-              ease: "easeInOut",
-              delay: 0.5
-            }}
-            className="absolute inset-0 bg-gradient-to-br from-blue-400/30 to-purple-400/30 dark:from-blue-500/40 dark:to-purple-500/40 rounded-full blur-md"
-          />
-
-          {/* Logo with Reveal Animation */}
-          <motion.div
-            initial={{ 
-              clipPath: "circle(0% at 50% 50%)",
-              filter: "brightness(2) contrast(1.5)"
-            }}
-            animate={{ 
-              clipPath: "circle(100% at 50% 50%)",
-              filter: "brightness(1) contrast(1)"
-            }}
-            transition={{
-              duration: 1,
-              ease: [0.43, 0.13, 0.23, 0.96],
-              delay: 0.3
-            }}
-            className="relative z-10 w-full h-full flex items-center justify-center"
-          >
-            <img 
-              src={logo} 
-              alt="Budgee" 
-              className="w-full h-full object-contain drop-shadow-2xl"
-            />
-          </motion.div>
-
-          {/* Shimmer Effect */}
-          <motion.div
-            initial={{ x: "-200%", opacity: 0 }}
-            animate={{ 
-              x: "200%",
-              opacity: [0, 1, 0]
-            }}
-            transition={{
-              duration: 1,
-              ease: "easeInOut",
-              delay: 1.2
-            }}
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent dark:via-white/30 skew-x-12 pointer-events-none"
-          />
-
-          {/* Pulse Ring */}
-          <motion.div
-            initial={{ scale: 1, opacity: 0.8 }}
-            animate={{ 
-              scale: [1, 1.5, 2],
-              opacity: [0.8, 0.4, 0]
-            }}
-            transition={{
-              duration: 1.5,
-              ease: "easeOut",
-              delay: 1.5,
-              repeat: 1,
-              repeatDelay: 0.5
-            }}
-            className="absolute inset-0 border-2 border-blue-400/50 dark:border-blue-500/50 rounded-full pointer-events-none"
-          />
-        </motion.div>
-
-        {/* Brand Text (optional - appears after logo) */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{
-            duration: 0.8,
-            ease: "easeOut",
-            delay: 1.5
-          }}
-          onAnimationComplete={() => {
-            setTimeout(() => {
-              setShow(false);
-              onFinish?.();
-            }, durationMs - 2300);
-          }}
-          className="absolute -bottom-16 left-1/2 transform -translate-x-1/2 flex flex-col items-center"
-        >
-          <div className="flex items-center space-x-2">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: 24 }}
-              transition={{ duration: 0.5, delay: 1.8 }}
-              className="h-0.5 bg-gradient-to-r from-blue-400 to-purple-400"
-            />
-            <motion.span
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 2 }}
-              className="text-sm font-medium text-gray-600 dark:text-gray-400 tracking-wider uppercase"
-            >
-              Budgee
-            </motion.span>
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: 24 }}
-              transition={{ duration: 0.5, delay: 1.8 }}
-              className="h-0.5 bg-gradient-to-l from-blue-400 to-purple-400"
-            />
-          </div>
-          
-          {/* Loading Dots */}
-          <div className="flex space-x-1 mt-3">
-            {[0, 1, 2].map((i) => (
-              <motion.div
-                key={i}
-                initial={{ scale: 0 }}
-                animate={{ 
-                  scale: [0, 1, 0],
-                  opacity: [0, 1, 0]
-                }}
-                transition={{
-                  duration: 1.5,
-                  ease: "easeInOut",
-                  delay: 2.2 + i * 0.15,
-                  repeat: Infinity,
-                }}
-                className="w-1.5 h-1.5 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full"
-              />
-            ))}
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Progress Bar (subtle) */}
-      <motion.div
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{
-          duration: durationMs / 1000,
-          ease: "easeInOut"
-        }}
-        className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-400 to-purple-400 origin-left"
-      />
-    </Overlay>
   );
 }
