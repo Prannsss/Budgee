@@ -1,9 +1,26 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, createContext, useContext } from 'react';
 import SplashScreen from '@/components/SplashScreen';
 
-export function PWAInstaller() {
+// Context to share splash state with children
+interface SplashContextType {
+  isSplashComplete: boolean;
+  showSplash: boolean;
+}
+
+const SplashContext = createContext<SplashContextType>({ 
+  isSplashComplete: true, 
+  showSplash: false 
+});
+
+export const useSplash = () => useContext(SplashContext);
+
+interface PWAInstallerProps {
+  children?: React.ReactNode;
+}
+
+export function PWAInstaller({ children }: PWAInstallerProps) {
   // Initialize splash state immediately for standalone mode
   const [showSplash, setShowSplash] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -16,6 +33,21 @@ export function PWAInstaller() {
       return isStandalone() && !alreadyShown;
     } catch {
       return false;
+    }
+  });
+
+  const [isSplashComplete, setIsSplashComplete] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    
+    const isStandalone = () =>
+      window.matchMedia?.('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+
+    try {
+      const alreadyShown = sessionStorage.getItem('budgee_splash_shown');
+      // If not standalone or already shown, splash is complete
+      return !isStandalone() || !!alreadyShown;
+    } catch {
+      return true;
     }
   });
 
@@ -78,7 +110,16 @@ export function PWAInstaller() {
       // ignore
     }
     setShowSplash(false);
+    setIsSplashComplete(true);
   };
 
-  return showSplash ? <SplashScreen onFinish={handleFinish} /> : null;
+  return (
+    <SplashContext.Provider value={{ isSplashComplete, showSplash }}>
+      {showSplash && <SplashScreen onFinish={handleFinish} />}
+      {/* Only render children when splash is complete */}
+      {isSplashComplete ? children : (
+        <div className="min-h-screen bg-background" aria-hidden="true" />
+      )}
+    </SplashContext.Provider>
+  );
 }

@@ -49,96 +49,184 @@ export default function SplashScreen({
 
   return (
     <Overlay>
-      {/* Ambient Particles */}
-      <div className="absolute inset-0 pointer-events-none">
+      {/* Enhanced Ambient Particles with Depth */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {particles.map((particle) => (
           <motion.div
             key={particle.id}
             initial={{ 
-              x: `${particle.x}vw`, 
-              y: `${particle.y}vh`,
+              x: `${50 + particle.x}%`, 
+              y: `${50 + particle.y}%`,
               scale: 0,
               opacity: 0
             }}
             animate={{ 
-              x: [`${particle.x}vw`, `${particle.x + 20}vw`],
-              y: [`${particle.y}vh`, `${particle.y - 30}vh`],
-              scale: [0, 1.5, 0],
-              opacity: [0, 0.3, 0]
+              x: [`${50 + particle.x}%`, `${50 + particle.x + 15}%`, `${50 + particle.x - 10}%`],
+              y: [`${50 + particle.y}%`, `${50 + particle.y - 20}%`, `${50 + particle.y - 35}%`],
+              scale: [0, 2, 1.5, 0],
+              opacity: [0, 0.6, 0.4, 0],
+              rotate: [0, 180, 360]
             }}
             transition={{
-              duration: 3,
-              ease: "easeInOut",
-              delay: particle.id * 0.1,
+              duration: 4,
+              ease: [0.43, 0.13, 0.23, 0.96],
+              delay: particle.id * 0.15,
               repeat: Infinity,
-              repeatDelay: 1
+              repeatDelay: 2
             }}
-            className="absolute w-2 h-2 bg-gradient-to-r from-blue-400 to-purple-400 dark:from-blue-500 dark:to-purple-500 rounded-full blur-sm"
+            className="absolute w-3 h-3 rounded-full"
+            style={{
+              background: particle.id % 2 === 0 
+                ? 'radial-gradient(circle, rgba(96, 165, 250, 0.8) 0%, rgba(139, 92, 246, 0.4) 50%, transparent 70%)'
+                : 'radial-gradient(circle, rgba(139, 92, 246, 0.8) 0%, rgba(236, 72, 153, 0.4) 50%, transparent 70%)',
+              filter: 'blur(2px)',
+            }}
+          />
+        ))}
+        
+        {/* Additional floating orbs */}
+        {Array.from({ length: 6 }, (_, i) => (
+          <motion.div
+            key={`orb-${i}`}
+            initial={{ 
+              x: `${Math.random() * 100}%`, 
+              y: `${Math.random() * 100}%`,
+              scale: 0
+            }}
+            animate={{ 
+              x: [`${Math.random() * 100}%`, `${Math.random() * 100}%`],
+              y: [`${Math.random() * 100}%`, `${Math.random() * 100}%`],
+              scale: [0, 1, 0.8, 0]
+            }}
+            transition={{
+              duration: 6,
+              ease: "easeInOut",
+              delay: i * 0.4,
+              repeat: Infinity,
+            }}
+            className="absolute w-32 h-32 rounded-full"
+            style={{
+              background: 'radial-gradient(circle, rgba(96, 165, 250, 0.15) 0%, transparent 70%)',
+              filter: 'blur(40px)',
+            }}
           />
         ))}
       </div>
 
-      {/* Rotating Rings */}
+      {/* Enhanced Rotating Rings with Gradient Borders */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <motion.div
-          initial={{ rotate: 0, scale: 0.8, opacity: 0 }}
+          initial={{ rotate: 0, scale: 0.5, opacity: 0 }}
           animate={{ 
             rotate: 360, 
-            scale: [0.8, 1.2, 1],
-            opacity: [0, 0.15, 0]
+            scale: [0.5, 1.3, 1.1],
+            opacity: [0, 0.4, 0.2, 0]
           }}
           transition={{
             duration: 2.5,
-            ease: "easeInOut",
+            ease: [0.43, 0.13, 0.23, 0.96],
             repeat: Infinity,
           }}
-          className="absolute w-[300px] h-[300px] border border-gray-200 dark:border-gray-800 rounded-full"
+          className="absolute w-[280px] h-[280px] rounded-full"
+          style={{
+            background: 'conic-gradient(from 0deg, transparent, rgba(96, 165, 250, 0.3), transparent)',
+            filter: 'blur(2px)',
+          }}
         />
         <motion.div
-          initial={{ rotate: 0, scale: 0.8, opacity: 0 }}
+          initial={{ rotate: 0, scale: 0.5, opacity: 0 }}
           animate={{ 
             rotate: -360, 
-            scale: [0.8, 1.3, 1],
-            opacity: [0, 0.1, 0]
+            scale: [0.5, 1.4, 1.2],
+            opacity: [0, 0.3, 0.15, 0]
           }}
           transition={{
-            duration: 3,
-            ease: "easeInOut",
+            duration: 3.5,
+            ease: [0.43, 0.13, 0.23, 0.96],
             repeat: Infinity,
-            delay: 0.5
+            delay: 0.3
           }}
-          className="absolute w-[350px] h-[350px] border border-gray-200 dark:border-gray-800 rounded-full"
+          className="absolute w-[350px] h-[350px] rounded-full"
+          style={{
+            background: 'conic-gradient(from 180deg, transparent, rgba(139, 92, 246, 0.3), transparent)',
+            filter: 'blur(2px)',
+          }}
+        />
+        <motion.div
+          initial={{ rotate: 0, scale: 0.5, opacity: 0 }}
+          animate={{ 
+            rotate: 360, 
+            scale: [0.5, 1.5, 1.3],
+            opacity: [0, 0.25, 0.1, 0]
+          }}
+          transition={{
+            duration: 4,
+            ease: [0.43, 0.13, 0.23, 0.96],
+            repeat: Infinity,
+            delay: 0.6
+          }}
+          className="absolute w-[420px] h-[420px] rounded-full"
+          style={{
+            background: 'conic-gradient(from 90deg, transparent, rgba(236, 72, 153, 0.2), transparent)',
+            filter: 'blur(3px)',
+          }}
         />
       </div>
 
       {/* Main Logo Container */}
       <div className="relative">
-        {/* Shadow/Glow Base */}
+        {/* Enhanced Shadow/Glow Base */}
         <motion.div
           initial={{ scale: 0, opacity: 0 }}
           animate={{ 
-            scale: [0, 1.2, 1],
-            opacity: [0, 0.5, 0.3]
+            scale: [0, 1.4, 1.2, 1],
+            opacity: [0, 0.8, 0.6, 0.4]
           }}
           transition={{
-            duration: 1.5,
-            ease: [0.43, 0.13, 0.23, 0.96]
+            duration: 2,
+            ease: [0.34, 1.56, 0.64, 1]
           }}
-          className="absolute -inset-8 bg-gradient-to-r from-blue-500/20 to-purple-500/20 dark:from-blue-400/30 dark:to-purple-400/30 rounded-full blur-2xl"
+          className="absolute -inset-12 rounded-full blur-3xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(96, 165, 250, 0.4) 0%, rgba(139, 92, 246, 0.3) 50%, rgba(236, 72, 153, 0.2) 100%)',
+          }}
+        />
+        
+        {/* Pulsing Secondary Glow */}
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ 
+            scale: [0.8, 1.2, 0.9],
+            opacity: [0, 0.6, 0.3]
+          }}
+          transition={{
+            duration: 3,
+            ease: "easeInOut",
+            repeat: Infinity,
+          }}
+          className="absolute -inset-10 rounded-full blur-2xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(139, 92, 246, 0.5) 0%, transparent 70%)',
+          }}
         />
 
-        {/* Logo Wrapper with Complex Animation */}
+        {/* Enhanced Logo Wrapper with 3D Effect */}
         <motion.div
-          initial={{ scale: 0, rotate: -180, opacity: 0 }}
+          initial={{ scale: 0, rotateY: -180, rotateZ: -90, opacity: 0 }}
           animate={{ 
-            scale: [0, 1.1, 1],
-            rotate: [180, 0],
+            scale: [0, 1.15, 0.98, 1],
+            rotateY: [-180, 0],
+            rotateZ: [-90, 0],
             opacity: [0, 1]
           }}
           transition={{
-            duration: 1.2,
+            duration: 1.4,
             ease: [0.34, 1.56, 0.64, 1],
-            times: [0, 0.8, 1]
+            times: [0, 0.6, 0.85, 1]
+          }}
+          style={{
+            transformStyle: 'preserve-3d',
+            perspective: '1000px',
           }}
           className="relative w-[180px] h-[180px] flex items-center justify-center"
         >

@@ -108,7 +108,6 @@ export default function RootLayout({
       </head>
   <body className={cn("antialiased", "min-h-screen bg-background font-sans")}>
         <ErrorBoundary>
-          <PWAInstaller />
           <AuthProvider>
             <PinProvider>
               <SubscriptionProvider>
@@ -118,12 +117,14 @@ export default function RootLayout({
                   enableSystem
                   disableTransitionOnChange
                 >
-                  <GlobalErrorHandler />
-                  <DynamicStatusBar />
-                  {children}
-                  <Toaster />
-                  <InstallPrompt />
-                  <OfflineIndicator />
+                  <PWAInstaller>
+                    <GlobalErrorHandler />
+                    <DynamicStatusBar />
+                    {children}
+                    <Toaster />
+                    <InstallPrompt />
+                    <OfflineIndicator />
+                  </PWAInstaller>
                 </ThemeProvider>
               </SubscriptionProvider>
             </PinProvider>
