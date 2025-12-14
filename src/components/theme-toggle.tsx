@@ -6,6 +6,25 @@ import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
 
+// Helper function to reset scroll styles
+const resetScrollStyles = () => {
+  if (typeof document !== 'undefined') {
+    // Reset all potential scroll-blocking styles
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    document.body.style.height = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.documentElement.style.overflow = '';
+    document.documentElement.style.position = '';
+    
+    // Also remove any potential classes that could block scroll
+    document.body.classList.remove('overflow-hidden', 'fixed', 'inset-0');
+    document.documentElement.classList.remove('overflow-hidden', 'fixed', 'inset-0');
+  }
+};
+
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
@@ -13,6 +32,18 @@ export function ThemeToggle() {
   React.useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Reset scroll when theme changes
+  React.useEffect(() => {
+    if (mounted && theme) {
+      // Delay the scroll reset to ensure theme transition completes
+      const timeoutId = setTimeout(() => {
+        resetScrollStyles();
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [theme, mounted]);
 
   if (!mounted) {
     return (
@@ -23,11 +54,32 @@ export function ThemeToggle() {
     );
   }
 
+  const handleThemeToggle = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    
+    // Immediate scroll reset
+    resetScrollStyles();
+    
+    // Additional delayed resets to catch any late scroll locks
+    requestAnimationFrame(() => {
+      resetScrollStyles();
+    });
+    
+    setTimeout(() => {
+      resetScrollStyles();
+    }, 50);
+    
+    setTimeout(() => {
+      resetScrollStyles();
+    }, 200);
+  };
+
   return (
     <Button
       variant="ghost"
       size="icon"
-      onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+      onClick={handleThemeToggle}
       className="h-9 w-9 relative overflow-hidden group hover:bg-accent transition-colors theme-toggle-button"
       aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
     >

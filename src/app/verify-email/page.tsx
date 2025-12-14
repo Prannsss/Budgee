@@ -119,6 +119,7 @@ export default function VerifyEmailPage() {
       toast({
         title: "Email Verified! ✅",
         description: "Your email has been verified successfully.",
+        variant: "success",
       });
 
       // Redirect to login after 2 seconds
@@ -161,6 +162,7 @@ export default function VerifyEmailPage() {
       toast({
         title: "Code Resent! 📧",
         description: "A new verification code has been sent to your email.",
+        variant: "success",
       });
     } catch (error: any) {
       const message = error.response?.data?.message || "Something went wrong. Please try again.";
@@ -204,6 +206,7 @@ export default function VerifyEmailPage() {
       toast({
         title: "Email Updated! ✅",
         description: "A new verification code has been sent to your new email.",
+        variant: "success",
       });
     } catch (error: any) {
       const message = error.response?.data?.message || error.message || "Failed to change email";

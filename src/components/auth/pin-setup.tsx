@@ -134,6 +134,7 @@ export function PinSetup({ onSuccess, onCancel, mode = 'setup' }: PinSetupProps)
         toast({
           title: "PIN Changed Successfully",
           description: "Your PIN has been updated.",
+          variant: "success",
         });
       } else {
         // Use setup PIN endpoint
@@ -142,6 +143,7 @@ export function PinSetup({ onSuccess, onCancel, mode = 'setup' }: PinSetupProps)
         toast({
           title: "PIN Set Successfully",
           description: "Your PIN has been set up. Your account is now protected with PIN security.",
+          variant: "success",
         });
       }
       

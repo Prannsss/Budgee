@@ -43,9 +43,34 @@ export function ThemeSelector() {
     }
   };
 
+// Helper function to reset scroll styles (PWA fix)
+const resetScrollStyles = () => {
+  if (typeof document !== 'undefined') {
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    document.body.style.height = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.documentElement.style.overflow = '';
+    document.documentElement.style.position = '';
+    document.body.classList.remove('overflow-hidden', 'fixed', 'inset-0');
+    document.documentElement.classList.remove('overflow-hidden', 'fixed', 'inset-0');
+  }
+};
+
   const handleThemeSelect = (selectedTheme: string) => {
     setTheme(selectedTheme);
     setOpen(false);
+    
+    // Reset scroll after theme change and drawer close
+    setTimeout(() => {
+      resetScrollStyles();
+    }, 100);
+    
+    setTimeout(() => {
+      resetScrollStyles();
+    }, 300);
   };
 
   const ThemeOptions = () => (

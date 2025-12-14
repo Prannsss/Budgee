@@ -79,6 +79,7 @@ export function UserAuthForm({ className, formType, ...props }: UserAuthFormProp
             toast({
               title: "Success!",
               description: "You are now logged in.",
+              variant: "success",
             });
             router.push("/dashboard");
           } else {
@@ -126,6 +127,7 @@ export function UserAuthForm({ className, formType, ...props }: UserAuthFormProp
             toast({
               title: "Account Created! 🎉",
               description: "Please check your email to verify your account.",
+              variant: "success",
             });
             
             // Redirect to verification page with email

@@ -111,6 +111,15 @@ export function PWAInstaller({ children }: PWAInstallerProps) {
     }
     setShowSplash(false);
     setIsSplashComplete(true);
+    
+    // Ensure body scroll is restored after splash screen
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
+      document.documentElement.style.overflow = '';
+    }
   };
 
   return (

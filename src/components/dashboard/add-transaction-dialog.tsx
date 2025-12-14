@@ -171,6 +171,7 @@ export function AddTransactionDialog({ trigger }: { trigger?: React.ReactNode })
       toast({
         title: "Transaction Added",
         description: `Your ${type.toLowerCase()} transaction has been added successfully.`,
+        variant: "success",
       });
     } catch (error) {
       toast({

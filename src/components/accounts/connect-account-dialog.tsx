@@ -110,6 +110,7 @@ export function ConnectAccountDialog({ trigger }: { trigger?: React.ReactNode })
     toast({
       title: "OTP Sent",
       description: "Please check your registered mobile number for the OTP.",
+      variant: "success",
     });
   };
 
@@ -303,6 +304,7 @@ export function ConnectAccountDialog({ trigger }: { trigger?: React.ReactNode })
     toast({
         title: "Connection Successful",
         description: `Your ${institution.short_name} (${type}) account has been connected.`,
+        variant: "success",
     });
     
     // Reset state

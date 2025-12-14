@@ -81,6 +81,7 @@ export default function ForgotPasswordPage() {
       toast({
         title: "Check your email 📧",
         description: "If an account exists with that email, we've sent a reset code.",
+        variant: "success",
       });
     } catch (error: any) {
       // Always show success message to prevent email enumeration
@@ -91,6 +92,7 @@ export default function ForgotPasswordPage() {
       toast({
         title: "Check your email 📧",
         description: "If an account exists with that email, we've sent a reset code.",
+        variant: "success",
       });
     } finally {
       setIsLoading(false);
@@ -110,6 +112,7 @@ export default function ForgotPasswordPage() {
       toast({
         title: "Code verified! ✅",
         description: "You can now set your new password.",
+        variant: "success",
       });
 
       router.push("/reset-password");
@@ -138,6 +141,7 @@ export default function ForgotPasswordPage() {
       toast({
         title: "Code Resent! 📧",
         description: "A new reset code has been sent to your email.",
+        variant: "success",
       });
     } catch (error) {
       // Still show success to prevent email enumeration
@@ -145,6 +149,7 @@ export default function ForgotPasswordPage() {
       toast({
         title: "Code Resent! 📧",
         description: "A new reset code has been sent to your email.",
+        variant: "success",
       });
     } finally {
       setIsLoading(false);

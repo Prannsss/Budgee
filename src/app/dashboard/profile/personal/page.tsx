@@ -128,6 +128,7 @@ export default function PersonalInformationPage() {
       toast({
         title: "Success",
         description: "Personal information updated successfully.",
+        variant: "success",
       });
       setIsEditing(false);
     } catch (error) {
@@ -161,6 +162,7 @@ export default function PersonalInformationPage() {
     toast({
       title: "PIN Protection Enabled",
       description: "Your account is now protected with a PIN.",
+      variant: "success",
     });
   };
 
@@ -180,6 +182,7 @@ export default function PersonalInformationPage() {
     toast({
       title: "PIN Removed",
       description: "PIN protection has been disabled for your account.",
+      variant: "success",
     });
   };
 

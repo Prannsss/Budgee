@@ -52,6 +52,7 @@ export function PinRemove({ onSuccess, onCancel }: PinRemoveProps) {
       toast({
         title: "PIN Removed",
         description: "PIN protection has been disabled for your account.",
+        variant: "success",
       });
       
       onSuccess?.();

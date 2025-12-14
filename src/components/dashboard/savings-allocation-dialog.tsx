@@ -170,6 +170,7 @@ export function SavingsAllocationDialog({ trigger }: { trigger?: React.ReactNode
       toast({
         title: "Success!",
         description: `Savings ${type} of ₱${amountValue.toFixed(2)} has been recorded.`,
+        variant: "success",
       });
       
     } catch (error: any) {

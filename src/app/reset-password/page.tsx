@@ -101,6 +101,7 @@ export default function ResetPasswordPage() {
       toast({
         title: "Password Reset! 🎉",
         description: "Your password has been changed successfully.",
+        variant: "success",
       });
 
       // Redirect to login after 3 seconds

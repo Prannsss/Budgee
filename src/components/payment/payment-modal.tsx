@@ -89,6 +89,7 @@ export function PaymentModal({ isOpen, onClose, selectedPlan }: PaymentModalProp
       toast({
         title: "Upgrade Successful!",
         description: `You have successfully upgraded to the ${selectedPlan?.name} plan. Welcome to your enhanced experience!`,
+        variant: "success",
       });
     } catch (error) {
       setIsProcessing(false);

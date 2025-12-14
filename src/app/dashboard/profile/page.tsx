@@ -104,6 +104,25 @@ export default function ProfilePage() {
   const handleThemeSelect = (selectedTheme: string) => {
     setTheme(selectedTheme);
     setThemeDialogOpen(false);
+    
+    // Reset scroll styles after theme change (PWA fix)
+    const resetScrollStyles = () => {
+      if (typeof document !== 'undefined') {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.height = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.documentElement.style.overflow = '';
+        document.documentElement.style.position = '';
+        document.body.classList.remove('overflow-hidden', 'fixed', 'inset-0');
+        document.documentElement.classList.remove('overflow-hidden', 'fixed', 'inset-0');
+      }
+    };
+    
+    setTimeout(resetScrollStyles, 100);
+    setTimeout(resetScrollStyles, 300);
   };
 
   const handleDeleteClick = () => {
@@ -121,6 +140,7 @@ export default function ProfilePage() {
       toast({
         title: "Account Deleted",
         description: "Your account and all data have been permanently deleted.",
+        variant: "success",
       });
       
       // Use the logout function to properly clear auth state

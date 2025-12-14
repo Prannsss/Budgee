@@ -86,6 +86,7 @@ export default function SavingsPage() {
       toast({
         title: "Success!",
         description: "Savings allocation has been deleted.",
+        variant: "success",
       });
       
       loadData();

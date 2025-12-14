@@ -107,6 +107,7 @@ export default function LimitsPage() {
       toast({
         title: "Success",
         description: "Spending limits updated successfully",
+        variant: "success",
       });
       
       setIsEditing(false);

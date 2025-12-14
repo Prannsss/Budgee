@@ -45,8 +45,9 @@ export default function LoginPage() {
           await refreshUser();
 
           toast({
-            title: "Welcome! 🎉",
+            title: "Welcome!",
             description: "You've successfully logged in.",
+            variant: "success",
           });
           
           // Redirect to dashboard
