@@ -358,24 +358,24 @@ export function ConnectAccountDialog({ trigger }: { trigger?: React.ReactNode })
           <DialogHeader>
             <DialogTitle>
               {step === "connecting"
-                ? "Setting up demo account"
+                ? "Connecting your account"
                 : step === "type"
                 ? "Connect a new account"
                 : step === "provider"
                 ? `Select a ${selectedType} provider`
                 : step === "demo-form"
-                ? "Set up your demo account"
+                ? "Connect your account"
                 : "Enter your account details"}
             </DialogTitle>
             <DialogDescription>
               {step === "connecting"
-                ? `Creating your ${selectedInstitution?.short_name ?? ""} demo account...`
+                ? `Connecting to your ${selectedInstitution?.short_name ?? ""} account...`
                 : step === "type"
                 ? "Select the type of account you want to connect."
                 : step === "provider"
                 ? "Choose the platform you want to connect to."
                 : step === "demo-form"
-                ? "Customize your demo account before creation."
+                ? "Connect your account to start tracking."
                 : `Enter your ${selectedInstitution?.short_name} account details to securely connect.`}
             </DialogDescription>
           </DialogHeader>

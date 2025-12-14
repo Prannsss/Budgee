@@ -124,9 +124,9 @@ export default function AccountsPage() {
                     {/* Demo Cards Carousel - Show below */}
                     {demoAccounts.length > 0 && (
                         <div>
-                            <h2 className="text-lg font-semibold mb-1">Demo Cards</h2>
+                            <h2 className="text-lg font-semibold mb-1">Your Connected Accounts</h2>
                             <p className="text-xs text-muted-foreground mb-2">
-                                Swipe to view your simulated cards
+                                Swipe to view your connected accounts
                             </p>
                             <DemoCardCarousel 
                                 accounts={demoAccounts} 
